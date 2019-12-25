@@ -1,9 +1,8 @@
 #!/bin/sh
 
-# Locate YADM executable...
-YADM="yadm"
-if [ -f "/tmp/yadm" ]; then
-	YADM="/tmp/yadm"
+# Download temporal YADM bin if not locally installed
+if ! [ -x "$(command -v yadm)" ]; then
+  source <(curl -L bootstrap.yadm.io)
 fi
 
 
@@ -14,13 +13,13 @@ fi
 cd "$HOME"
 
 echo "Init submodules..."
-$YADM submodule update --recursive --init
+yadm submodule update --recursive --init
 echo "Submodules initialized!"
 
 
 ### Install Vim...
 
-if command -v vim >/dev/null 2>&1; then
+if [ -x "$(command -v vim)" ]; then
   echo "Bootstraping Vim..."
   vim '+PlugClean!' '+PlugUpdate' '+qall'
   echo "Vim bootstrapped!"
@@ -28,7 +27,7 @@ fi
 
 
 ### Decrypt files
-$YADM decrypt
+yadm decrypt
 
 # Import GPG keys
 echo "Importing GPG keys..."
@@ -47,5 +46,5 @@ done
 ### Change repository URL to SSH if has keys
 if [ -n $(echo $HOME/.ssh/*.pub) ]; then
   echo "Updating the YADM repo origin URL"
-  $YADM remote set-url origin "git@github.com:davafons/dotfiles"
+  yadm remote set-url origin "git@github.com:davafons/dotfiles"
 fi
