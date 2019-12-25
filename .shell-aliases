@@ -12,4 +12,6 @@ alias reload='. $HOME/.bashrc'      # Source your bash config, Wow style :P
 
 alias please='sudo'
 
+# Program aliases
 alias vi='vim'
+alias y='yadm'
