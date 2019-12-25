@@ -2,7 +2,7 @@
 
 # Download temporal YADM bin if not locally installed
 if ! [ -x "$(command -v yadm)" ]; then
-  source <(curl -L bootstrap.yadm.io)
+	source <(curl -L bootstrap.yadm.io)
 fi
 
 
