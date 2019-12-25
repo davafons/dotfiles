@@ -25,3 +25,14 @@ if command -v vim >/dev/null 2>&1; then
   vim '+PlugClean!' '+PlugUpdate' '+qall'
   echo "Vim bootstrapped!"
 fi
+
+
+### Decrypt files
+$YADM decrypt
+
+
+### Import GPG keys
+
+for key in ".gnupg/*.gpg_key"; do
+  gpg --import $key
+done
