@@ -1,1 +1,3 @@
 .gnupg/*.gpg_key
+.ssh/*.key
+.ssh/*.pub
