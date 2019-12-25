@@ -1,1 +1,30 @@
-.dotfiles/.gitconfig
+[user]
+  name = David Afonso
+  email = davafons@gmail.com
+  username = davafons
+  signingkey = CE88432199534DA4
+
+[core]
+  editor = vim
+
+[diff]
+  tool = vimdiff
+
+[alias]
+  a = add --all
+  ai = add -i
+  ####
+  s = status
+  b = branch
+  c = checkout
+  ####
+  uns = reset HEAD
+  ####
+  d = diff
+  dc = diff --cached
+
+[commit]
+  gpgsign = true
+
+[gpg]
+  program = gpg2
