@@ -21,7 +21,7 @@ echo "Submodules initialized!"
 ### Install Vim...
 
 if command -v vim >/dev/null 2>&1; then
-  echo "Bootstraping Vim"
+  echo "Bootstraping Vim..."
   vim '+PlugClean!' '+PlugUpdate' '+qall'
   echo "Vim bootstrapped!"
 fi
@@ -30,9 +30,22 @@ fi
 ### Decrypt files
 $YADM decrypt
 
-
-### Import GPG keys
-
-for key in ".gnupg/*.gpg_key"; do
+# Import GPG keys
+echo "Importing GPG keys..."
+for key in "$HOME/.gnupg/*.gpg_key"; do
   gpg --import $key
 done
+
+# Import SSH keys
+echo "Importing SSH keys..."
+eval $(ssh-agent -s)
+for key in "$HOME/.ssh/*.key"; do
+  ssh-add $key
+done
+
+
+### Change repository URL to SSH if has keys
+if [ -n $(echo $HOME/.ssh/*.pub) ]; then
+  echo "Updating the YADM repo origin URL"
+  $YADM remote set-url origin "git@github.com:davafons/dotfiles"
+fi
