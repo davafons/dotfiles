@@ -14,4 +14,5 @@ alias please='sudo'
 
 # Program aliases
 alias vi='vim'
+alias g='git'
 alias y='yadm'

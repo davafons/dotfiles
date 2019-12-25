@@ -14,6 +14,7 @@
   a = add --all
   ai = add -i
   ####
+  l = log
   s = status
   b = branch
   c = checkout
