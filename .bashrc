@@ -9,3 +9,6 @@
 
 # Disable ctrl-s (freeze console)
 stty -ixon
+
+# Add fzf
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash
