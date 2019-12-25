@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Locate YADM executable
+# Locate YADM executable...
 YADM="yadm"
 if [ -f "/tmp/yadm" ]; then
 	YADM="/tmp/yadm"
@@ -14,11 +14,11 @@ fi
 cd "$HOME"
 
 echo "Init submodules..."
-yadm submodule update --recursive --init
+$YADM submodule update --recursive --init
 echo "Submodules initialized!"
 
 
-### Install Vim
+### Install Vim...
 
 if command -v vim >/dev/null 2>&1; then
   echo "Bootstraping Vim"
