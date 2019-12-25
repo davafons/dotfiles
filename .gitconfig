@@ -2,7 +2,7 @@
   name = David Afonso
   email = davafons@gmail.com
   username = davafons
-  signingkey = CE88432199534DA4
+  signingkey = A1B6340B7D07548F
 
 [core]
   editor = vim
