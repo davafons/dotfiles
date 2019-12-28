@@ -11,6 +11,7 @@ alias ls='ls --color=auto'          # Colorized output for ls
 alias reload='. $HOME/.bashrc'      # Source your bash config, Wow style :P
 
 alias please='sudo'
+alias :q='exit'
 
 # Program aliases
 alias vi='vim'
