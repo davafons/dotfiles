@@ -10,5 +10,8 @@
 # Disable ctrl-s (freeze console)
 stty -ixon
 
+# Auto-cd directories
+shopt -s autocd
+
 # Add fzf
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
