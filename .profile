@@ -12,3 +12,7 @@ fi
 if [ -d "$HOME/bin" ] ; then
     PATH="$HOME/bin:$PATH"
 fi
+
+# Vim as default editor
+export VISUAL=vim
+export EDITOR="$VISUAL"
