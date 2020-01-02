@@ -14,4 +14,7 @@ stty -ixon
 shopt -s autocd
 
 # Add fzf
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
+[ -f ~/.fzf.bash ] && . ~/.fzf.bash
+
+# Settings exclusive for the local machine
+[ -f ~/.extra ] && . ~/.extra
