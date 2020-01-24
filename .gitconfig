@@ -23,6 +23,8 @@
   ####
   d = diff
   dc = diff --cached
+  ####
+  ret = "!git add . & git cz --retry"
 
 [commit]
   gpgsign = true
