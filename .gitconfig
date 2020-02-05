@@ -10,6 +10,9 @@
 [diff]
   tool = vimdiff
 
+[push]
+  default = current
+
 [alias]
   a = add --all
   ai = add -i
