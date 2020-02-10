@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "coc-actions": ">=1.2.1",
+    "coc-highlight": ">=1.2.5",
+    "coc-python": ">=1.2.7"
+  }
+}
