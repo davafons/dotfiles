@@ -13,6 +13,11 @@ if [ -d "$HOME/bin" ] ; then
     PATH="$HOME/bin:$PATH"
 fi
 
+# set PATH for Poetry binary
+if [ -d "$HOME/.poetry/bin" ] ; then
+    export PATH="$HOME/.poetry/bin:$PATH"
+fi
+
 # Vim as default editor
 export VISUAL=vim
 export EDITOR="$VISUAL"
