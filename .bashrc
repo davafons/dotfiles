@@ -18,3 +18,9 @@ shopt -s autocd
 
 # Settings exclusive for the local machine
 [ -f ~/.extra ] && . ~/.extra
+
+
+# Run a tmux session if tmux is installed
+if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+  exec tmux
+fi
