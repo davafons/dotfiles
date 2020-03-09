@@ -21,3 +21,6 @@ fi
 # Vim as default editor
 export VISUAL=vim
 export EDITOR="$VISUAL"
+
+# ripgrep config file path
+RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"; export RIPGREP_CONFIG_PATH
