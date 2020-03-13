@@ -2,7 +2,7 @@
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
-alias -- -="cd -"
+alias -- -='cd -'
 
 # Overpowered Unix commands
 alias ll='ls -lha'                  # ll -> ls with details and hidden files

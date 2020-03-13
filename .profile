@@ -1,32 +1,38 @@
 # Profile
 
-# if running bash
-if [ -n "$BASH_VERSION" ]; then
-    # include .bashrc if it exists
-    if [ -f "$HOME/.bashrc" ]; then
-        . "$HOME/.bashrc"
-    fi
-fi
-
 # set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/bin" ] ; then
-    PATH="$HOME/bin:$PATH"
-fi
+export PATH="$HOME/bin:$PATH"
 
 # set PATH for Poetry binary
-if [ -d "$HOME/.poetry/bin" ] ; then
-    export PATH="$HOME/.poetry/bin:$PATH"
-fi
+export PATH="$HOME/.poetry/bin:$PATH"
+
+# Add NVM if installed
+export NVM_DIR="$HOME/.nvm"
+
+function _install_nvm() {
+  unset -f nvm npm node
+  # Set up "nvm" could use "--no-use" to defer setup, but we are here to use it
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This sets up nvm
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # nvm bash_completion
+  "$@"
+}
+
+_install_nvm nvm "$@"
+_install_nvm npm "$@"
+_install_nvm node "$@"
+
+# Add pyenv
+eval "$(pyenv init -)"
 
 # Vim as default editor
 export VISUAL=vim
 export EDITOR="$VISUAL"
 
 # ripgrep config file path
-RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"; export RIPGREP_CONFIG_PATH
+export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
 # Configure FZF
-FZF_DEFAULT_COMMAND='rg --files'; export FZF_DEFAULT_COMMAND
+export FZF_DEFAULT_COMMAND='rg --files'
 
 _gen_fzf_default_opts() {
   local base03="234"
