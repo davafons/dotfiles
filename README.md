@@ -5,7 +5,7 @@ Personal __dotfiles__ for Linux systems. Mainly used under __Manjaro/Arch__.
 
 This dotfiles repository uses [yadm](https://yadm.io/):
 
-```
-yadm clone https://github.com:davafons/dotfiles
-yadm status
+```sh
+$ yadm clone https://github.com/davafons/dotfiles
+$ yadm status
 ```
