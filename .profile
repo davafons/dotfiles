@@ -61,3 +61,5 @@ _gen_fzf_default_opts() {
   "
 }
 _gen_fzf_default_opts
+
+export PATH="$HOME/.cargo/bin:$PATH"
