@@ -13,8 +13,5 @@ alias reload='. ~/.bashrc'      # Source your bash config, Wow style :P
 alias please='sudo'
 
 # Program aliases
-alias vi='vim'
 alias g='git'
 alias y='yadm'
-alias prp='poetry run python'
-alias prn='poetry run'
