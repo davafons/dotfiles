@@ -9,18 +9,6 @@ export PATH="$HOME/.poetry/bin:$PATH"
 # Add NVM if installed
 export NVM_DIR="$HOME/.nvm"
 
-function _install_nvm() {
-  unset -f nvm npm node
-  # Set up "nvm" could use "--no-use" to defer setup, but we are here to use it
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This sets up nvm
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # nvm bash_completion
-  "$@"
-}
-
-_install_nvm nvm "$@"
-_install_nvm npm "$@"
-_install_nvm node "$@"
-
 # Add pyenv
 eval "$(pyenv init -)"
 
