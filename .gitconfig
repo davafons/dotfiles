@@ -34,6 +34,6 @@
   gpgsign = true
 
 [gpg]
-  program = gpg-pinentry
+  program = gpg2
 [pull]
   rebase = true
