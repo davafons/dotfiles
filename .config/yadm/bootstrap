@@ -26,6 +26,10 @@ if [ -x "$(command -v vim)" ]; then
 fi
 
 
+## Configure fzf
+cd ~/.fzf && ./install
+
+
 ### Decrypt files
 yadm decrypt
 
