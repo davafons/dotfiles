@@ -17,6 +17,10 @@ yadm submodule update --recursive --init
 echo "Submodules initialized!"
 
 
+# Source profile. TODO: Add support for shell detection
+source .bash_profile
+
+
 ### Install Vim...
 
 if [ -x "$(command -v vim)" ]; then
