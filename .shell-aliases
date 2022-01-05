@@ -10,7 +10,7 @@ alias ls='ls --color=auto'          # Colorized output for ls
 
 alias reload='. ~/.bashrc'      # Source your bash config, Wow style :P
 
-alias please='sudo'
+alias vims='sudo -E vim'
 
 # Program aliases
 alias g='git'
