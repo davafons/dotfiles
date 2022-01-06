@@ -21,6 +21,10 @@ echo "Submodules initialized!"
 . ~/.bash_profile
 
 
+# Install tmux-plugin-manager
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+
 ### Install Vim...
 
 if [ -x "$(command -v vim)" ]; then

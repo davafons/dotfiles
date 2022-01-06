@@ -9,9 +9,6 @@ export PATH="$HOME/.poetry/bin:$PATH"
 # Add NVM if installed
 export NVM_DIR="$HOME/.nvm"
 
-# Add pyenv
-eval "$(pyenv init -)"
-
 # Vim as default editor
 export VISUAL=vim
 export EDITOR="$VISUAL"
