@@ -29,7 +29,6 @@ alias gd='git diff'
 alias gdc='git diff --cached'
 alias gca='git commit -a'
 alias ga='git add'
-alias gca!= 'git commit -a --amend'
 gfr() {
   git reset @~ "$@" && git commit --amend --no-edit
 }
