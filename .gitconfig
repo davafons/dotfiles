@@ -16,19 +16,26 @@
 [alias]
   a = add --all
   ai = add -i
-  ####
+
   l = log
   s = status
   b = branch
   bd = branch -d
   c = checkout
-  ####
+
   uns = reset HEAD
-  ####
+
   d = diff
   dc = diff --cached
-  ####
+
   ret = "!git add . & git cz --retry"
+
+  dag = log --graph --format='format:%C(yellow)%h%C(reset) %C(blue)\"%an\" <%ae>%C(reset) %C(magenta)%cr%C(reset)%C(auto)%d%C(reset)%n%s' --date-order
+  lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%C    reset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+  change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f"
+
+  co = comit
+  coa = commit --amend
 
 [commit]
   gpgsign = true

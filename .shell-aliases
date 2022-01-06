@@ -15,3 +15,37 @@ alias vims='sudo -E vim'
 # Program aliases
 alias g='git'
 alias y='yadm'
+
+# Git aliases
+alias g='git'
+alias gcl='git clone'
+alias gbr='git branch'
+alias glog='git log'
+alias gfe='git fetch'
+alias gco='git checkout'
+alias gcm='git checkout master'
+alias gst='git status'
+alias gd='git diff'
+alias gdc='git diff --cached'
+alias gca='git commit -a'
+alias ga='git add'
+alias gca!= 'git commit -a --amend'
+gfr() {
+  git reset @~ "$@" && git commit --amend --no-edit
+}
+alias glr='git pull --rebase'
+alias grbiom='git rebase --interactive origin/master'
+alias grba='git rebase --abort'
+alias grbc='git rebase --continue'
+alias gsta='git stash'
+alias gstop='git stash pop'
+alias gcp='git cherry-pick'
+alias gcpa='git cherry-pick --abort'
+alias gcpc='git cherry-pick --continue'
+grbo() {
+  git rebase --onto "$1" "$2^" "$2"
+}
+gbaco() {
+  git branch -f "$1" && git checkout "$1"
+}
+
