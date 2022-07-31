@@ -47,4 +47,3 @@ grbo() {
 gbaco() {
   git branch -f "$1" && git checkout "$1"
 }
-
