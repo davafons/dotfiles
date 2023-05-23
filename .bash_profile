@@ -1,2 +1,2 @@
-. .profile
-. .bashrc
+. ~/.profile
+. ~/.bashrc
