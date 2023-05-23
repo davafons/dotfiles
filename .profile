@@ -1,5 +1,7 @@
 # Profile
 
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
 # set PATH so it includes user's private bin if it exists
 export PATH="$HOME/bin:$PATH"
 
