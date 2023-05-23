@@ -1,8 +1,7 @@
 [user]
   name = David Afonso
-  email = davafons@gmail.com
-  username = davafons
-  signingkey = A1B6340B7D07548F
+  email = david.afonso@paypay-corp.co.jp
+  username = david-paypay
 
 [core]
   editor = vim
