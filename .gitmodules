@@ -4,3 +4,6 @@
 [submodule "/home/davafons/.config/mpv/scripts/subs2srs"]
 	path = /home/davafons/.config/mpv/scripts/subs2srs
 	url = git@github.com:Ajatt-Tools/mpvacious.git
+[submodule ".config/nvim"]
+	path = .config/nvim
+	url = git@github.com:davafons/nvim
