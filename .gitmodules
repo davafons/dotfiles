@@ -1,6 +1,3 @@
-[submodule ".vim"]
-	path = .vim
-	url = git@github.com:davafons/.vim
 [submodule "/home/davafons/.config/mpv/scripts/videoclip"]
 	path = /home/davafons/.config/mpv/scripts/videoclip
 	url = git@github.com:davafons/videoclip

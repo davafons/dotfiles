@@ -5,7 +5,7 @@
   signingkey = A1B6340B7D07548F
 
 [core]
-  editor = vim
+  editor = nvim
 
 [diff]
   tool = vimdiff
