@@ -21,6 +21,9 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # Configure FZF
 export FZF_DEFAULT_COMMAND='rg --files'
 
+export JAVA_HOME=`/usr/libexec/java_home -v 17`
+export PATH=$PATH:$JAVA_HOME/bin
+
 _gen_fzf_default_opts() {
   local base03="234"
   local base02="235"
@@ -60,3 +63,6 @@ fi
 
 # JetBrains Toolbox App
 export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
+
+# Kafka tool
+export PATH="$PATH:~/kafka/bin"

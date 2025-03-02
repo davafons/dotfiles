@@ -11,18 +11,22 @@ alias ls='ls --color=auto'          # Colorized output for ls
 alias reload='. ~/.bashrc'      # Source your bash config, Wow style :P
 
 alias vims='sudo -E vim'
+alias vim="nvim"
 
 # Program aliases
 alias g='git'
 alias y='yadm'
+alias cd='z'
 
 # Git aliases
 alias g='git'
+__git_complete g __git_main
 alias gcl='git clone'
 alias gbr='git branch'
 alias glog='git log'
 alias gfe='git fetch'
 alias gco='git checkout'
+__git_complete gco _git_checkout
 alias gcm='git checkout master'
 alias gst='git status'
 alias gd='git diff'
@@ -50,9 +54,21 @@ grbo() {
 gbaco() {
   git branch -f "$1" && git checkout "$1"
 }
+killport() {
+kill -9 $(lsof -i:$1)
+}
+
+b64() {
+echo -n "$1" | base64
+}
+
+db64() {
+echo -n "$1" | base64 --decode
+}
 
 alias gg='./gradlew'
 alias ggb="./gradlew bootRun"
+alias ggr="./gradlew resetLocalEnv"
 alias ggrb="./gradlew resetLocalEnv && ./gradlew bootRun"
 alias ggt="./gradlew test"
 alias ggs="./gradlew spotlessApply"
