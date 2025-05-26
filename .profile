@@ -66,3 +66,12 @@ export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
 
 # Kafka tool
 export PATH="$PATH:~/kafka/bin"
+
+# Kafka tool
+# export PATH="$PATH:/opt/jdtls-17/bin"
+export PATH="$PATH:~/.local/share/nvim/mason/packages/jdtls/bin"
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init - bash)"
+
