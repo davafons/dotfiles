@@ -42,6 +42,9 @@ family = "SauceCodePro Nerd Font Mono"
 family = "SauceCodePro Nerd Font Mono"
 style = "regular"
 
+[window]
+opacity = 0.94
+
 [window.padding]
 x = 4
 y = 4
