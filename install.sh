@@ -2,10 +2,15 @@
 
 # Dotfiles installation script using GNU Stow
 # Usage: ./install.sh [package1] [package2] ...
+# Usage: ./install.sh "key" (to install predefined package lists)
 
 # Allow script to continue even if individual packages fail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define predefined package lists
+declare -A PACKAGE_LISTS
+PACKAGE_LISTS["omen"]="bin shell git i3 tmux nvim alacritty"
 
 install_package() {
     local package=$1
@@ -42,6 +47,7 @@ uninstall_package() {
 
 show_help() {
     echo "Usage: $0 [OPTIONS] [PACKAGES...]"
+    echo "Usage: $0 [OPTIONS] \"KEY\""
     echo ""
     echo "Options:"
     echo "  -h, --help          Show this help message"
@@ -49,10 +55,17 @@ show_help() {
     echo ""
     echo "Available packages: $(find "$DOTFILES_DIR" -maxdepth 1 -type d ! -name '.*' ! -path "$DOTFILES_DIR" -printf '%f ' | sort)"
     echo ""
+    echo "Available package lists:"
+    for key in "${!PACKAGE_LISTS[@]}"; do
+        echo "  $key: ${PACKAGE_LISTS[$key]}"
+    done
+    echo ""
     echo "Examples:"
     echo "  $0 -h                 # Show help"
     echo "  $0 shell git tmux     # Install specific packages"
+    echo "  $0 \"omen\"             # Install omen package list"
     echo "  $0 -u shell           # Uninstall shell package"
+    echo "  $0 -u \"omen\"          # Uninstall omen package list"
 }
 
 
@@ -103,6 +116,13 @@ fi
 if [[ ${#SELECTED_PACKAGES[@]} -eq 0 ]]; then
     show_help
     exit 0
+fi
+
+# Check if the single argument is a predefined package list
+if [[ ${#SELECTED_PACKAGES[@]} -eq 1 ]] && [[ -n "${PACKAGE_LISTS[${SELECTED_PACKAGES[0]}]}" ]]; then
+    PACKAGE_LIST_KEY="${SELECTED_PACKAGES[0]}"
+    read -ra SELECTED_PACKAGES <<< "${PACKAGE_LISTS[$PACKAGE_LIST_KEY]}"
+    echo "Using package list '$PACKAGE_LIST_KEY': ${SELECTED_PACKAGES[*]}"
 fi
 
 # Let stow handle package validation - it will show appropriate errors
