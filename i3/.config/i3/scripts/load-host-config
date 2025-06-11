@@ -1,0 +1,16 @@
+#!/bin/bash
+
+HOST_CONFIG_DIR="$HOME/.config/i3/hosts"
+HOSTNAME=$(hostname)
+HOST_CONFIG_FILE="$HOST_CONFIG_DIR/$HOSTNAME"
+
+# Check if host-specific config exists and include it
+if [ -f "$HOST_CONFIG_FILE" ]; then
+    # Create a temporary config file that includes the host-specific config
+    TEMP_CONFIG="/tmp/i3-host-config-$HOSTNAME"
+    echo "# Host-specific configuration for $HOSTNAME" > "$TEMP_CONFIG"
+    echo "include $HOST_CONFIG_FILE" >> "$TEMP_CONFIG"
+    
+    # Apply the configuration by reloading i3
+    i3-msg reload >/dev/null 2>&1
+fi

@@ -1,0 +1,7 @@
+# Host-specific configuration for omen
+
+## Resize to ocuppy non broken part of the screen
+bindsym $mod+u resize grow width 24 px or 24 ppt
+
+## Set wallpaper
+exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/sunAndClouds.png
