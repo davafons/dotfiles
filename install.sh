@@ -6,18 +6,37 @@
 set -e
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PACKAGES=(alacritty commitizen git i3 mpv nvim plex-mpv-shim ripgrep shell tmux vim)
+PACKAGES=(alacritty commitizen git i3 mpv nvim plex-mpv-shim ripgrep shell tmux vim alacritty-pc alacritty-laptop)
 
 install_package() {
     local package=$1
-    echo "Installing $package..."
-    stow -v -d "$DOTFILES_DIR" -t "$HOME" "$package"
+    local hostname=$(hostname)
+    local hostname_package="${package}-${hostname}"
+    
+    # Check if hostname-specific package exists
+    if [[ -d "$DOTFILES_DIR/$hostname_package" ]]; then
+        echo "Installing $hostname_package (hostname-specific for $hostname)..."
+        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$hostname_package"
+    else
+        echo "Installing $package..."
+        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$package"
+    fi
 }
 
 uninstall_package() {
     local package=$1
+    local hostname=$(hostname)
+    local hostname_package="${package}-${hostname}"
+    
+    # Check if hostname-specific package exists and is stowed
+    if [[ -d "$DOTFILES_DIR/$hostname_package" ]]; then
+        echo "Uninstalling $hostname_package (hostname-specific for $hostname)..."
+        stow -v -d "$DOTFILES_DIR" -t "$HOME" -D "$hostname_package" 2>/dev/null || true
+    fi
+    
+    # Also try to uninstall the base package in case it was stowed
     echo "Uninstalling $package..."
-    stow -v -d "$DOTFILES_DIR" -t "$HOME" -D "$package"
+    stow -v -d "$DOTFILES_DIR" -t "$HOME" -D "$package" 2>/dev/null || true
 }
 
 show_help() {
@@ -101,14 +120,20 @@ fi
 
 # Validate selected packages
 for package in "${SELECTED_PACKAGES[@]}"; do
+    hostname=$(hostname)
+    hostname_package="${package}-${hostname}"
+    
     if [[ ! " ${PACKAGES[*]} " =~ " $package " ]]; then
         echo "Error: Unknown package '$package'"
         echo "Available packages: ${PACKAGES[*]}"
         exit 1
     fi
     
-    if [[ ! -d "$DOTFILES_DIR/$package" ]]; then
-        echo "Error: Package directory '$package' does not exist"
+    # Check if hostname-specific package exists, otherwise check base package
+    if [[ -d "$DOTFILES_DIR/$hostname_package" ]]; then
+        continue  # hostname-specific package exists, validation passed
+    elif [[ ! -d "$DOTFILES_DIR/$package" ]]; then
+        echo "Error: Package directory '$package' and '$hostname_package' do not exist"
         exit 1
     fi
 done
