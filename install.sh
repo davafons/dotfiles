@@ -3,7 +3,7 @@
 # Dotfiles installation script using GNU Stow
 # Usage: ./install.sh [package1] [package2] ... or ./install.sh (for all packages)
 
-set -e
+# Allow script to continue even if individual packages fail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGES=(alacritty commitizen git i3 mpv nvim plex-mpv-shim ripgrep shell tmux vim alacritty-pc alacritty-laptop)
@@ -13,13 +13,15 @@ install_package() {
     local hostname=$(hostname)
     local hostname_package="${package}-${hostname}"
     
-    # Check if hostname-specific package exists
+    # Try hostname-specific package first, then fall back to base package
     if [[ -d "$DOTFILES_DIR/$hostname_package" ]]; then
         echo "Installing $hostname_package (hostname-specific for $hostname)..."
-        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$hostname_package"
-    else
+        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$hostname_package" || echo "Failed to install $hostname_package"
+    elif [[ -d "$DOTFILES_DIR/$package" ]]; then
         echo "Installing $package..."
-        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$package"
+        stow -v -d "$DOTFILES_DIR" -t "$HOME" "$package" || echo "Failed to install $package"
+    else
+        echo "Package '$package' not found (tried both '$package' and '$hostname_package')"
     fi
 }
 
@@ -118,25 +120,7 @@ if [[ ${#SELECTED_PACKAGES[@]} -eq 0 ]]; then
     SELECTED_PACKAGES=("${PACKAGES[@]}")
 fi
 
-# Validate selected packages
-for package in "${SELECTED_PACKAGES[@]}"; do
-    hostname=$(hostname)
-    hostname_package="${package}-${hostname}"
-    
-    if [[ ! " ${PACKAGES[*]} " =~ " $package " ]]; then
-        echo "Error: Unknown package '$package'"
-        echo "Available packages: ${PACKAGES[*]}"
-        exit 1
-    fi
-    
-    # Check if hostname-specific package exists, otherwise check base package
-    if [[ -d "$DOTFILES_DIR/$hostname_package" ]]; then
-        continue  # hostname-specific package exists, validation passed
-    elif [[ ! -d "$DOTFILES_DIR/$package" ]]; then
-        echo "Error: Package directory '$package' and '$hostname_package' do not exist"
-        exit 1
-    fi
-done
+# Let stow handle package validation - it will show appropriate errors
 
 # Install or uninstall packages
 cd "$DOTFILES_DIR"
