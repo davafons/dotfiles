@@ -1,0 +1,4 @@
+brew "git"
+brew "neovim"
+brew "stow"
+brew "bitwarden-cli"

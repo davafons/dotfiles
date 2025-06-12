@@ -9,7 +9,7 @@ PACKAGE_DIR := packages
 ifeq ($(HOSTNAME),omen)
 	DEFAULT_PACKAGES := bin shell git i3 tmux nvim alacritty ssh x11 fcitx5
 else
-	DEFAULT_PACKAGES := bin shell git i3 tmux nvim
+	DEFAULT_PACKAGES := bin git shell tmux nvim alacritty
 endif
 
 # Use provided packages or default for hostname

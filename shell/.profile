@@ -1,24 +1,4 @@
-# Profile
-
-# set PATH so it includes user's private bin if it exists
-export PATH="$HOME/bin:$PATH"
-
-# set PATH for Poetry binary
-export PATH="$HOME/.poetry/bin:$PATH"
-
-# Add NVM if installed
-export NVM_DIR="$HOME/.nvm"
-
-# Vim as default editor
-export VISUAL=vim
-export EDITOR="$VISUAL"
-
-# ripgrep config file path
-export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-
-# Configure FZF
-export FZF_DEFAULT_COMMAND='rg --files'
-
+# Theme
 _gen_fzf_default_opts() {
   local base03="234"
   local base02="235"
@@ -47,14 +27,50 @@ _gen_fzf_default_opts() {
 }
 _gen_fzf_default_opts
 
+# Exports
+
+# Set PATH so it includes user's private bin
+export PATH="$HOME/bin:$PATH"
+
+# Set nvim as default editor
+export VISUAL=nvim
+export EDITOR="$VISUAL"
+
+# Set TTY as the method for GPG signing
+export GPG_TTY=$(tty)
+
+# Set PATH for Poetry binary
+export PATH="$HOME/.poetry/bin:$PATH"
+
+# Add NVM if installed
+export NVM_DIR="$HOME/.nvm"
+
+# ripgrep config file path
+export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
+
+# Configure FZF
+export FZF_DEFAULT_COMMAND='rg --files'
+
+# Configure Java version
+export JAVA_HOME=`/usr/libexec/java_home -v 17`
+export PATH=$PATH:$JAVA_HOME/bin
+
+# Set rust cargo path
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-if command -v pyenv 1>/dev/null 2>&1; then
-  eval "$(pyenv init --path)"
+# Add uv installed packages to PATH
+. "$HOME/.local/bin/env"
+
+# --- Host-Specific Overrides
+if [ -f "$HOME/.profile.$(hostname)" ]; then
+    . "$HOME/.profile.$(hostname)"
 fi
 
-# Set default terminal
-export TERMINAL=alacritty
+
+# Mac specific 
+# JetBrains Toolbox App
+export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
+
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+export TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')
+export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"

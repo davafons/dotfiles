@@ -1,5 +1,3 @@
-# Bashrc
-
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
@@ -10,22 +8,22 @@
 # Disable ctrl-s (freeze console)
 stty -ixon
 
-# Specific settings for the local machine
-[ -f ~/.extra ] && . ~/.extra
-
 # Add fzf
 [ -f ~/.fzf.bash ] && . ~/.fzf.bash
 
-# Activate NVM
+# Add zoxide
+eval "$(zoxide init bash)"
+
+# Add pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init - bash)"
+
+# Add nvm 
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" --no-use # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-export GPG_TTY=$(tty)
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-. "$HOME/.local/bin/env"
-
-export PATH="/home/davafons/.local/bin:$PATH"
+# --- Host-Specific Overrides
+if [ -f "$HOME/.bashrc.$(hostname)" ]; then
+    . "$HOME/.bashrc.$(hostname)"
+fi
