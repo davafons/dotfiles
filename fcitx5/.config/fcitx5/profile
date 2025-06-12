@@ -16,7 +16,7 @@ Layout=
 # Name
 Name=mozc
 # Layout
-Layout=
+Layout=us-alt-intl
 
 [GroupOrder]
 0="Group 1"

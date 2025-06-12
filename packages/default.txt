@@ -53,3 +53,4 @@ xclip
 yay
 zip
 zoxide
+hyperfine

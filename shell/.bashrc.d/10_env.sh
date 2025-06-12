@@ -17,10 +17,6 @@ export NVM_DIR="$HOME/.nvm"
 # ripgrep config file path
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# Configure Java version
-export JAVA_HOME=`/usr/libexec/java_home -v 17`
-export PATH=$PATH:$JAVA_HOME/bin
-
 # Set rust cargo path
 export PATH="$HOME/.cargo/bin:$PATH"
 
