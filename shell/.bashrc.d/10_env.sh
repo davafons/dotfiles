@@ -1,9 +1,3 @@
-#!sh
-
-if [ -f "/opt/homebrew/bin/brew" ]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
-
 # Set PATH so it includes user's private bin
 export PATH="$HOME/bin:$PATH"
 
@@ -31,21 +25,16 @@ export PATH=$PATH:$JAVA_HOME/bin
 export PATH="$HOME/.cargo/bin:$PATH"
 
 # Add zoxide
+# (Fast enough that is not worth lazy loading)
 eval "$(zoxide init bash)"
 
 # Add pyenv
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init - bash)"
 
 # Add nvm 
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" --no-use # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-# --- Host-Specific Overrides
-if [ -f "$HOME/.bashrc.$(hostname)" ]; then
-    . "$HOME/.bashrc.$(hostname)"
-fi
 
 # Add uv installed packages to PATH
 . "$HOME/.local/bin/env"
