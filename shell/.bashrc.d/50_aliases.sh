@@ -32,9 +32,6 @@ alias gdc='git diff --cached'
 alias gdd='git diff --cached develop'
 alias gca='git commit -a'
 alias ga='git add'
-gfr() {
-  git reset @~ "$@" && git commit --amend --no-edit
-}
 alias glr='git pull --rebase'
 alias grbiom='git rebase --interactive origin/master'
 alias grba='git rebase --abort'
@@ -55,32 +52,4 @@ alias ggrb="./gradlew resetLocalEnv && ./gradlew bootRun"
 alias ggt="./gradlew test"
 alias ggs="./gradlew spotlessApply"
 
-
 alias batteryUsage='upower -i /org/freedesktop/UPower/devices/battery_BAT0'
-
-grbo() {
-  git rebase --onto "$1" "$2^" "$2"
-}
-
-gbaco() {
-  git branch -f "$1" && git checkout "$1"
-}
-
-killport() {
-  kill -9 $(lsof -i:$1)
-}
-
-b64() {
-  echo -n "$1" | base64
-}
-
-db64() {
-  echo -n "$1" | base64 --decode
-}
-
-wiped() {
-  # stop and !! REMOVE !! all containers (looses all data inside containers)
-  docker ps | awk '{print $1}' | grep -v CONTAINER | xargs docker stop && \
-  docker ps -a | awk '{print $1}' | grep -v CONTAINER | xargs docker rm
-}
-

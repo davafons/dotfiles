@@ -1,7 +1,3 @@
-# vim: set filetype=bash:
-
-[ -f /opt/homebrew/etc/profile.d/bash_completion.sh ] && . /opt/homebrew/etc/profile.d/bash_completion.sh
-[ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
 
 start_colima() {
   local CERTS="${HOME}/.ca-certificates"

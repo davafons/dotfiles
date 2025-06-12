@@ -1,29 +1,30 @@
+#!bash
+
 # If not running interactively, don't do anything
-[ -z "$PS1" ] && return
+case $- in
+  *i*) ;;
+  *) return;;
+esac
 
-# Basic Shell configuration
-. "$HOME/.shell-aliases"
-. "$HOME/.shell-prompt"
+__current_hostname=$(hostname -s)
 
-# Disable ctrl-s (freeze console)
-stty -ixon
+for i in ~/.bashrc.d/*.sh; do
+  # Check if a file is host-specific (e.g., "name.some-host.sh")
+  # The regex checks for a pattern of ".[something]." before the "sh" extension.
+  if [[ "$(basename "$i")" =~ \.([^.]+)\.sh$ ]]; then
+    # Get the hostname part from the filename
+    __file_hostname=${BASH_REMATCH[1]}
 
-# Add fzf
-[ -f ~/.fzf.bash ] && . ~/.fzf.bash
+    if [[ "$__file_hostname" != "$__current_hostname" ]]; then
+      continue
+    fi
+  fi
 
-# Add zoxide
-eval "$(zoxide init bash)"
-
-# Add pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init - bash)"
-
-# Add nvm 
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" --no-use # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-# --- Host-Specific Overrides
-if [ -f "$HOME/.bashrc.$(hostname)" ]; then
-    . "$HOME/.bashrc.$(hostname)"
-fi
+  if [[ $__bashrc_bench ]]; then
+    TIMEFORMAT="$i: %R"
+    time . "$i"
+    unset TIMEFORMAT
+  else
+    . "$i"
+  fi
+done; unset i
