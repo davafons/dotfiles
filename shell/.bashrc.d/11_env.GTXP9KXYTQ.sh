@@ -1,4 +1,7 @@
 #!sh
+if [ -f /opt/homebrew/etc/profile.d/bash_completion.sh ]; then
+    . /opt/homebrew/etc/profile.d/bash_completion.sh
+fi
 
 # JetBrains Toolbox App
 export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
