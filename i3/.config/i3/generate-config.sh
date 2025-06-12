@@ -20,6 +20,4 @@ if [ -f "$HOST_CONFIG" ]; then
 fi
 
 # Reload i3 if it's running
-if pgrep -x i3 > /dev/null; then
-    i3-msg restart
-fi
+i3-msg restart

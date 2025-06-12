@@ -1,0 +1,11 @@
+# Host-specific configuration for tower
+
+exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/mountain.jpeg
+
+# Lock the system
+# lock by blurring the screen:
+bindsym $mod+l exec betterlockscreen -l dim
+# lock in case after sleep
+exec --no-startup-id xss-lock -l betterlockscreen -l dim
+
+# vim:filetype=i3config

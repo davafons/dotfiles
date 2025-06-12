@@ -181,19 +181,11 @@ bindsym $mod+q kill
 # exit-menu
 bindsym $mod+Shift+e exec --no-startup-id ~/.config/i3/scripts/powermenu
 
-# Lock the system
-# lock with a picture:
-#bindsym $mod+l exec --no-startup-id i3lock -i  ~/.config/i3/i3-lock-screen.png -p default|win -t
-# lock by blurring the screen:
-bindsym $mod+l exec --no-startup-id ~/.config/i3/scripts/blur-lock
-# lock in case after sleep
-exec --no-startup-id xss-lock -l ~/.config/i3/scripts/blur-lock
-
 # reload the configuration file
 bindsym $mod+Shift+c reload
 
 # restart i3 inplace (preserves your layout/session, can be used to update i3)
-bindsym $mod+Shift+r exec --no-startup-id ~./config/i3/generate-config.sh
+bindsym $mod+Shift+r exec --no-startup-id ~/.config/i3/generate-config.sh
 
 # keybinding in fancy rofi (automated):
 bindsym F1 exec --no-startup-id ~/.config/i3/scripts/keyhint-2
@@ -428,7 +420,7 @@ exec --no-startup-id /usr/bin/dunst
 
 # Autostart apps as you like
 #exec --no-startup-id sleep 2 && xfce4-terminal
-exec --no-startup-id sleep 7 && firefox https://github.com/endeavouros-team/endeavouros-i3wm-setup/blob/main/force-knowledge.md
+# exec --no-startup-id sleep 7 && firefox https://github.com/endeavouros-team/endeavouros-i3wm-setup/blob/main/force-knowledge.md
 #exec --no-startup-id sleep 3 && thunar
 
 ###############
@@ -596,11 +588,17 @@ bindsym $mod+t exec --no-startup-id rofi -show window \
 # Include host-specific configuration based on hostname
 # This will dynamically include the config file matching the current hostname
 # exec_always --no-startup-id ~/.config/i3/scripts/load-host-config
-# Host-specific config for omen
-# Host-specific configuration for omen
 
-## Resize to ocuppy non broken part of the screen
-bindsym $mod+u resize grow width 24 px or 24 ppt
+# vim:filetype=i3config
+# Host-specific config for tower
+# Host-specific configuration for tower
 
-## Set wallpaper
-exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/sunAndClouds.png
+exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/mountain.jpeg
+
+# Lock the system
+# lock by blurring the screen:
+bindsym $mod+l exec betterlockscreen -l dim
+# lock in case after sleep
+exec --no-startup-id xss-lock -l betterlockscreen -l dim
+
+# vim:filetype=i3config
