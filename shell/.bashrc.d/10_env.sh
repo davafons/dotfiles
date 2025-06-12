@@ -25,10 +25,10 @@ export PATH=$PATH:$JAVA_HOME/bin
 export PATH="$HOME/.cargo/bin:$PATH"
 
 # Lazy-load zoxide
-xoxide() {
-  unset -f zoxide
+z() {
+  unset -f z
   eval "$(zoxide init bash)"
-  zoxide "$@"
+  z "$@"
 }
 
 # Lazy-load pyenv
