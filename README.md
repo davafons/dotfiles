@@ -8,7 +8,7 @@ This dotfiles repository uses [GNU Stow](https://www.gnu.org/software/stow/):
 ```sh
 $ git clone https://github.com/davafons/dotfiles
 $ cd dotfiles
-$ ./install.sh <package>  # e.g., stow git bash nvim
+$ make install <package>  # e.g., stow git bash nvim
 ```
 
 ### Hostname resolution

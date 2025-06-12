@@ -1,0 +1,3 @@
+#!/bin/bash
+# Generate i3 config before X session starts
+$HOME/.config/i3/generate-config.sh

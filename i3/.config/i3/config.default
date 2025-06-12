@@ -596,11 +596,5 @@ bindsym $mod+t exec --no-startup-id rofi -show window \
 # Include host-specific configuration based on hostname
 # This will dynamically include the config file matching the current hostname
 # exec_always --no-startup-id ~/.config/i3/scripts/load-host-config
-# Host-specific config for omen
-# Host-specific configuration for omen
 
-## Resize to ocuppy non broken part of the screen
-bindsym $mod+u resize grow width 24 px or 24 ppt
-
-## Set wallpaper
-exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/sunAndClouds.png
+# vim:filetype=i3config

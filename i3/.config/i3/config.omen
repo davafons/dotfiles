@@ -5,3 +5,5 @@ bindsym $mod+u resize grow width 24 px or 24 ppt
 
 ## Set wallpaper
 exec --no-startup-id sleep 1 && feh --bg-scale /usr/share/sunAndClouds.png
+
+# vim:filetype=i3config
