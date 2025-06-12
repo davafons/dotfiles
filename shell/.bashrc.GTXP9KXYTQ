@@ -1,7 +1,5 @@
 # vim: set filetype=bash:
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
 [ -f /opt/homebrew/etc/profile.d/bash_completion.sh ] && . /opt/homebrew/etc/profile.d/bash_completion.sh
 [ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
 

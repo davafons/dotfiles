@@ -29,6 +29,10 @@ _gen_fzf_default_opts
 
 # Exports
 
+if [ -f "/opt/homebrew/bin/brew" ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
 # Set PATH so it includes user's private bin
 export PATH="$HOME/bin:$PATH"
 
@@ -65,12 +69,3 @@ export PATH="$HOME/.cargo/bin:$PATH"
 if [ -f "$HOME/.profile.$(hostname)" ]; then
     . "$HOME/.profile.$(hostname)"
 fi
-
-
-# Mac specific 
-# JetBrains Toolbox App
-export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
-
-export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
-export TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')
-export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"

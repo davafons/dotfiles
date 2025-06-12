@@ -32,15 +32,17 @@ TERM = "xterm-256color"
 [font]
 size = 16
 
-# [font.bold]
-# # family = "SauceCodePro Nerd Font"
-#
-# [font.italic]
-# # family = "SauceCodePro Nerd Font"
-#
-# [font.normal]
-# # family = "SauceCodePro Nerd Font"
-# # style = "regular"
+[font.bold]
+family = "SauceCodePro Nerd Font Mono"
+
+[font.italic]
+family = "SauceCodePro Nerd Font Mono"
+
+[font.normal]
+family = "SauceCodePro Nerd Font Mono"
+
+[window]
+opacity = 0.96
 
 [window.padding]
 x = 4

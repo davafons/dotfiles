@@ -2,3 +2,5 @@ brew "git"
 brew "neovim"
 brew "stow"
 brew "bitwarden-cli"
+
+cask "font-sauce-code-pro-nerd-font"
