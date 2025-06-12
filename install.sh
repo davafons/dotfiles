@@ -10,7 +10,7 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Define predefined package lists
 declare -A PACKAGE_LISTS
-PACKAGE_LISTS["omen"]="bin shell git i3 tmux nvim alacritty"
+PACKAGE_LISTS["omen"]="bin shell git i3 tmux nvim alacritty ssh x11 fcitx"
 
 install_package() {
     local package=$1
