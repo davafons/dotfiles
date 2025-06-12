@@ -24,9 +24,19 @@ export PATH=$PATH:$JAVA_HOME/bin
 # Set rust cargo path
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Add zoxide
-# (Fast enough that is not worth lazy loading)
-eval "$(zoxide init bash)"
+# Lazy-load zoxide
+xoxide() {
+  unset -f zoxide
+  eval "$(zoxide init bash)"
+  zoxide "$@"
+}
+
+# Lazy-load pyenv
+pyenv() {
+  unset -f pyenv
+  eval "$(pyenv init - bash)"
+  pyenv "$@"
+}
 
 # Add pyenv
 export PYENV_ROOT="$HOME/.pyenv"

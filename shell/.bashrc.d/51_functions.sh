@@ -27,15 +27,3 @@ wiped() {
   docker ps | awk '{print $1}' | grep -v CONTAINER | xargs docker stop && \
   docker ps -a | awk '{print $1}' | grep -v CONTAINER | xargs docker rm
 }
-
-# Lazy-load pyenv.
-pyenv() {
-  # Unset this function so it's not called again in this session.
-  unset -f pyenv
-
-  # Run the original, full initialization.
-  eval "$(pyenv init - bash)"
-
-  # Execute the command you originally typed.
-  pyenv "$@"
-}
