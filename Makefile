@@ -8,10 +8,10 @@ PACKAGE_DIR := packages
 # Predefined package lists by hostname
 ifeq ($(HOSTNAME),omen)
 	DEFAULT_PACKAGES := bin shell git i3 tmux nvim alacritty ssh x11 fcitx5
-else ($(HOSTNAME),tower)
+else ifeq ($(HOSTNAME),tower)
 	DEFAULT_PACKAGES := bin shell git i3 tmux nvim alacritty ssh x11 fcitx5
-else
-	DEFAULT_PACKAGES := bin git shell tmux nvim alacritty
+else ifeq ($(HOSTNAME),GTXP9KXYTQ)
+	DEFAULT_PACKAGES := bin shell git tmux nvim alacritty ssh
 endif
 
 # Use provided packages or default for hostname
