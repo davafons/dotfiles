@@ -7,7 +7,7 @@ fi
 export PATH="$PATH:~/.local/share/JetBrains/Toolbox/scripts"
 
 # Configure Java version
-export JAVA_HOME=`/usr/libexec/java_home -v 17`
+export JAVA_HOME=`/usr/libexec/java_home -v 21`
 export PATH=$PATH:$JAVA_HOME/bin
 
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
