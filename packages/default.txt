@@ -54,3 +54,4 @@ yay
 zip
 zoxide
 hyperfine
+kubectl
