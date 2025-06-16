@@ -55,3 +55,4 @@ zip
 zoxide
 hyperfine
 kubectl
+digikam
