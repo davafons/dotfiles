@@ -3,4 +3,5 @@ brew "neovim"
 brew "stow"
 brew "bitwarden-cli"
 
+cask "nikitabobko/tap/aerospace"
 cask "font-sauce-code-pro-nerd-font"
