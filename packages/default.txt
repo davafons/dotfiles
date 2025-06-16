@@ -56,3 +56,4 @@ zoxide
 hyperfine
 kubectl
 digikam
+rofimoji
