@@ -57,3 +57,4 @@ hyperfine
 kubectl
 digikam
 rofimoji
+xdotool
