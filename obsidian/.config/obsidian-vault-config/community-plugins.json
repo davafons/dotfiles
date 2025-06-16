@@ -1,9 +1,7 @@
 [
   "obsidian-banners",
-  "omnisearch",
   "periodic-notes",
   "nldates-obsidian",
   "calendar",
-  "dataview",
-  "templater-obsidian"
+  "lazy-plugins"
 ]

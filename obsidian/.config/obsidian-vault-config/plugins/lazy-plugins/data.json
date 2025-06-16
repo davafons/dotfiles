@@ -19,13 +19,13 @@
         "startupType": "instant"
       },
       "dataview": {
-        "startupType": "long"
+        "startupType": "short"
       },
       "nldates-obsidian": {
         "startupType": "instant"
       },
       "omnisearch": {
-        "startupType": "instant"
+        "startupType": "short"
       },
       "periodic-notes": {
         "startupType": "instant"
