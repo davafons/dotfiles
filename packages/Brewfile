@@ -2,6 +2,11 @@ brew "git"
 brew "neovim"
 brew "stow"
 brew "bitwarden-cli"
+brew "neofetch"
 
 cask "nikitabobko/tap/aerospace"
 cask "font-sauce-code-pro-nerd-font"
+cask "marta"
+
+tap "FelixKratz/formulae"
+brew "sketchybar"
