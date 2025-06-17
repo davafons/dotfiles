@@ -1,7 +1,7 @@
 [
   "obsidian-banners",
-  "periodic-notes",
-  "nldates-obsidian",
   "calendar",
-  "lazy-plugins"
+  "obsidian-tasks-plugin",
+  "lazy-plugins",
+  "dataview"
 ]

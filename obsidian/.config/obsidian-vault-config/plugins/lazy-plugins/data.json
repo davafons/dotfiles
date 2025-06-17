@@ -2,8 +2,8 @@
   "dualConfigs": false,
   "showConsoleLog": false,
   "desktop": {
-    "shortDelaySeconds": 2,
-    "longDelaySeconds": 10,
+    "shortDelaySeconds": 1,
+    "longDelaySeconds": 5,
     "delayBetweenPlugins": 40,
     "defaultStartupType": null,
     "showDescriptions": true,
@@ -19,19 +19,28 @@
         "startupType": "instant"
       },
       "dataview": {
-        "startupType": "short"
+        "startupType": "instant"
       },
       "nldates-obsidian": {
-        "startupType": "instant"
+        "startupType": "long"
       },
       "omnisearch": {
         "startupType": "short"
       },
       "periodic-notes": {
-        "startupType": "instant"
+        "startupType": "short"
       },
       "templater-obsidian": {
         "startupType": "long"
+      },
+      "github-copilot": {
+        "startupType": "short"
+      },
+      "obsidian-kanban": {
+        "startupType": "short"
+      },
+      "obsidian-tasks-plugin": {
+        "startupType": "instant"
       }
     }
   }

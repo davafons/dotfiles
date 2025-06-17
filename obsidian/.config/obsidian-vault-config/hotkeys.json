@@ -8,5 +8,8 @@
       "key": "F"
     }
   ],
-  "global-search:open": []
+  "global-search:open": [],
+  "editor:delete-paragraph": [],
+  "switcher:open": [],
+  "file-explorer:new-file": []
 }
