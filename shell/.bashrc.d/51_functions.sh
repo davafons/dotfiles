@@ -11,7 +11,7 @@ gfr() {
 }
 
 killport() {
-  kill -9 $(lsof -i:$1)
+  lsof -n -i4TCP:$1 | awk '{print$2}' | tail -1 | xargs kill -9
 }
 
 b64() {

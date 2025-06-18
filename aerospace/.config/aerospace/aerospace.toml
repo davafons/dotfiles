@@ -59,7 +59,7 @@ cmd-shift-0 = 'move-node-to-workspace 10'
 cmd-shift-r = 'reload-config'
 
 cmd-q = 'close'
-cmd-enter = 'exec-and-forget open -n -a "Alacritty"'
+cmd-shift-enter = 'exec-and-forget open -n -a "Alacritty"'
 cmd-w = 'exec-and-forget open -n -a "Google Chrome"'
 cmd-m = 'exec-and-forget open -n -a "Marta"'
 cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
@@ -71,7 +71,11 @@ cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
 3 = 'secondary'
 4 = 'secondary'
 5 = 'secondary'
-6 = 'secondary'
+6 = 'main'
+7 = 'main'
+8 = 'secondary'
+9 = 'secondary'
+10 = 'secondary'
 
 # Always open Slack on Workspace 3 (e.g., 'Comms')
 [[on-window-detected]]
