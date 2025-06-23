@@ -3,6 +3,7 @@ brew "neovim"
 brew "stow"
 brew "bitwarden-cli"
 brew "neofetch"
+brew "tree"
 
 cask "nikitabobko/tap/aerospace"
 cask "font-sauce-code-pro-nerd-font"
