@@ -48,3 +48,10 @@ export PYENV_ROOT="$HOME/.pyenv"
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+
+# setup git autocompletion
+if [ -f "/usr/share/bash-completion/completions/git" ]; then
+  source /usr/share/bash-completion/completions/git
+  __git_complete g __git_main # Enable git completion for 'g' alias
+fi

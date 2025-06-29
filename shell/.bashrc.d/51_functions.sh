@@ -59,3 +59,51 @@ function set_java() {
   echo "JAVA_HOME: $JAVA_HOME"
   java -version
 }
+
+function set_2k() {
+  local display=${1:-DP-4}
+  local best_rate=$(_get_best_rate "$display" "2560x1440")
+  xrandr --output "$display" --mode 2560x1440 --rate "$best_rate"
+}
+
+function set_4k() {
+  local display=${1:-DP-4}
+  local best_rate=$(_get_best_rate "$display" "3840x2160")
+  xrandr --output "$display" --mode 3840x2160 --rate "$best_rate"
+}
+
+function set_1080() {
+  local display=${1:-DP-4}
+  local best_rate=$(_get_best_rate "$display" "1920x1080")
+  xrandr --output "$display" --mode 1920x1080 --rate "$best_rate"
+}
+
+_get_best_rate() {
+  local display=$1
+  local resolution=$2
+  local line=$(xrandr | grep -A 50 "^$display connected" | grep "$resolution" | head -1)
+  if [ -n "$line" ]; then
+    echo "$line" | awk '{
+      max_rate = 0
+      for (i = 2; i <= NF; i++) {
+        rate = $i
+        gsub(/[*+]/, "", rate)
+        if (rate ~ /^[0-9]+\.?[0-9]*$/ && rate > max_rate) {
+          max_rate = rate
+        }
+      }
+      if (max_rate > 0) {
+        print max_rate
+      }
+    }'
+  fi
+}
+
+_display_completion() {
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local displays=$(xrandr --listmonitors | grep -o '[A-Z][A-Z]-[0-9]*' | sort -u)
+  COMPREPLY=($(compgen -W "$displays" -- "$cur"))
+}
+complete -F _display_completion set_2k
+complete -F _display_completion set_4k
+complete -F _display_completion set_1080

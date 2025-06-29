@@ -583,3 +583,5 @@ bindsym $mod+c exec --no-startup-id rofi -modi "clipboard:greenclip print" -show
 bindsym $mod+period exec --no-startup-id rofimoji
 
 mouse_warping none
+
+for_window [title=".*Steins.*"] floating enable

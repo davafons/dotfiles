@@ -20,7 +20,6 @@ alias cd='z'
 
 # Git aliases
 alias g='git'
-__git_complete g __git_main # Enable git completion for 'g' alias
 alias gcl='git clone'
 alias gbr='git branch'
 alias glog='git log'
