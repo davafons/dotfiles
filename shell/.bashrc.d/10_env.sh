@@ -53,6 +53,8 @@ export PATH="$PATH:$HOME/.rvm/bin"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
+# Source local sensitive environment variables (not committed to git)
+[ -f "$HOME/.bashrc.d/10_env.local.sh" ] && source "$HOME/.bashrc.d/10_env.local.sh"
 
 # setup git autocompletion
 if [ -f "/usr/share/bash-completion/completions/git" ]; then
