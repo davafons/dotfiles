@@ -60,6 +60,18 @@ function set_java() {
   java -version
 }
 
+#!/bin/bash
+function caffeine() {
+  status=`xset -q | grep 'DPMS is' | awk '{ print $3 }'`
+  if [ $status == 'Enabled' ]; then
+    xset -dpms && \
+      dunstify 'Screen suspend is disabled.'
+  else
+    xset +dpms && \
+      dunstify 'Screen suspend is enabled.'
+  fi
+}
+
 function set_2k() {
   local display=${1:-DP-4}
   local best_rate=$(_get_best_rate "$display" "2560x1440")
