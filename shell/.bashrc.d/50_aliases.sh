@@ -53,5 +53,3 @@ alias ggt="./gradlew test"
 alias ggs="./gradlew spotlessApply"
 
 alias batteryUsage='upower -i /org/freedesktop/UPower/devices/battery_BAT0'
-
-alias claude="/home/davafons/.claude/local/claude"
