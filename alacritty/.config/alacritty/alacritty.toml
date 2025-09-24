@@ -1,3 +1,5 @@
+general.import = ["~/.config/omarchy/current/theme/alacritty.toml"]
+
 [colors.bright]
 black = "#586e75"
 blue = "#839496"
@@ -30,16 +32,10 @@ foreground = "#839496"
 TERM = "xterm-256color"
 
 [font]
+normal = { family = "iA Writer Mono S" }
+bold = { family = "iA Writer Mono S" }
+italic = { family = "iA Writer Mono S" }
 size = 12
-
-[font.bold]
-family = "SauceCodePro Nerd Font Mono"
-
-[font.italic]
-family = "SauceCodePro Nerd Font Mono"
-
-[font.normal]
-family = "SauceCodePro Nerd Font Mono"
 
 [window]
 opacity = 0.94
@@ -47,3 +43,6 @@ opacity = 0.94
 [window.padding]
 x = 4
 y = 4
+
+[keyboard]
+bindings = [{ key = "F11", action = "ToggleFullscreen" }]

@@ -47,7 +47,7 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PATH:$HOME/.rvm/bin"
 
 # Add uv installed packages to PATH
-. "$HOME/.local/bin/env"
+[ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
