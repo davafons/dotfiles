@@ -56,14 +56,12 @@ cmd-shift-8 = 'move-node-to-workspace 8'
 cmd-shift-9 = 'move-node-to-workspace 9'
 cmd-shift-0 = 'move-node-to-workspace 10'
 
-cmd-shift-r = 'reload-config'
+cmd-shift-alt-r = 'reload-config'
 
-cmd-q = 'close'
 cmd-shift-enter = 'exec-and-forget open -n -a "Alacritty"'
-cmd-w = 'exec-and-forget open -n -a "Google Chrome"'
-cmd-m = 'exec-and-forget open -n -a "Marta"'
+cmd-b = 'exec-and-forget open -n -a "Google Chrome"'
+cmd-m = 'exec-and-forget open -n -a "Spotify"'
 cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
-
 
 [workspace-to-monitor-force-assignment]
 1 = 'main'
@@ -77,18 +75,26 @@ cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
 9 = 'secondary'
 10 = 'secondary'
 
-# Always open Slack on Workspace 3 (e.g., 'Comms')
+# Always open Slack on Workspace 3
 [[on-window-detected]]
 if.app-id = 'com.tinyspeck.slackmacgap'
 run = 'move-node-to-workspace 4'
 
-# Always open Spotify on Workspace 9 (e.g., 'Music')
+# Always open Spotify on Workspace 9
 [[on-window-detected]]
 if.app-id = 'com.spotify.client'
 run = 'move-node-to-workspace 5'
 
+# Always open Obsidian on Workspace 5
+[[on-window-detected]]
+if.app-id = 'com.obisdian.obsidian'
+run = 'move-node-to-workspace 9'
+
+# Always open Spotify on Workspace 9
+[[on-window-detected]]
+if.app-id = 'com.spotify.client'
+run = 'move-node-to-workspace 9'
+
 [[on-window-detected]]
 if.app-id = 'com.apple.finder'
-run = [
-'layout floating'
-]
+run = ['layout floating']

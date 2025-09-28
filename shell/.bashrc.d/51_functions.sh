@@ -28,15 +28,29 @@ wiped() {
   docker ps -a | awk '{print $1}' | grep -v CONTAINER | xargs docker rm
 }
 
+gpr() {
+  # Default remote is 'origin', but can be overridden by passing an argument (e.g., gpr upstream)
+  local remote="${1:-origin}"
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD)
+
+  if ! git config "branch.${branch}.remote" >/dev/null 2>&1; then
+    echo "-! No tracking information for branch '${branch}'. Setting upstream to '${remote}/${branch}'."
+    git branch --set-upstream-to="${remote}/${branch}" "${branch}"
+  fi
+
+  git pull --rebase
+}
+
 # Usage: set_java <version> (e.g., set_java 17, set_java 11)
-function set_java() {
+set_java() {
   local version=$1
   if [ -z "$version" ]; then
     echo "Usage: set_java <version>"
     echo "Example: set_java 17"
     echo "Currently active: $(java -version 2>&1 | head -n 1 | cut -d\" -f 2)"
     echo "Available Java versions (via /usr/libexec/java_home -V):"
-    /usr/libexec/java_home -V 2>&1
+    /usr/libexec/java_home -V 2>&1 | grep -E 'Java [0-9]+\.[0-9]+\.[0-9]+' | sed 's/.*Java \([0-9\.]\+\).*/- \1/'
     return 1
   fi
 
