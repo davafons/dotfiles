@@ -4,9 +4,9 @@
 # Forked from gf3, https://gist.github.com/gf3/306785
 
 # If we are on a colored terminal
-if tput setaf 1 &> /dev/null; then
+if tput setaf 1 &>/dev/null; then
   # Reset the shell from our `if` check
-  tput sgr0 &> /dev/null
+  tput sgr0 &>/dev/null
 
   # If you would like to customize your colors, use
   # # Attribution: http://linuxtidbits.wordpress.com/2008/08/11/output-color-on-bash-scripts/
@@ -19,27 +19,27 @@ if tput setaf 1 &> /dev/null; then
   sexy_bash_prompt_reset="$(tput sgr0)"
 
   # If the terminal supports at least 256 colors, write out our 256 color based set
-  if [[ "$(tput colors)" -ge 256 ]] &> /dev/null; then
-    sexy_bash_prompt_user_color="$sexy_bash_prompt_bold$(tput setaf 33)" # BOLD BLUE
-    sexy_bash_prompt_preposition_color="$sexy_bash_prompt_bold$(tput setaf 244)" # BOLD WHITE
-    sexy_bash_prompt_device_color="$sexy_bash_prompt_bold$(tput setaf 37)" # BOLD CYAN
-    sexy_bash_prompt_dir_color="$sexy_bash_prompt_bold$(tput setaf 64)" # BOLD GREEN
-    sexy_bash_prompt_git_status_color="$sexy_bash_prompt_bold$(tput setaf 136)" # BOLD YELLOW
+  if [[ "$(tput colors)" -ge 256 ]] &>/dev/null; then
+    sexy_bash_prompt_user_color="$sexy_bash_prompt_bold$(tput setaf 33)"          # BOLD BLUE
+    sexy_bash_prompt_preposition_color="$sexy_bash_prompt_bold$(tput setaf 244)"  # BOLD WHITE
+    sexy_bash_prompt_device_color="$sexy_bash_prompt_bold$(tput setaf 37)"        # BOLD CYAN
+    sexy_bash_prompt_dir_color="$sexy_bash_prompt_bold$(tput setaf 64)"           # BOLD GREEN
+    sexy_bash_prompt_git_status_color="$sexy_bash_prompt_bold$(tput setaf 136)"   # BOLD YELLOW
     sexy_bash_prompt_git_progress_color="$sexy_bash_prompt_bold$(tput setaf 160)" # BOLD RED
   else
-  # Otherwise, use colors from our set of 8
-    sexy_bash_prompt_user_color="$sexy_bash_prompt_bold$(tput setaf 4)" # BOLD BLUE
-    sexy_bash_prompt_preposition_color="$sexy_bash_prompt_bold$(tput setaf 7)" # BOLD WHITE
-    sexy_bash_prompt_device_color="$sexy_bash_prompt_bold$(tput setaf 6)" # BOLD CYAN
-    sexy_bash_prompt_dir_color="$sexy_bash_prompt_bold$(tput setaf 2)" # BOLD GREEN
-    sexy_bash_prompt_git_status_color="$sexy_bash_prompt_bold$(tput setaf 3)" # BOLD YELLOW
+    # Otherwise, use colors from our set of 8
+    sexy_bash_prompt_user_color="$sexy_bash_prompt_bold$(tput setaf 4)"         # BOLD BLUE
+    sexy_bash_prompt_preposition_color="$sexy_bash_prompt_bold$(tput setaf 7)"  # BOLD WHITE
+    sexy_bash_prompt_device_color="$sexy_bash_prompt_bold$(tput setaf 6)"       # BOLD CYAN
+    sexy_bash_prompt_dir_color="$sexy_bash_prompt_bold$(tput setaf 2)"          # BOLD GREEN
+    sexy_bash_prompt_git_status_color="$sexy_bash_prompt_bold$(tput setaf 3)"   # BOLD YELLOW
     sexy_bash_prompt_git_progress_color="$sexy_bash_prompt_bold$(tput setaf 1)" # BOLD RED
   fi
 
   sexy_bash_prompt_symbol_color="$sexy_bash_prompt_bold" # BOLD
 
 else
-# Otherwise, use ANSI escape sequences for coloring
+  # Otherwise, use ANSI escape sequences for coloring
   # If you would like to customize your colors, use
   # DEV: 30-39 lines up 0-9 from `tput`
   # for i in $(seq 0 109); do
@@ -48,13 +48,13 @@ else
   # done
 
   sexy_bash_prompt_reset="\033[m"
-  sexy_bash_prompt_user_color="\033[1;34m" # BLUE
-  sexy_bash_prompt_preposition_color="\033[1;37m" # WHITE
-  sexy_bash_prompt_device_color="\033[1;36m" # CYAN
-  sexy_bash_prompt_dir_color="\033[1;32m" # GREEN
-  sexy_bash_prompt_git_status_color="\033[1;33m" # YELLOW
+  sexy_bash_prompt_user_color="\033[1;34m"         # BLUE
+  sexy_bash_prompt_preposition_color="\033[1;37m"  # WHITE
+  sexy_bash_prompt_device_color="\033[1;36m"       # CYAN
+  sexy_bash_prompt_dir_color="\033[1;32m"          # GREEN
+  sexy_bash_prompt_git_status_color="\033[1;33m"   # YELLOW
   sexy_bash_prompt_git_progress_color="\033[1;31m" # RED
-  sexy_bash_prompt_symbol_color="" # NORMAL
+  sexy_bash_prompt_symbol_color=""                 # NORMAL
 fi
 
 # Define the default prompt terminator character '$'
@@ -100,7 +100,7 @@ if [[ -n "$PROMPT_DIRTY_UNPUSHED_UNPULLED_SYMBOL" ]]; then sexy_bash_prompt_dirt
 function sexy_bash_prompt_get_git_branch() {
   # On branches, this will return the branch name
   # On non-branches, (no branch)
-  ref="$(git symbolic-ref HEAD 2> /dev/null | sed -e 's/refs\/heads\///')"
+  ref="$(git symbolic-ref HEAD 2>/dev/null | sed -e 's/refs\/heads\///')"
   if [[ "$ref" != "" ]]; then
     echo "$ref"
   else
@@ -141,7 +141,7 @@ function sexy_bash_prompt_get_git_progress() {
   fi
 }
 
-sexy_bash_prompt_is_branch1_behind_branch2 () {
+sexy_bash_prompt_is_branch1_behind_branch2() {
   # $ git log origin/master..master -1
   # commit 4a633f715caf26f6e9495198f89bba20f3402a32
   # Author: Todd Wolfson <todd@twolfson.com>
@@ -150,18 +150,18 @@ sexy_bash_prompt_is_branch1_behind_branch2 () {
   #     Unsynced commit
 
   # Find the first log (if any) that is in branch1 but not branch2
-  first_log="$(git log $1..$2 -1 2> /dev/null)"
+  first_log="$(git log $1..$2 -1 2>/dev/null)"
 
   # Exit with 0 if there is a first log, 1 if there is not
   [[ -n "$first_log" ]]
 }
 
-sexy_bash_prompt_branch_exists () {
+sexy_bash_prompt_branch_exists() {
   # List remote branches           | # Find our branch and exit with 0 or 1 if found/not found
-  git branch --remote 2> /dev/null | grep --quiet "$1"
+  git branch --remote 2>/dev/null | grep --quiet "$1"
 }
 
-sexy_bash_prompt_parse_git_ahead () {
+sexy_bash_prompt_parse_git_ahead() {
   # Grab the local and remote branch
   branch="$(sexy_bash_prompt_get_git_branch)"
   remote="$(git config --get "branch.${branch}.remote" || echo -n "origin")"
@@ -177,13 +177,13 @@ sexy_bash_prompt_parse_git_ahead () {
   # If the remote branch is behind the local branch
   # or it has not been merged into origin (remote branch doesn't exist)
   if (sexy_bash_prompt_is_branch1_behind_branch2 "$remote_branch" "$branch" ||
-      ! sexy_bash_prompt_branch_exists "$remote_branch"); then
+    ! sexy_bash_prompt_branch_exists "$remote_branch"); then
     # echo our character
     echo 1
   fi
 }
 
-sexy_bash_prompt_parse_git_behind () {
+sexy_bash_prompt_parse_git_behind() {
   # Grab the branch
   branch="$(sexy_bash_prompt_get_git_branch)"
   remote="$(git config --get "branch.${branch}.remote" || echo -n "origin")"
@@ -205,13 +205,13 @@ sexy_bash_prompt_parse_git_behind () {
 
 function sexy_bash_prompt_parse_git_dirty() {
   # If the git status has *any* changes (e.g. dirty), echo our character
-  if [[ -n "$(git status --porcelain 2> /dev/null)" ]]; then
+  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
     echo 1
   fi
 }
 
 function sexy_bash_prompt_is_on_git() {
-  git rev-parse 2> /dev/null
+  git rev-parse 2>/dev/null
 }
 
 function sexy_bash_prompt_get_git_status() {
@@ -240,7 +240,7 @@ function sexy_bash_prompt_get_git_status() {
   fi
 }
 
-sexy_bash_prompt_get_git_info () {
+sexy_bash_prompt_get_git_info() {
   # Grab the branch
   branch="$(sexy_bash_prompt_get_git_branch)"
 
@@ -250,7 +250,7 @@ sexy_bash_prompt_get_git_info () {
     output="$branch"
 
     # Add on the git status
-    output="$output$(sexy_bash_prompt_get_git_status)"
+    output="$output $(sexy_bash_prompt_get_git_status)"
 
     # Echo our output
     echo "$output"
