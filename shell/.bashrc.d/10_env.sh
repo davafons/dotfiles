@@ -38,8 +38,9 @@ pyenv() {
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 
-# Add nvm 
-source /usr/share/nvm/init-nvm.sh
+# Add nvm and renable hash
+source /usr/share/nvm/init-nvm.sh &> /dev/null
+set -h
 
 # Add rvm
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
