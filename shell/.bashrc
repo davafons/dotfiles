@@ -47,4 +47,3 @@ unset __file_hostname
 unset __total_time
 unset __time_file
 unset elapsed_time
-# export PATH="$HOME/.local/bin:$PATH"

@@ -1,5 +1,4 @@
 anki
-claude-code
 neofetch
 rofi-greenclip
 bambustudio-bin
