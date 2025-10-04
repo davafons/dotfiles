@@ -1,22 +1,11 @@
-# Easier navigation
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
-alias -- -='cd -'
+alias reload='. ~/.bashrc' # WoW style bash reload
 
-# Overpowered Unix commands
-alias ll='ls -lha'                  # ll -> ls with details and hidden files
-alias ls='ls --color=auto'          # Colorized output for ls
-
-alias reload='. ~/.bashrc'      # Source your bash config, Wow style :P
-
-alias vims='sudo -E vim'
+alias vims='sudo -E nvim'
 alias vim="nvim"
 
 # Program aliases
 alias g='git'
 alias y='yadm'
-alias cd='z'
 
 # Git aliases
 alias g='git'
