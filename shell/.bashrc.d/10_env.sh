@@ -39,7 +39,7 @@ export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 
 # Add nvm and renable hash
-source /usr/share/nvm/init-nvm.sh &> /dev/null
+source /usr/share/nvm/init-nvm.sh &>/dev/null
 set -h
 
 # Add rvm

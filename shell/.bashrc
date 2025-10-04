@@ -6,6 +6,9 @@ case $- in
 *) return ;;
 esac
 
+# Add Omarchy default bash if installed
+[ -f "$HOME/.local/share/omarchy/default/bashrc" ] && . "$HOME/.local/share/omarchy/default/bashrc"
+
 __current_hostname=$(hostname -s)
 
 if [[ $__bashrc_bench ]]; then
