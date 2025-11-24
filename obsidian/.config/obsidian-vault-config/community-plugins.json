@@ -3,5 +3,9 @@
   "calendar",
   "obsidian-tasks-plugin",
   "lazy-plugins",
-  "dataview"
+  "dataview",
+  "buttons",
+  "quickadd",
+  "obsidian-tracker",
+  "callout-manager"
 ]

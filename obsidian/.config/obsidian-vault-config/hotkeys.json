@@ -1,4 +1,8 @@
 {
+  "global-search:open": [],
+  "editor:delete-paragraph": [],
+  "switcher:open": [],
+  "file-explorer:new-file": [],
   "omnisearch:show-modal": [
     {
       "modifiers": [
@@ -7,9 +11,5 @@
       ],
       "key": "F"
     }
-  ],
-  "global-search:open": [],
-  "editor:delete-paragraph": [],
-  "switcher:open": [],
-  "file-explorer:new-file": []
+  ]
 }

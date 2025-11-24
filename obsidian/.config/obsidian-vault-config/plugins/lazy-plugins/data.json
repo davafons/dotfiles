@@ -41,6 +41,18 @@
       },
       "obsidian-tasks-plugin": {
         "startupType": "instant"
+      },
+      "buttons": {
+        "startupType": "instant"
+      },
+      "quickadd": {
+        "startupType": "instant"
+      },
+      "callout-manager": {
+        "startupType": "instant"
+      },
+      "obsidian-tracker": {
+        "startupType": "instant"
       }
     }
   }

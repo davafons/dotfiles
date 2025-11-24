@@ -3,15 +3,16 @@
   "hasMigratedDailyNoteSettings": false,
   "hasMigratedWeeklyNoteSettings": false,
   "daily": {
-    "format": "",
-    "template": "",
-    "folder": "",
+    "format": "YYYY-MM-DD",
+    "template": "09 📄 Templates/Daily Note.md",
+    "folder": "00 📔 Journal",
     "enabled": true
   },
   "weekly": {
     "format": "",
     "template": "",
-    "folder": ""
+    "folder": "",
+    "enabled": false
   },
   "monthly": {
     "format": "",
