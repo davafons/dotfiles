@@ -35,7 +35,9 @@
 
   co = comit
   coa = commit --amend
+
 [commit]
 	gpgsign = true
+
 [gpg]
 	program = gpg

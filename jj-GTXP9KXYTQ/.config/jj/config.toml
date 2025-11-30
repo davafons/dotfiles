@@ -3,3 +3,9 @@
 [user]
 name = "David Afonso"
 email = "david.afonso@paypay-corp.co.jp"
+
+[aliases]
+push = ["util", "exec", "--", "uvx", "jj-pre-push", "push"]
+
+[ui]
+default-command = "log"

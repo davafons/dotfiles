@@ -9,7 +9,4 @@ tmux/.config/tmux/plugins/
 # Local environment variables (sensitive)
 shell/.bashrc.d/*.local.sh
 
-# Obsidian: Ignore all plugin files except settings
-obsidian/.config/*/plugins/*/*
-!obsidian/.config/*/plugins/*/data.json
-obsidian/.config/*/workspace*
+obsidian/

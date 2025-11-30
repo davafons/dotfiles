@@ -8,7 +8,7 @@ alias g='git'
 alias y='yadm'
 
 # Git aliases
-alias g='jj'
+alias g='git'
 alias vim='nvim'
 
 alias gg='./gradlew'
@@ -21,3 +21,4 @@ alias ggs="./gradlew spotlessApply"
 alias batteryUsage='upower -i /org/freedesktop/UPower/devices/battery_BAT0'
 
 alias claude="/home/davafons/.local/bin/claude"
+# alias claude="/home/davafons/.claude/local/claude"
