@@ -7,9 +7,9 @@ PACKAGE_DIR := packages
 
 # Predefined package lists by hostname
 ifeq ($(HOSTNAME),omen)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr
+	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr claude
 else ifeq ($(HOSTNAME),tower)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr
+	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr claude
 else ifeq ($(HOSTNAME),GTXP9KXYTQ)
 	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian aerospace
 endif

@@ -1,5 +1,6 @@
 .DS_Store
 .claude
+!claude/.claude
 tmux/.config/tmux/plugins/
 
 # Local environment variables (sensitive)
