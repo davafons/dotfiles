@@ -1,6 +1,6 @@
 # Remove AI code slop
 
-Check the diff against main, and remove all AI generated slop introduced in this branch.
+Check the diff against main (use jj diff if a tool is not not specified), and remove all AI generated slop introduced in this branch.
 
 This includes:
 

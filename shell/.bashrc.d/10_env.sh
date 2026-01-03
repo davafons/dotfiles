@@ -61,3 +61,6 @@ if [ -f "/usr/share/bash-completion/completions/git" ]; then
   source /usr/share/bash-completion/completions/git
   __git_complete g __git_main # Enable git completion for 'g' alias
 fi
+
+# Export PATH for lmstudio
+export PATH="$PATH:/home/davafons/.lmstudio/bin"

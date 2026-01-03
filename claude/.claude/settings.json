@@ -1,3 +1,21 @@
 {
-  "alwaysThinkingEnabled": false
+  "model": "glm-4.7",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/home/davafons/.ccs/hooks/websearch-transformer.cjs\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  }
 }
