@@ -1,2 +1,6 @@
 # Prevent filtering Github token
 github-copilot
+
+# Ignore Obsidian plugin code (downloaded by app, keep only config)
+**/plugins/**/main.js
+**/plugins/**/styles.css
