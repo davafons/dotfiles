@@ -1,11 +1,13 @@
 [
   "obsidian-banners",
+  "omnisearch",
+  "periodic-notes",
+  "nldates-obsidian",
   "calendar",
+  "templater-obsidian",
   "obsidian-tasks-plugin",
-  "lazy-plugins",
+  "obsidian-kanban",
   "dataview",
-  "buttons",
-  "quickadd",
-  "obsidian-tracker",
-  "callout-manager"
+  "github-copilot",
+  "quickadd"
 ]
