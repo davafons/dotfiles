@@ -7,6 +7,15 @@ project_dir=$(echo "$input" | jq -r '.workspace.project_dir')
 output_style=$(echo "$input" | jq -r '.output_style.name')
 
 model="[${model_raw}]"
+
+cost=$(echo "$input" | jq -r '.cost.total_cost_usd')
+if [ "$cost" != "null" ] && [ "$cost" != "0" ]; then
+    cost_display=$(printf "%.4f" "$cost")
+    cost_info="💰 \$$cost_display"
+else
+    cost_info=""
+fi
+
 usage=$(echo "$input" | jq '.context_window.current_usage')
 if [ "$usage" != "null" ]; then
     current=$(echo "$usage" | jq '.input_tokens + .cache_creation_input_tokens + .cache_read_input_tokens')
@@ -65,8 +74,18 @@ if [ "$output_style" != "default" ] && [ -n "$output_style" ]; then
     style_info="| $output_style"
 fi
 
-if [ -n "$token_info" ]; then
-    printf '%s | %s | %s %s' "$model" "$token_info" "$dir_info" "$style_info"
-else
-    printf '%s | %s %s' "$model" "$dir_info" "$style_info"
+parts=("$model")
+if [ -n "$cost_info" ]; then
+    parts+=("$cost_info")
 fi
+if [ -n "$token_info" ]; then
+    parts+=("$token_info")
+fi
+parts+=("$dir_info")
+if [ -n "$style_info" ]; then
+    parts+=("$style_info")
+fi
+
+IFS=" | "
+printf '%s' "${parts[*]}"
+unset IFS
