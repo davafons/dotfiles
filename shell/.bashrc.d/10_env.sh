@@ -63,4 +63,7 @@ if [ -f "/usr/share/bash-completion/completions/git" ]; then
 fi
 
 # Export PATH for lmstudio
-export PATH="$PATH:/home/davafons/.lmstudio/bin"
+export PATH="$PATH:~/.lmstudio/bin"
+
+export PATH="$PATH:/opt/jai/bin"
+export PATH="$PATH:/opt/Jails/bin"
