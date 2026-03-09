@@ -20,5 +20,5 @@ alias ggs="./gradlew spotlessApply"
 
 alias batteryUsage='upower -i /org/freedesktop/UPower/devices/battery_BAT0'
 
-alias claude="/home/davafons/.local/bin/claude"
-# alias claude="/home/davafons/.claude/local/claude"
+# 3D printing - fix Wayland OpenGL viewport
+alias bambu-studio='__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json bambu-studio'
