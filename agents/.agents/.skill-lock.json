@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "skills": {
+    "browser-use": {
+      "source": "browser-use/browser-use",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/browser-use/browser-use.git",
+      "skillPath": "skills/browser-use/SKILL.md",
+      "skillFolderHash": "9e127714fb8d78638ab42b5b121c8584b59f68bf",
+      "installedAt": "2026-03-22T13:13:11.038Z",
+      "updatedAt": "2026-03-22T13:13:11.038Z"
+    }
+  },
+  "dismissed": {}
+}
