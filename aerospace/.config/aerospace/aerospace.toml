@@ -58,7 +58,7 @@ cmd-shift-0 = 'move-node-to-workspace 10'
 
 cmd-shift-alt-r = 'reload-config'
 
-cmd-shift-enter = 'exec-and-forget open -n -a "Alacritty"'
+cmd-shift-enter = 'exec-and-forget open -n -a "Ghostty"'
 cmd-b = 'exec-and-forget open -n -a "Google Chrome"'
 cmd-m = 'exec-and-forget open -n -a "Spotify"'
 cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
@@ -94,6 +94,14 @@ run = 'move-node-to-workspace 9'
 [[on-window-detected]]
 if.app-id = 'com.spotify.client'
 run = 'move-node-to-workspace 9'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.dt.Xcode'
+run = ['layout tiling']
+
+[[on-window-detected]]
+if.app-id = 'com.apple.iphonesimulator'
+run = ['layout tiling']
 
 [[on-window-detected]]
 if.app-id = 'com.apple.finder'

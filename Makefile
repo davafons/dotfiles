@@ -12,6 +12,8 @@ else ifeq ($(HOSTNAME),tower)
 	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr claude agents
 else ifeq ($(HOSTNAME),GTXP9KXYTQ)
 	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian aerospace
+else ifeq ($(HOSTNAME),mb)
+	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian aerospace
 endif
 
 # Use provided packages or default for hostname

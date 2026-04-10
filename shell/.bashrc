@@ -50,3 +50,8 @@ unset __file_hostname
 unset __total_time
 unset __time_file
 unset elapsed_time
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/davafons/.lmstudio/bin"
+# End of LM Studio CLI section
+

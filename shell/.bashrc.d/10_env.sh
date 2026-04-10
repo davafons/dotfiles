@@ -11,8 +11,8 @@ export GPG_TTY=$(tty)
 # Set PATH for Poetry binary
 export PATH="$HOME/.poetry/bin:$PATH"
 
-# Add NVM if installed
-export NVM_DIR="$HOME/.nvm"
+# Activate mise (version manager for node, python, ruby, etc.)
+eval "$(mise activate bash)"
 
 # ripgrep config file path
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
@@ -27,27 +27,11 @@ z() {
   z "$@"
 }
 
-# Lazy-load pyenv
-pyenv() {
-  unset -f pyenv
-  eval "$(pyenv init - bash)"
-  pyenv "$@"
-}
+# bash-completion (homebrew)
+[[ -r "/opt/homebrew/etc/profile.d/bash_completion.sh" ]] && . "/opt/homebrew/etc/profile.d/bash_completion.sh"
 
-# Add pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-
-# Add nvm and renable hash
-source /usr/share/nvm/init-nvm.sh &>/dev/null
-set -h
-
-# Add rvm
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
-export PATH="$PATH:$HOME/.rvm/bin"
-
-# Add uv installed packages to PATH
-[ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
+# fzf shell integration (Ctrl+R history, Ctrl+T file search)
+eval "$(fzf --bash)"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
