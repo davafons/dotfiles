@@ -20,11 +20,11 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # Set rust cargo path
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Lazy-load zoxide
-z() {
-  unset -f z
-  eval "$(zoxide init bash)"
-  z "$@"
+# Lazy-load zoxide (--cmd cd enables fuzzy matching via cd, e.g. "cd dot")
+cd() {
+  unset -f cd
+  eval "$(zoxide init bash --cmd cd)"
+  cd "$@"
 }
 
 # bash-completion (homebrew)

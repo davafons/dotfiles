@@ -15,6 +15,9 @@ defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
 defaults write NSGlobalDomain KeyRepeat -int 2
 defaults write NSGlobalDomain InitialKeyRepeat -int 15
 
+# Force ANSI (US) keyboard layout instead of JIS
+defaults -currentHost write -g AppleKeyboardType -int 40
+
 # Disable autocorrect in Terminal
 defaults write com.apple.Terminal SpellCheckingEnabled -bool false
 
