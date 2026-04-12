@@ -25,5 +25,6 @@
     "ruby-lsp@claude-plugins-official": true
   },
   "voiceEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "model": "sonnet"
 }

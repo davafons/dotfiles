@@ -10,5 +10,6 @@ tmux/.config/tmux/plugins/
 shell/.bashrc.d/*.local.sh
 git-GTXP9KXYTQ/.gitconfig.local
 jj-GTXP9KXYTQ/.config/jj/conf.d/*.toml
+jj/.config/jj/repos/
 
 obsidian/
