@@ -1,4 +1,4 @@
-.DS_Store
+**/.DS_Store
 claude/.claude/*
 !claude/.claude/commands/
 !claude/.claude/statusline.sh
@@ -8,5 +8,7 @@ tmux/.config/tmux/plugins/
 
 # Local environment variables (sensitive)
 shell/.bashrc.d/*.local.sh
+git-GTXP9KXYTQ/.gitconfig.local
+jj-GTXP9KXYTQ/.config/jj/conf.d/*.toml
 
 obsidian/
