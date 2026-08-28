@@ -11,16 +11,12 @@
 # ============================================================================
 
 model:
-  default: accounts/fireworks/routers/kimi-k2p5-turbo
-  provider: custom
-  base_url: https://api.fireworks.ai/inference/v1
-  api_mode: chat_completions
+  default: MiniMax-M2.7
+  provider: minimax
+  base_url: https://api.minimax.io/anthropic
 
 # FALLBACK: Load secrets from env or local file
 custom_providers: []
-#   - name: Api.fireworks.ai
-#     base_url: https://api.fireworks.ai/inference/v1
-#     api_key: ${FIREWORKS_API_KEY}  # set in ~/.zshrc or config.local.yaml
 
 fallback_providers: []
 toolsets:
