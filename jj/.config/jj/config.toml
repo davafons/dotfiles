@@ -3,3 +3,72 @@
 [user]
 name = "David Afonso"
 email = "davafons@gmail.com"
+
+[aliases]
+# `jj` doesn't run git hooks (even with the git subprocess), so wrap pushes
+# in an alias that invokes the project's scripts/pre-push if it exists.
+# Use `jj gpush` instead of `jj git push`.
+gpush = ["util", "exec", "--", "bash", "-c", '''
+set -e
+root="$(jj root)"
+if [ -x "$root/scripts/pre-push" ]; then
+  echo "==> Running scripts/pre-push"
+  "$root/scripts/pre-push"
+fi
+exec jj git push "$@"
+''', "gpush"]
+
+# Format/lint-fix every local mutable commit (`jj fix`), then push. Tools are
+# configured per-repo under [fix.tools].
+#
+# A repo with none is SKIPPED, not run through `jj fix`. This used to say that
+# `jj fix` was a no-op there, which is not true: it exits 1 with "Config error:
+# No `fix.tools` are configured", and `set -e` then killed the push before it
+# ran. The alias appeared to do nothing while quietly not pushing, and the
+# obvious workaround -- reaching for `git push` -- is the one thing that breaks
+# a colocated repo. Found in lostcoords-infra on 2026-08-12.
+#
+# `jj config get` is the detector rather than `jj config list`, which exits 0
+# and merely warns when the key is absent.
+#
+# THE DETECTOR ONLY ANSWERS "IS IT THERE", NOT "DOES IT WORK", so `jj fix` is
+# allowed to fail without taking the push with it. Nadeshiko's repo config held
+# three empty `[fix.tools.biome-*]` tables: present enough for `jj config get`
+# to succeed, invalid enough for `jj fix` to exit with "missing field
+# `command`". That is the 2026-08-12 failure again in a costume the guard above
+# was not written for -- the push silently did not happen, on 2026-08-19.
+#
+# Formatting is not what makes a push correct, so a broken or missing formatter
+# config should degrade to "pushed unformatted", loudly, on stderr. The one
+# outcome worth engineering against is a push that looks like it happened and
+# did not, because the workaround it invites -- reaching for `git push` -- is
+# the one thing that breaks a colocated repo.
+push = ["util", "exec", "--", "bash", "-c", '''
+set -e
+if jj config get fix.tools >/dev/null 2>&1; then
+  echo "==> jj fix"
+  jj fix || echo "==> jj fix FAILED (check [fix.tools]); pushing unformatted" >&2
+else
+  echo "==> no fix.tools configured, skipping jj fix"
+fi
+exec jj git push "$@"
+''', "push"]
+
+# ── Commit signing ──────────────────────────────────────────────────────────
+# GPG. NOTE: 09C6... is the [SC] signing key. A1B6340B7D07548F, which ~/.gitconfig
+# used to name, is the [E] ENCRYPTION subkey of the same keypair -- signing with it
+# cannot work. Do not "restore" that value.
+#
+# `own` signs commits I author and leaves existing signatures on other people's
+# commits alone when rewriting -- the right choice here because several agents
+# share one working copy and one revset.
+#
+# WARNING, verified on 2026-08-29: when the secret key is unavailable, jj does
+# NOT error. `jj describe` exits 0 and the commit is simply UNSIGNED. So this
+# config being present proves nothing; check with
+#     jj log -r @ -T 'if(signature, "SIGNED", "NOT SIGNED")'
+# after importing the key, and any time signing matters.
+[signing]
+backend = "gpg"
+behavior = "own"
+key = "09C635A88F755238"
