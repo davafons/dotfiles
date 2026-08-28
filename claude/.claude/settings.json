@@ -14,17 +14,29 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "security-guidance@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "ruby-lsp@claude-plugins-official": true
+    "ruby-lsp@claude-plugins-official": true,
+    "posthog@claude-plugins-official": true,
+    "hey@37signals": true
   },
-  "voiceEnabled": true,
+  "extraKnownMarketplaces": {
+    "37signals": {
+      "source": {
+        "source": "github",
+        "repo": "basecamp/claude-plugins"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "voice": {
+    "enabled": false
+  },
   "skipDangerousModePermissionPrompt": true,
-  "model": "sonnet"
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": false
 }
