@@ -2,7 +2,7 @@
   name = David Afonso
   email = davafons@gmail.com
   username = davafons
-  signingkey = A1B6340B7D07548F
+  signingkey = 09C635A88F755238
 
 [core]
   editor = nvim
@@ -37,4 +37,12 @@
   rebase = true
 
 [commit]
-  gpgsign = true
+  # Disabled: GPG signing breaks non-interactive/agent commits (no pinentry TTY).
+  # Re-enable with `git config --global commit.gpgsign true` when needed.
+  gpgsign = false
+[credential "https://github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
