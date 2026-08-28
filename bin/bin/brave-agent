@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Make your normal, logged-in Brave profile drivable over CDP at :9222, for any
+# agent or tool (playwright-cli, chrome-devtools-mcp, Puppeteer, raw websocket).
+#
+# Idempotent: prints "ready" and changes nothing if the port is already open, so
+# it is safe to run whenever. The port can only be opened at launch, so an
+# already-running Brave has to be restarted -- that is the whole reason this
+# exists. Not needed if Brave is closed: things that spawn their own browser
+# (e.g. shirabe's `npm run watch:brave`) already launch it with the flag.
+#
+# SECURITY: while the port is open, any local process can read your cookies and
+# act as you on every site you are signed into. Chrome 136+ forbids this on the
+# default profile; Brave still allows it. Hence a command you run, not a default.
+set -euo pipefail
+
+URL="http://127.0.0.1:9222"
+APP="/Applications/Brave Browser.app"
+
+up()      { curl -sf --max-time 2 "$URL/json/version" >/dev/null 2>&1; }
+running() { pgrep -f "MacOS/Brave Browser" >/dev/null 2>&1; }
+
+if up; then echo "ready: $URL"; exit 0; fi
+
+if running; then
+  echo "Brave is open without the debugging port, so it has to be restarted."
+  echo "Its open tabs would need History > Recently Closed to come back."
+  if [ -t 0 ]; then
+    printf "Restart Brave now? [y/N] "
+    read -r reply
+    case "$reply" in [yY]*) ;; *) echo "Nothing changed."; exit 1 ;; esac
+  fi
+  osascript -e 'quit app "Brave Browser"' || true
+  for _ in $(seq 1 20); do running || break; sleep 0.5; done
+fi
+
+# `open` hands off to LaunchServices, so Brave outlives whatever shell ran this.
+# No --user-data-dir: this is the real profile, which is the entire point.
+open -a "$APP" --args --remote-debugging-port=9222
+
+for _ in $(seq 1 40); do
+  if up; then echo "ready: $URL"; exit 0; fi
+  sleep 0.5
+done
+echo "Brave did not open $URL in time." >&2
+exit 1
