@@ -56,21 +56,18 @@ argument-hint: "[action] [args...]"
 
 Full CLI coverage: boards, cards, columns, comments, steps, reactions, tags, users, notifications, pins, webhooks, account settings, search, and board migration.
 
-## References
-
-- **[Dav's Solo Sprint Workflow](references/dav-solo-workflow.md)** — My personal Fizzy setup: board structure, column workflow, CLI quirks, estimate tags, useful snippets
-
 ## Agent Invariants
 
 **MUST follow these rules:**
 
 1. **Cards use NUMBER, not ID** — `fizzy card show 42` uses the card number. Other resources use their `id` field.
-2. **Parse JSON with jq** to reduce token output — `fizzy card list | jq '[.data[] | {number, title}]'`
-3. **Check breadcrumbs** in responses for available next actions with pre-filled values
-4. **Check for board context** via `.fizzy.yaml` or `--board` flag before listing cards
-5. **Rich text fields accept HTML** — use `<p>` tags for paragraphs, `<action-text-attachment>` for inline images
-6. **Card description is a string**, but comment body is a nested object — `.description` vs `.body.plain_text`
-7. **Display the welcome message for new signups** — When `signup complete --name` returns `is_new_user: true`, you MUST immediately display the `welcome_message` field prominently to the user. This is a one-time personal note from the CEO — if you skip it, the user will never see it.
+2. **Use built-in `--jq` for filtering** to reduce token output — `fizzy card list --jq '[.data[] | {number, title}]'`. Never pipe to external jq — use `--jq` instead. `--jq` implies `--json`, no need to pass both.
+3. **Check breadcrumbs** in responses for available next actions with pre-filled values.
+4. **Check for board context** via `.fizzy.yaml` or `--board` flag before listing cards.
+5. **Use `fizzy doctor` for setup/config/auth issues** before guessing — it is the primary read-only health check and includes remediation hints.
+6. **Rich text fields accept markdown or HTML** — use repeatable `--attach PATH` for simple end-appended inline attachments, or embed `<action-text-attachment>` tags manually when exact placement matters.
+7. **Card description is a string**, but comment body is a nested object — `.description` vs `.body.plain_text`.
+8. **Display the welcome message for new signups** — When `signup complete --name` returns `is_new_user: true`, you MUST immediately display the `welcome_message` field prominently to the user. This is a one-time personal note from the CEO — if you skip it, the user will never see it.
 
 ## Decision Trees
 
@@ -80,35 +77,11 @@ Full CLI coverage: boards, cards, columns, comments, steps, reactions, tags, use
 Need to find something?
 ├── Know the board? → fizzy card list --board <id>
 ├── Full-text search? → fizzy search "query"
-├── Filter by status? → fizzy card list --indexed-by closed|not_now|golden|stalled
+├── Filter by status? → fizzy card list --indexed-by maybe|closed|not_now|golden|stalled
 ├── Filter by person? → fizzy card list --assignee <id>
 ├── Filter by time? → fizzy card list --created today|thisweek|thismonth
 └── Cross-board? → fizzy search "query" (searches all boards)
 ```
-
-### When Search Returns Nothing (Troubleshooting)
-
-If `fizzy search` or `fizzy card list` returns empty but you know the card exists:
-
-```bash
-# 1. Check auth is working
-fizzy auth status
-
-# 2. Get your account slug (search needs --account if not configured)
-fizzy identity show | jq -r '.data.accounts[0].slug' | sed 's/\///'
-
-# 3. List all boards for that account
-fizzy board list --account 6104339 | jq -r '.data[] | {id, name}'
-
-# 4. Search cards on likely boards
-fizzy card list --board BOARD_ID --account 6104339 --all | \
-  jq '[.data[] | select(.title | test("(?i)(keyword1|keyword2)")) | {number, title}]'
-```
-
-**Common causes of empty search results:**
-- Missing `--account` flag (search requires explicit account if no default configured)
-- Card is in "Not Now" or closed status — add `--indexed-by not_now` or `--indexed-by closed`
-- Card is on a different board than expected — search is board-scoped by default
 
 ### Modifying Content
 
@@ -127,54 +100,61 @@ Want to change something?
 | Resource | List | Show | Create | Update | Delete | Other |
 |----------|------|------|--------|--------|--------|-------|
 | account | - | `account show` | - | `account settings-update` | - | `account entropy`, `account export-create`, `account export-show EXPORT_ID`, `account join-code-show`, `account join-code-reset`, `account join-code-update` |
-| board | `board list` | `board show ID` | `board create` | `board update ID` | `board delete ID` | `board publish ID`, `board unpublish ID`, `board entropy ID`, `board closed`, `board postponed`, `board stream`, `board involvement ID`, `migrate board ID` |
+| identity | - | `identity show` | - | `identity timezone-update --timezone NAME` | - | - |
+| board | `board list` | `board show ID` | `board create` | `board update ID` | `board delete ID` | `board accesses --board ID`, `board publish ID`, `board unpublish ID`, `board entropy ID`, `board closed`, `board postponed`, `board stream`, `board involvement ID`, `migrate board ID` |
 | card | `card list` | `card show NUMBER` | `card create` | `card update NUMBER` | `card delete NUMBER` | `card move NUMBER`, `card publish NUMBER`, `card mark-read NUMBER`, `card mark-unread NUMBER` |
 | search | `search QUERY` | - | - | - | - | - |
+| activity | `activity list` | - | - | - | - | `activity list --board ID`, `activity list --creator ID` |
 | column | `column list --board ID` | `column show ID --board ID` | `column create` | `column update ID` | `column delete ID` | `column move-left ID`, `column move-right ID` |
 | comment | `comment list --card NUMBER` | `comment show ID --card NUMBER` | `comment create` | `comment update ID` | `comment delete ID` | `comment attachments show --card NUMBER` |
 | step | `step list --card NUMBER` | `step show ID --card NUMBER` | `step create` | `step update ID` | `step delete ID` | - |
 | reaction | `reaction list` | - | `reaction create` | - | `reaction delete ID` | - |
 | tag | `tag list` | - | - | - | - | - |
-| user | `user list` | `user show ID` | - | `user update ID` | - | `user deactivate ID`, `user role ID`, `user avatar-remove ID`, `user push-subscription-create`, `user push-subscription-delete ID` |
+| user | `user list` | `user show ID` | - | `user update ID` | - | `user deactivate ID`, `user role ID`, `user avatar-remove ID`, `user export-create USER_ID`, `user export-show USER_ID EXPORT_ID`, `user email-change-request USER_ID --email user@example.com`, `user email-change-confirm USER_ID TOKEN`, `user push-subscription-create`, `user push-subscription-delete ID` |
 | notification | `notification list` | - | - | - | - | `notification tray`, `notification read-all`, `notification settings-show`, `notification settings-update` |
 | pin | `pin list` | - | - | - | - | `card pin NUMBER`, `card unpin NUMBER` |
-| webhook | `webhook list --board ID` | `webhook show ID --board ID` | `webhook create` | `webhook update ID` | `webhook delete ID` | `webhook reactivate ID` |
+| webhook | `webhook list --board ID`, `webhook deliveries --board ID WEBHOOK_ID` | `webhook show ID --board ID` | `webhook create` | `webhook update ID` | `webhook delete ID` | `webhook reactivate ID` |
 
 ---
 
 ## Global Flags
 
-Important: the currently installed Fizzy CLI in this environment differs from some older docs/examples.
-
-All commands support:
+All commands support these global flags unless noted otherwise:
 
 | Flag | Description |
 |------|-------------|
-| `--account SLUG` | Account slug, e.g. `6104339` (required when no default account is configured) |
 | `--token TOKEN` | API access token |
-| `--api-url URL` | API base URL |
-| `--pretty` | Pretty-print JSON output with indentation |
+| `--profile NAME` | Named profile (for multi-account users) |
+| `--api-url URL` | API base URL (default: https://app.fizzy.do) |
+| `--jq EXPR` | Built-in jq filter for machine-readable JSON output (no external jq required; implies --json, or filters raw data with --quiet/--agent; unsupported on `completion`, `setup`, top-level `skill`, and `version` with a jq-specific usage error; incompatible with --styled, --markdown, --ids-only, and --count) |
+| `--json` | JSON envelope output |
+| `--quiet` | Raw JSON data without envelope |
+| `--styled` | Human-readable styled output (tables, colors) |
+| `--markdown` | GFM markdown output (for agents) |
+| `--agent` | Agent mode (defaults to quiet; combinable with --json/--markdown) |
+| `--ids-only` | Print one ID per line |
+| `--count` | Print count of results |
+| `--limit N` | Client-side truncation of list results |
 | `--verbose` | Show request/response details |
 
-Notes:
-- The current CLI returns JSON by default in non-TTY use.
-- `--json`, `--quiet`, `--styled`, `--markdown`, `--agent`, `--ids-only`, `--count`, and client-side `--limit` were not available in this install.
-- `fizzy board list` may fail with `No account configured. Set --account flag or FIZZY_ACCOUNT` if no default account exists.
-- For this CLI, use the bare account slug like `6104339`, not `/6104339`.
+Output format defaults to auto-detection: styled for TTY, JSON for pipes/non-TTY.
 
 ## Pagination
 
-List commands use `--page` for pagination.
+List commands use `--page` for pagination and `--limit` for client-side truncation.
 
 ```bash
 # Get first page (default)
 fizzy card list --page 1
 
+# Limit to N results
+fizzy card list --limit 5
+
 # Fetch ALL pages at once
 fizzy card list --all
 ```
 
-Note: the current CLI install did not expose a client-side `--limit` flag.
+Note: `--limit` and `--all` cannot be used together.
 
 **IMPORTANT:** The `--all` flag controls pagination only - it fetches all pages of results for your current filter. It does NOT change which cards are included. By default, `card list` returns only open cards. See [Card Statuses](#card-statuses) for how to fetch closed or postponed cards.
 
@@ -184,7 +164,6 @@ Commands supporting `--all` and `--page`:
 - `board postponed`
 - `board stream`
 - `card list`
-- `search`
 - `comment list`
 - `tag list`
 - `user list`
@@ -211,19 +190,23 @@ board: 03foq1hqmyy91tuyz3ghugg6c
 **Priority (highest to lowest):**
 1. CLI flags (`--token`, `--profile`, `--api-url`, `--board`)
 2. Environment variables (`FIZZY_TOKEN`, `FIZZY_PROFILE`, `FIZZY_API_URL`, `FIZZY_BOARD`)
-3. Named profile settings (base URL, board from `config.json`)
+3. Named profile settings (account, base URL, board from `config.json`)
 4. Local project config (`.fizzy.yaml`)
 5. Global config (`~/.config/fizzy/config.yaml` or `~/.fizzy/config.yaml`)
 
 **Check context:**
 ```bash
 cat .fizzy.yaml 2>/dev/null || echo "No project configured"
+fizzy config show
+fizzy config explain
 ```
 
 **Setup:**
 ```bash
 fizzy setup                              # Interactive wizard
+fizzy doctor                             # Full install/config/auth/API/agent health check
 fizzy auth login TOKEN                   # Save token for current profile
+fizzy auth login TOKEN --profile agent --account 1  # Separate identity on account 1
 fizzy auth status                        # Check auth status
 fizzy auth list                          # List all authenticated profiles
 fizzy auth switch PROFILE                # Switch active profile
@@ -322,7 +305,7 @@ Responses include a `breadcrumbs` array suggesting what you can do next. Each br
 - `description`: Human-readable description
 
 ```bash
-fizzy card show 42 | jq '.breadcrumbs'
+fizzy card show 42 --jq '.breadcrumbs'
 ```
 
 ```json
@@ -379,9 +362,9 @@ Cards exist in different states. By default, `fizzy card list` returns **open ca
 You can also use pseudo-columns:
 
 ```bash
-fizzy card list --column done --all     # Same as --indexed-by closed
-fizzy card list --column not-now --all  # Same as --indexed-by not_now
-fizzy card list --column maybe --all    # Cards in triage (no column assigned)
+fizzy card list --column done      # Same as --indexed-by closed
+fizzy card list --column not-now   # Same as --indexed-by not_now
+fizzy card list --column maybe     # Same as --indexed-by maybe
 ```
 
 **Fetching all cards on a board:**
@@ -401,64 +384,69 @@ fizzy card list --board BOARD_ID --indexed-by not_now --all
 
 ---
 
-## Common jq Patterns
+## Built-in jq Filtering
+
+Use `--jq` for filtering and extracting data. `--jq` implies `--json` (or filters raw data with `--quiet` / `--agent`) — no need to pass both. Never pipe to external jq — use `--jq` instead. `--jq` is for machine-readable JSON output and cannot be combined with `--styled`, `--markdown`, `--ids-only`, or `--count`.
 
 ### Reducing Output
 
 ```bash
 # Card summary (most useful)
-fizzy card list | jq '[.data[] | {number, title, status, board: .board.name}]'
+fizzy card list --jq '[.data[] | {number, title, status, board: .board.name}]'
 
-# First N items
-fizzy card list | jq '.data[:5]'
+# First N items from the JSON envelope
+fizzy card list --jq '.data[:5]'
+
+# First N items from raw data only
+fizzy card list --quiet --jq '.[0:5]'
 
 # Just IDs
-fizzy board list | jq '[.data[].id]'
+fizzy board list --jq '[.data[].id]'
 
 # Specific fields from single item
-fizzy card show 579 | jq '.data | {number, title, status, golden}'
+fizzy card show 579 --jq '.data | {number, title, status, golden}'
 
 # Card with description length (description is a string, not object)
-fizzy card show 579 | jq '.data | {number, title, desc_length: (.description | length)}'
+fizzy card show 579 --jq '.data | {number, title, desc_length: (.description | length)}'
 ```
 
 ### Filtering
 
 ```bash
 # Cards with a specific status
-fizzy card list --all | jq '[.data[] | select(.status == "published")]'
+fizzy card list --all --jq '[.data[] | select(.status == "published")]'
 
 # Golden cards only
-fizzy card list --indexed-by golden | jq '[.data[] | {number, title}]'
+fizzy card list --indexed-by golden --jq '[.data[] | {number, title}]'
 
 # Cards with non-empty descriptions
-fizzy card list | jq '[.data[] | select(.description | length > 0) | {number, title}]'
+fizzy card list --jq '[.data[] | select(.description | length > 0) | {number, title}]'
 
 # Cards with steps (must use card show, steps not in list)
-fizzy card show 579 | jq '.data.steps'
+fizzy card show 579 --jq '.data.steps'
 ```
 
 ### Extracting Nested Data
 
 ```bash
 # Comment text only (body.plain_text for comments)
-fizzy comment list --card 579 | jq '[.data[].body.plain_text]'
+fizzy comment list --card 579 --jq '[.data[].body.plain_text]'
 
 # Card description (just .description for cards - it's a string)
-fizzy card show 579 | jq '.data.description'
+fizzy card show 579 --jq '.data.description'
 
 # Step completion status
-fizzy card show 579 | jq '[.data.steps[] | {content, completed}]'
+fizzy card show 579 --jq '[.data.steps[] | {content, completed}]'
 ```
 
 ### Activity Analysis
 
 ```bash
 # Cards with steps count (requires card show for each)
-fizzy card show 579 | jq '.data | {number, title, steps_count: (.steps | length)}'
+fizzy card show 579 --jq '.data | {number, title, steps_count: (.steps | length)}'
 
 # Comments count for a card
-fizzy comment list --card 579 | jq '.data | length'
+fizzy comment list --card 579 --jq '.data | length'
 ```
 
 ---
@@ -469,6 +457,7 @@ fizzy comment list --card 579 | jq '.data | length'
 
 ```bash
 fizzy identity show                    # Show your identity and accessible accounts
+fizzy identity timezone-update --timezone America/New_York  # Update your timezone for the current account
 ```
 
 ### Account
@@ -482,26 +471,33 @@ The `auto_postpone_period_in_days` is the account-level default. Cards are autom
 
 ### Search
 
-Quick text search across cards. Multiple words are treated as separate terms (AND).
+Full-text search across cards. The query is sent as a single string to the
+dedicated search endpoint; if the query exactly matches a card ID, that card
+is returned directly.
 
 ```bash
-fizzy search QUERY [flags]
-  --board ID                           # Filter by board
-  --assignee ID                        # Filter by assignee user ID
-  --tag ID                             # Filter by tag ID
-  --indexed-by LANE                    # Filter: all, closed, not_now, golden
-  --sort ORDER                         # Sort: newest, oldest, or latest (default)
-  --page N                             # Page number
-  --all                                # Fetch all pages
+fizzy search QUERY
 ```
 
 **Examples:**
 ```bash
 fizzy search "bug"                     # Search for "bug"
-fizzy search "login error"             # Search for cards containing both "login" AND "error"
-fizzy search "bug" --board BOARD_ID    # Search within a specific board
-fizzy search "bug" --indexed-by closed # Include closed cards
-fizzy search "feature" --sort newest   # Sort by newest first
+fizzy search "login error"             # Single-string FTS query
+fizzy search 12345                     # Card-ID lookup shortcut
+```
+
+To filter cards by structured criteria (board, tag, assignee, status, sort,
+or AND-of-words term filtering), use `fizzy card list` with `--search` and
+the relevant filter flags:
+
+```bash
+fizzy card list --search "bug" --board BOARD_ID --indexed-by closed --sort newest
+```
+
+### Activities
+
+```bash
+fizzy activity list [--board ID] [--creator ID] [--page N] [--all]
 ```
 
 ### Boards
@@ -515,6 +511,7 @@ fizzy board publish BOARD_ID
 fizzy board unpublish BOARD_ID
 fizzy board delete BOARD_ID
 fizzy board entropy BOARD_ID --auto_postpone_period_in_days N  # N: 3, 7, 11, 30, 90, 365
+fizzy board accesses --board ID [--page N]             # Show board access settings and users
 fizzy board closed --board ID [--page N] [--all]       # List closed cards
 fizzy board postponed --board ID [--page N] [--all]    # List postponed cards
 fizzy board stream --board ID [--page N] [--all]       # List stream cards
@@ -573,7 +570,7 @@ fizzy card list [flags]
   --column ID                          # Filter by column ID or pseudo: not-now, maybe, done
   --assignee ID                        # Filter by assignee user ID
   --tag ID                             # Filter by tag ID
-  --indexed-by LANE                    # Filter: all, closed, not_now, stalled, postponing_soon, golden
+  --indexed-by LANE                    # Filter: all, closed, maybe, not_now, stalled, postponing_soon, golden
   --search "terms"                     # Search by text (space-separated for multiple terms)
   --sort ORDER                         # Sort: newest, oldest, or latest (default)
   --creator ID                         # Filter by creator user ID
@@ -591,16 +588,18 @@ fizzy card show CARD_NUMBER            # Show card details (includes steps)
 
 ```bash
 fizzy card create --board ID --title "Title" [flags]
-  --description "HTML"                 # Card description (HTML)
-  --description_file PATH              # Read description from file
+  --description "TEXT"                # Card description (markdown or HTML)
+  --description_file PATH              # Read description from file (markdown or HTML)
+  --attach PATH                        # Upload and append inline attachment at end (repeatable)
   --image SIGNED_ID                    # Header image (use signed_id from upload)
   --tag-ids "id1,id2"                  # Comma-separated tag IDs
   --created-at TIMESTAMP               # Custom created_at
 
 fizzy card update CARD_NUMBER [flags]
   --title "Title"
-  --description "HTML"
+  --description "TEXT"
   --description_file PATH
+  --attach PATH
   --image SIGNED_ID
   --created-at TIMESTAMP
 
@@ -668,8 +667,8 @@ fizzy column move-right COLUMN_ID            # Move column one position right
 ```bash
 fizzy comment list --card NUMBER [--page N] [--all]
 fizzy comment show COMMENT_ID --card NUMBER
-fizzy comment create --card NUMBER --body "HTML" [--body_file PATH] [--created-at TIMESTAMP]
-fizzy comment update COMMENT_ID --card NUMBER [--body "HTML"] [--body_file PATH]
+fizzy comment create --card NUMBER [--body "TEXT"] [--body_file PATH] [--attach PATH] [--created-at TIMESTAMP]
+fizzy comment update COMMENT_ID --card NUMBER [--body "TEXT"] [--body_file PATH] [--attach PATH]
 fizzy comment delete COMMENT_ID --card NUMBER
 ```
 
@@ -733,6 +732,10 @@ fizzy user update USER_ID --avatar /path.jpg  # Update user avatar
 fizzy user deactivate USER_ID                  # Deactivate user (requires admin/owner)
 fizzy user role USER_ID --role ROLE            # Update user role (requires admin/owner)
 fizzy user avatar-remove USER_ID               # Remove user avatar
+fizzy user export-create USER_ID               # Create user data export
+fizzy user export-show USER_ID EXPORT_ID       # Show user data export status
+fizzy user email-change-request USER_ID --email user@example.com
+fizzy user email-change-confirm USER_ID TOKEN
 fizzy user push-subscription-create --user ID --endpoint URL --p256dh-key KEY --auth-key KEY
 fizzy user push-subscription-delete SUB_ID --user ID
 ```
@@ -762,6 +765,7 @@ Webhooks notify external services when events occur on a board. Requires account
 
 ```bash
 fizzy webhook list --board ID [--page N] [--all]
+fizzy webhook deliveries --board ID WEBHOOK_ID [--page N] [--all]
 fizzy webhook show WEBHOOK_ID --board ID
 fizzy webhook create --board ID --name "Name" --url "https://..." [--actions card_published,card_closed,...]
 fizzy webhook update WEBHOOK_ID --board ID [--name "Name"] [--actions card_closed,...]
@@ -809,7 +813,9 @@ fizzy upload file PATH
 | ID | Use For |
 |---|---|
 | `signed_id` | Card header/background images (`--image` flag) |
-| `attachable_sgid` | Inline images in rich text (descriptions, comments) |
+| `attachable_sgid` | Manual inline rich text embedding with `<action-text-attachment>` |
+
+**Simple inline attachment mode:** prefer `--attach PATH` on `card create`, `card update`, `comment create`, and `comment update` when appending attachments at the end is fine.
 
 ---
 
@@ -820,7 +826,7 @@ fizzy upload file PATH
 ```bash
 # Create the card
 CARD=$(fizzy card create --board BOARD_ID --title "New Feature" \
-  --description "<p>Feature description</p>" | jq -r '.data.number')
+  --description "<p>Feature description</p>" --jq '.data.number')
 
 # Add steps
 fizzy step create --card $CARD --content "Design the feature"
@@ -838,11 +844,17 @@ fizzy comment create --card 42 --body "<p>Commit $(git rev-parse --short HEAD): 
 fizzy card close 42
 ```
 
-### Create Card with Inline Image
+### Create Card with Inline Attachment
 
+Simple mode:
+```bash
+fizzy card create --board BOARD_ID --title "Bug Report" --description "See the screenshot below" --attach screenshot.png
+```
+
+Advanced/manual placement mode:
 ```bash
 # Upload image
-SGID=$(fizzy upload file screenshot.png | jq -r '.data.attachable_sgid')
+SGID=$(fizzy upload file screenshot.png --jq '.data.attachable_sgid')
 
 # Create description file with embedded image
 cat > desc.html << EOF
@@ -865,7 +877,7 @@ if [[ ! "$MIME" =~ ^image/ ]]; then
 fi
 
 # Upload and get signed_id
-SIGNED_ID=$(fizzy upload file /path/to/header.png | jq -r '.data.signed_id')
+SIGNED_ID=$(fizzy upload file /path/to/header.png --jq '.data.signed_id')
 
 # Create card with background
 fizzy card create --board BOARD_ID --title "Card" --image "$SIGNED_ID"
@@ -900,11 +912,11 @@ fizzy card move 579 --to TARGET_BOARD_ID
 ### Search and Filter Cards
 
 ```bash
-# Quick search
-fizzy search "bug" | jq '[.data[] | {number, title}]'
+# Full-text search
+fizzy search "bug" --jq '[.data[] | {number, title}]'
 
-# Search with filters
-fizzy search "login" --board BOARD_ID --sort newest
+# Filter cards by criteria (use card list, not search)
+fizzy card list --search "login" --board BOARD_ID --sort newest
 
 # Find recently created cards
 fizzy card list --created today --sort newest
@@ -923,14 +935,14 @@ fizzy card list --unassigned --board BOARD_ID
 fizzy reaction create --card 579 --content "👍"
 
 # List reactions on a card
-fizzy reaction list --card 579 | jq '[.data[] | {id, content, reacter: .reacter.name}]'
+fizzy reaction list --card 579 --jq '[.data[] | {id, content, reacter: .reacter.name}]'
 ```
 
 ### Add Comment with Reaction
 
 ```bash
 # Add comment
-COMMENT=$(fizzy comment create --card 579 --body "<p>Looks good!</p>" | jq -r '.data.id')
+COMMENT=$(fizzy comment create --card 579 --body "<p>Looks good!</p>" --jq '.data.id')
 
 # Add reaction to the comment
 fizzy reaction create --card 579 --comment $COMMENT --content "👍"
@@ -1074,7 +1086,9 @@ Complete field reference for all resources. Use these exact field paths in jq qu
 
 ## Rich Text Formatting
 
-Card descriptions and comments support HTML. For multiple paragraphs with spacing:
+Card descriptions and comments support markdown or HTML. For simple inline attachments appended at the end, use `--attach PATH`.
+
+For exact placement, upload first and embed `<action-text-attachment>` tags manually. For multiple paragraphs with spacing:
 
 ```html
 <p>First paragraph.</p>
@@ -1119,19 +1133,13 @@ Card descriptions and comments support HTML. For multiple paragraphs with spacin
 
 **Authentication errors (exit 3):**
 ```bash
+fizzy doctor                             # Full health check with hints
 fizzy auth status                        # Check auth
 fizzy auth list                          # Check which profiles are configured
 fizzy auth switch PROFILE                # Switch to correct profile
 fizzy auth login TOKEN                   # Re-authenticate
+fizzy auth login TOKEN --profile agent --account 1  # Save an aliased profile
 fizzy setup                              # Full interactive setup
-```
-
-**Account not configured ("No account configured" error):**
-If you have a token but no account set, get your account slug from identity:
-```bash
-# Get account slug from identity (returns "/123456" format, use "123456")
-fizzy identity show | jq -r '.data.accounts[0].slug' | sed 's/\///'
-# Then: export FIZZY_ACCOUNT=123456
 ```
 
 **Not found errors (exit 2):** Verify the card number or resource ID is correct. Cards use NUMBER, not ID.
@@ -1140,6 +1148,8 @@ fizzy identity show | jq -r '.data.accounts[0].slug' | sed 's/\///'
 
 **Network errors (exit 6):** Check API URL configuration:
 ```bash
+fizzy doctor                             # Full connectivity + API URL diagnostics
+fizzy config explain                     # Why this API URL won
 fizzy auth status                        # Shows configured profile and API URL
 ```
 
@@ -1147,3 +1157,12 @@ fizzy auth status                        # Shows configured profile and API URL
 
 - API documentation: https://github.com/basecamp/fizzy/blob/main/docs/API.md
 - CLI repository: https://github.com/basecamp/fizzy-cli
+
+## Hermes deployment
+
+On QTower, the CLI is authenticated from `FIZZY_TOKEN`, injected from the
+Hermes AWS SSM namespace at runtime. Never print, reveal, persist, or include
+that token in a message, command output, URL, or file. The default account is
+`$FIZZY_ACCOUNT` (6104339) and the API is `$FIZZY_API_URL`
+(https://app.fizzy.do). Do not run authentication or token-management commands
+unless the user explicitly asks to change authentication.
