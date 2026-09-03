@@ -1,3 +1,25 @@
+# Shared desktop: background by default
+
+The user may be typing in another app at any time. This applies to every project
+and delegated agent, not only browser tests.
+
+- Prefer APIs, CLIs and verified background interactions. Do not activate apps,
+  bring windows or tabs forward, switch workspaces, or send system-wide mouse or
+  keyboard input without explicit foreground permission for that run.
+- Starting or reconnecting an automation tool can take focus too. Do not rely on
+  restoring focus afterward; the user's keystrokes can land in the wrong window.
+- Permission to implement, test, keep working, or work overnight is not permission
+  to use the foreground. Do not set foreground opt-ins permanently or bypass a
+  tool's foreground guard.
+- Use AeroSpace workspace 10 for agent-owned test windows. Name new test windows
+  `Agent Tests <task>` where supported. Leave regular user windows alone. Another
+  workspace does not isolate keyboard input or make native GUI automation safe.
+- Preserve the user's clipboard. Do not play test audio without permission for
+  audible testing. Use saved artifacts when showing progress does not need a window.
+- If an action cannot run without interference, pause that action and continue
+  safe work. Coordinate a foreground period only when needed, or use a separately
+  authorized desktop session or VM. Pass this restriction to delegated agents.
+
 # Version control: use jj, never git
 
 Most of my repos are jj/git colocated (`.jj/` sits next to `.git/`). **Before running any

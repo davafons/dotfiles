@@ -75,6 +75,10 @@ cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
 9 = 'secondary'
 10 = 'secondary'
 
+[[on-window-detected]]
+if.window-title-regex-substring = '^(Phase0 - Anki|(?:Shirabe )?Agent Tests(?: .*)?)$'
+run = 'move-node-to-workspace 10'
+
 # Always open Slack on Workspace 3
 [[on-window-detected]]
 if.app-id = 'com.tinyspeck.slackmacgap'

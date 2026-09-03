@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# Drive the real Brave profile through the Playwright Extension (tab group, not
+# CDP on :9222). Token + Brave path live in ~/.config/playwright-cli/env.
+set -euo pipefail
+
+allow_foreground=0
+if [[ "${1:-}" == "--allow-foreground" ]]; then
+  allow_foreground=1
+  shift
+fi
+
+ENV_FILE="${HOME}/.config/playwright-cli/env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+: "${PLAYWRIGHT_MCP_EXECUTABLE_PATH:=/Applications/Brave Browser.app/Contents/MacOS/Brave Browser}"
+export PLAYWRIGHT_MCP_EXECUTABLE_PATH
+
+CLI_PACKAGE="${PLAYWRIGHT_CLI_PACKAGE:-@playwright/cli@latest}"
+
+default_session_name() {
+  if [[ -n "${PLAYWRIGHT_CLI_SESSION:-}" ]]; then
+    printf '%s\n' "$PLAYWRIGHT_CLI_SESSION"
+    return
+  fi
+
+  if [[ -n "${CODEX_SESSION_ID:-}" ]]; then
+    session_suffix="${CODEX_SESSION_ID//[^[:alnum:]_-]/-}"
+    printf 'codex-%s\n' "$session_suffix"
+    return
+  fi
+
+  workspace_hash="$(printf '%s' "$PWD" | shasum -a 256 | cut -c1-12)"
+  printf 'workspace-%s\n' "$workspace_hash"
+}
+
+session_name="$(default_session_name)"
+
+redact_output() {
+  sed -E 's/([?&]token=)[^&[:space:])]+/\1<redacted>/g'
+}
+
+cli() {
+  npx --yes "$CLI_PACKAGE" "$@"
+}
+
+run_cli() {
+  cli "$@" \
+    > >(redact_output) \
+    2> >(redact_output >&2)
+}
+
+require_foreground() {
+  if [[ "$allow_foreground" != "1" ]]; then
+    echo "playwright-cli: '${command_name}' may take desktop focus; background mode refused it." >&2
+    echo "After explicit foreground permission, use: playwright-cli --allow-foreground <command> ..." >&2
+    exit 75
+  fi
+}
+
+if [[ -z "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-}" ]]; then
+  echo "playwright-cli: missing PLAYWRIGHT_MCP_EXTENSION_TOKEN" >&2
+  echo "Copy it from the Playwright Extension status page into ${ENV_FILE}" >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "doctor" ]]; then
+  if [[ ! -x "$PLAYWRIGHT_MCP_EXECUTABLE_PATH" ]]; then
+    echo "playwright-cli: Brave executable is missing: $PLAYWRIGHT_MCP_EXECUTABLE_PATH" >&2
+    exit 1
+  fi
+
+  env_mode="$(stat -f '%Lp' "$ENV_FILE" 2>/dev/null || true)"
+  if [[ "$env_mode" != "600" ]]; then
+    echo "playwright-cli: warning: $ENV_FILE permissions are ${env_mode:-unknown}; expected 600" >&2
+  fi
+
+  brave_data_dir="${HOME}/Library/Application Support/BraveSoftware/Brave-Browser"
+  extension_manifest="$(find "$brave_data_dir" -maxdepth 6 -path '*/Extensions/mmlmfjhmonkocbjadbfplnigmagldckm/*/manifest.json' -print -quit 2>/dev/null || true)"
+  if [[ -z "$extension_manifest" ]]; then
+    echo "playwright-cli: Playwright Extension was not found in the Brave profile" >&2
+    exit 1
+  fi
+
+  echo "playwright-cli: Brave executable: ok"
+  echo "playwright-cli: extension token: configured (redacted)"
+  echo "playwright-cli: Playwright Extension: installed"
+  echo "playwright-cli: CLI version: $(cli --version)"
+  doctor_session="$session_name"
+  session_list="$(cli list --json)"
+  printf '%s\n' "$session_list" | redact_output
+  if printf '%s\n' "$session_list" \
+    | jq -e --arg name "$doctor_session" \
+      '.browsers[]? | select(.name == $name and .status == "open" and .attached == true)' \
+      >/dev/null; then
+    run_cli "-s=${doctor_session}" tab-list
+  else
+    echo "playwright-cli: no attached '${doctor_session}' session; run attach --extension when ready"
+  fi
+  exit 0
+fi
+
+args=()
+expect_session_name=0
+explicit_session_name=0
+extension_attach=0
+attach_command=0
+command_name=""
+help_requested=0
+for a in "$@"; do
+  if [[ "$expect_session_name" == "1" ]]; then
+    session_name="$a"
+    expect_session_name=0
+  elif [[ "$a" == "-s" || "$a" == "--session" ]]; then
+    expect_session_name=1
+    explicit_session_name=1
+  elif [[ "$a" == -s=* ]]; then
+    session_name="${a#-s=}"
+    explicit_session_name=1
+  elif [[ "$a" == --session=* ]]; then
+    session_name="${a#--session=}"
+    explicit_session_name=1
+  elif [[ -z "$command_name" && "$a" != -* ]]; then
+    command_name="$a"
+  fi
+
+  if [[ "$command_name" == "attach" && ( "$a" == "--extension" || "$a" == --extension=* ) ]]; then
+    extension_attach=1
+  fi
+  if [[ "$a" == "--help" || "$a" == "-h" ]]; then
+    help_requested=1
+  fi
+
+  if [[ "$a" == "--extension" ]]; then
+    args+=("--extension=chrome")
+  else
+    args+=("$a")
+  fi
+done
+if [[ "$command_name" == "attach" ]]; then
+  attach_command=1
+fi
+
+# A new extension attach creates a visible handshake/Welcome tab. If the
+# configured session is already live, keep using it instead of reattaching.
+# This performs a read-only tab check and never closes browser tabs.
+if [[ "$attach_command" == "1" && "$extension_attach" == "1" && "$help_requested" == "0" ]]; then
+  if cli list --json 2>/dev/null | jq -e --arg name "$session_name" \
+      '.browsers[]? | select(.name == $name and .status == "open" and .attached == true)' >/dev/null \
+      && existing_tabs="$(cli "-s=${session_name}" tab-list --raw 2>/dev/null)" \
+      && [[ -n "$existing_tabs" ]]; then
+    target_tabs="$(printf '%s\n' "$existing_tabs" | sed '/chrome-extension:\/\/mmlmfjhmonkocbjadbfplnigmagldckm\/connect\.html/d' | sed '/^[[:space:]]*$/d')"
+    if [[ -n "$target_tabs" ]]; then
+      echo "playwright-cli: reusing attached Brave group '${session_name}'"
+    else
+      echo "playwright-cli: reusing attached Brave group '${session_name}' (Welcome tab only)"
+      echo "playwright-cli: tab-new requires explicit foreground permission"
+    fi
+    exit 0
+  fi
+fi
+
+if [[ "$help_requested" == "0" ]]; then
+  case "$command_name" in
+    attach|open|tab-new|tab-select|recording-start|show) require_foreground ;;
+  esac
+fi
+
+case "$command_name" in
+  list|close-all|kill-all)
+    run_cli "${args[@]}"
+    ;;
+  *)
+    if [[ "$attach_command" == "1" && "$explicit_session_name" == "0" ]]; then
+      run_cli "${args[@]}" "--session=${session_name}"
+    elif [[ "$explicit_session_name" == "1" ]]; then
+      run_cli "${args[@]}"
+    else
+      run_cli "-s=${session_name}" "${args[@]}"
+    fi
+    ;;
+esac
