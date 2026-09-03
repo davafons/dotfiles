@@ -50,6 +50,12 @@ wariwari auth status
 
 API keys are created on the web account page (Account → API keys) — there is no
 API route to list or mint one. Save a key with `wariwari auth login TOKEN`.
+Developer API keys can create participants, categories, transactions, and
+payments inside an existing editable group. Group creation remains
+session-credential only. Full access is currently enabled for every account and
+group, so developer keys have no monthly usage quota. Short-term per-IP and
+per-credential rate limits still apply.
+
 For Codex-style agents, `wariwari skill install` writes the skill to both
 `~/.agents/skills/wariwari/` and the Codex skill directory.
 
@@ -107,15 +113,20 @@ Each response carries:
 
 Pass that value back as `--cursor` to get the next page; stop when `hasMore` is
 `false`. `--take` caps at 100 and defaults to 50. The `--json` envelope also
-emits a ready-to-run `next-page` breadcrumb.
+emits a ready-to-run `next-page` breadcrumb that preserves filters, archived
+mode, and page size.
+
+Transaction reads always include `timeOfDay`, but it can be `null` for an import
+whose source had no time. Do not interpret that as midnight. `paidByToken` can
+also be `null` on historical transactions whose payer was removed.
 
 ### Balances
 
 `wariwari balance GROUP_TOKEN --json` pulls the balance view out of the
 snapshot:
 
-- `netByCurrency` — currency code → participant token → signed cents. Negative
-  means that participant is owed money; positive means they owe.
+- `netByCurrency` — currency code → participant token → signed cents. Positive
+  means that participant is owed money; negative means they owe.
 - `suggestedPayments` — the minimal settle-up set, each with
   `fromParticipantToken`, `toParticipantToken`, `amountCents`, `currency`.
 - `spendingByCurrency`, `totalBaseCents` — group spending totals.
@@ -128,7 +139,7 @@ returns the refreshed group snapshot, so you never need a follow-up read.
 
 ```bash
 wariwari group update GROUP_TOKEN --data '{"name":"Trip 2026","lockVersion":1}' --json
-wariwari participant create GROUP_TOKEN --data '{"name":"Ada"}' --json
+wariwari participant create GROUP_TOKEN --data '{"token":"qm1mVhS7nyyF99vfPYwfF3nN","name":"Ada"}' --json
 wariwari participant update PARTICIPANT_TOKEN GROUP_TOKEN --data '{"name":"Ada Lovelace","lockVersion":0}' --json
 wariwari participant delete PARTICIPANT_TOKEN GROUP_TOKEN --json
 wariwari category create GROUP_TOKEN --data '{"name":"Food","emoji":"🍜"}' --json
@@ -176,17 +187,20 @@ different body returns `409 IDEMPOTENCY_KEY_IN_USE`.
 
 1. Find the group: `wariwari group list --json`, or use the configured default.
 2. Read current state: `wariwari group show GROUP_TOKEN --json`.
-3. Take participant tokens from `participants` and category tokens from
-   `groupCategories`. **Never invent a token.**
-4. Pick `kind`: `expense` for spending, `payment` for a settle-up transfer.
-5. Pick `splitType`: `equal`, `percentage`, `shares`, or `amount`.
-6. Build `splits` so the `amountCents` values sum to the transaction's
+3. Take existing participant tokens from `participants` and category tokens
+   from `groupCategories`. **Never invent a token for an existing resource.**
+4. Generate one new 24-character base58 transaction `token`. Keep it with the
+   request and reuse the identical token and body if the create must be retried.
+5. Pick `kind`: `expense` for spending, `payment` for a settle-up transfer.
+6. Pick `splitType`: `equal`, `percentage`, `shares`, or `amount`.
+7. Build `splits` so the `amountCents` values sum to the transaction's
    `amountCents`.
-7. Create it, then read `netByCurrency` / `suggestedPayments` from the returned
+8. Create it, then read `netByCurrency` / `suggestedPayments` from the returned
    snapshot to report the new balances.
 
 ```bash
 wariwari transaction create GROUP_TOKEN --json --data '{
+  "token": "9AHTHuAGT7U2CpSfktrfUAYA",
   "kind": "expense",
   "description": "Team dinner",
   "amountCents": 12000,
@@ -212,7 +226,7 @@ Failures are RFC 9457 Problem Details. Switch on `code`, show `detail`:
 
 | Code                                              | Status | What to do                                          |
 | ------------------------------------------------- | ------ | --------------------------------------------------- |
-| `AUTH_CREDENTIALS_REQUIRED` / `_INVALID`          | 401    | Run `wariwari auth login TOKEN`.                    |
+| `AUTH_CREDENTIALS_REQUIRED` / `AUTH_CREDENTIALS_INVALID` / `AUTH_CREDENTIALS_EXPIRED` | 401 | Run `wariwari auth login TOKEN`. |
 | `ACCESS_DENIED`                                   | 403    | Session-only action (e.g. creating a group).        |
 | `INSUFFICIENT_PERMISSIONS`                        | 403    | The user lacks edit access to this group.           |
 | `NOT_FOUND`                                       | 404    | Wrong token, or the record was deleted.             |
@@ -220,8 +234,9 @@ Failures are RFC 9457 Problem Details. Switch on `code`, show `detail`:
 | `VALIDATION_FAILED`                               | 400    | Read the `errors` map (camelCase field names).      |
 | `CONFLICT`                                        | 409    | Stale `lockVersion` — reconcile against `current`.  |
 | `IDEMPOTENCY_KEY_IN_USE`                          | 409    | Same key, different body. Use a fresh key.          |
-| `RATE_LIMIT_EXCEEDED` / `QUOTA_EXCEEDED`          | 429    | Back off; the free key quota is 50 calls/month.     |
+| `RATE_LIMIT_EXCEEDED`                             | 429    | Back off and honor `Retry-After`.                   |
 | `IDEMPOTENCY_IN_PROGRESS`                         | 503    | A concurrent retry is running. Wait and retry.      |
+| `INTERNAL_SERVER_EXCEPTION`                       | 500    | Retry later; report `instance` if it persists.      |
 
 Note `VALIDATION_FAILED` is a `400`, not a `422`.
 

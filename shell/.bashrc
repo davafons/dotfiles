@@ -55,7 +55,6 @@ unset elapsed_time
 export PATH="$PATH:/Users/davafons/.lmstudio/bin"
 # End of LM Studio CLI section
 
-
 # >>> grok installer >>>
 export PATH="$HOME/.grok/bin:$PATH"
 [[ -r "$HOME/.grok/completions/bash/grok.bash" ]] && source "$HOME/.grok/completions/bash/grok.bash"
