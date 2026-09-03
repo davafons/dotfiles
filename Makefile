@@ -1,34 +1,19 @@
 #!/usr/bin/make -f
 
-DOTFILES_DIR := $(shell pwd)
-HOSTNAME := $(shell hostname)
+DOTFILES_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+HOSTNAME ?= $(shell hostname)
 STOW := stow
 PACKAGE_DIR := packages
+PROFILE ?= $(HOSTNAME)
+PROFILE_FILE := $(DOTFILES_DIR)/profiles/$(PROFILE).mk
 
-# Predefined package lists by hostname
-ifeq ($(HOSTNAME),omen)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ssh obsidian fcitx5 hypr claude codex agents
-else ifeq ($(HOSTNAME),tower)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty gh mise ssh obsidian fcitx5 hypr claude codex agents
-else ifeq ($(HOSTNAME),GTXP9KXYTQ)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ghostty ssh obsidian aerospace
-else ifeq ($(HOSTNAME),mb)
-	DEFAULT_PACKAGES := bin shell git jj tmux nvim alacritty ghostty gh mise ssh aerospace claude codex agents
+ifneq ($(wildcard $(PROFILE_FILE)),)
+include $(PROFILE_FILE)
 endif
 
-# Use provided packages or default for hostname
-PACKAGES ?= $(DEFAULT_PACKAGES)
+PACKAGES ?= $(PROFILE_PACKAGES)
 
-# Helper function to check if a directory exists
-define check_package
-	$(if $(wildcard $(DOTFILES_DIR)/$(1)-$(HOSTNAME)), \
-		$(1)-$(HOSTNAME), \
-		$(if $(wildcard $(DOTFILES_DIR)/$(1)), \
-			$(1), \
-			$(error Package '$(1)' not found (tried both '$(1)' and '$(1)-$(HOSTNAME)')))
-endef
-
-.PHONY: help install uninstall list check-stow install-packages install-packages-non-aur install-packages-aur list-installed
+.PHONY: help install uninstall plan status doctor list list-profiles check-stow check-profile install-packages install-packages-non-aur install-packages-aur list-installed
 
 # Default target
 all: help
@@ -38,12 +23,16 @@ all: help
 
 help:
 	@printf "\e[34mDotfiles Management with GNU Stow and Package Installation\e[0m\n"
-	@echo "Usage: make [TARGET] [PACKAGES=\"package1 package2 ...\"]"
+	@echo "Usage: make [TARGET] [PROFILE=name] [PACKAGES=\"package1 package2 ...\"]"
 	@echo ""
 	@printf "\e[33mDotfiles Targets:\e[0m\n"
-	@printf "  \e[32minstall\e[0m             Install dotfiles (default: hostname-specific packages)\n"
-	@printf "  \e[32muninstall\e[0m           Uninstall dotfiles\n"
+	@printf "  \e[32mplan\e[0m                Preview Stow changes for a profile\n"
+	@printf "  \e[32minstall\e[0m             Install the selected profile\n"
+	@printf "  \e[32muninstall\e[0m           Uninstall the selected profile\n"
+	@printf "  \e[32mstatus\e[0m              Alias for plan\n"
+	@printf "  \e[32mdoctor\e[0m              Check Stow and profile package definitions\n"
 	@printf "  \e[32mlist\e[0m                List available dotfiles packages\n"
+	@printf "  \e[32mlist-profiles\e[0m       List named profile manifests\n"
 	@echo ""
 	@printf "\e[33mSystem Package Targets:\e[0m\n"
 	@printf "  \e[32minstall-packages\e[0m    Install default and host-specific packages\n"
@@ -53,41 +42,58 @@ help:
 	@printf "  \e[32mshow-config\e[0m         Show current configuration\n"
 	@printf "  \e[32mhelp\e[0m                Show this help message\n"
 	@echo ""
-	@echo "Current hostname: $(HOSTNAME)"
-	@echo "Default dotfiles for $(HOSTNAME): $(DEFAULT_PACKAGES)"
+	@echo "Selected profile: $(PROFILE)"
+	@echo "Profile manifest: $(PROFILE_FILE)"
+	@echo "Packages: $(PACKAGES)"
 
-install: check-stow
-	@echo "Installing packages for hostname '$(HOSTNAME)': $(PACKAGES)"
-	@for package in $(PACKAGES); do \
-		hostname_package="$$package-$(HOSTNAME)"; \
-		if [ -d "$(DOTFILES_DIR)/$$hostname_package" ]; then \
-			echo "Installing $$hostname_package (hostname-specific for $(HOSTNAME))..."; \
-			$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" "$$hostname_package" || echo "Failed to install $$hostname_package"; \
-		elif [ -d "$(DOTFILES_DIR)/$$package" ]; then \
-			echo "Installing $$package..."; \
-			$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" "$$package" || echo "Failed to install $$package"; \
-		else \
-			echo "Package '$$package' not found (tried both '$$package' and '$$hostname_package')"; \
-		fi; \
+plan: check-stow check-profile
+	@echo "Planned packages for profile '$(PROFILE)': $(PACKAGES)"
+	@set -eu; for package in $(PACKAGES); do \
+		test -d "$(DOTFILES_DIR)/$$package" || { echo "Package '$$package' not found" >&2; exit 1; }; \
+		echo "Planning $$package..."; \
+		$(STOW) -n -v -d "$(DOTFILES_DIR)" -t "$(HOME)" "$$package"; \
+	done
+
+install: check-stow check-profile
+	@echo "Installing profile '$(PROFILE)': $(PACKAGES)"
+	@set -eu; for package in $(PACKAGES); do \
+		test -d "$(DOTFILES_DIR)/$$package" || { echo "Package '$$package' not found" >&2; exit 1; }; \
+		echo "Installing $$package..."; \
+		$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" "$$package"; \
 	done
 	@echo "Installation complete!"
 
-uninstall: check-stow
-	@echo "Uninstalling packages: $(PACKAGES)"
-	@for package in $(PACKAGES); do \
-		hostname_package="$$package-$(HOSTNAME)"; \
-		if [ -d "$(DOTFILES_DIR)/$$hostname_package" ]; then \
-			echo "Uninstalling $$hostname_package (hostname-specific for $(HOSTNAME))..."; \
-			$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" -D "$$hostname_package" 2>/dev/null || true; \
-		fi; \
+uninstall: check-stow check-profile
+	@echo "Uninstalling profile '$(PROFILE)': $(PACKAGES)"
+	@set -eu; for package in $(PACKAGES); do \
+		test -d "$(DOTFILES_DIR)/$$package" || { echo "Package '$$package' not found" >&2; exit 1; }; \
 		echo "Uninstalling $$package..."; \
-		$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" -D "$$package" 2>/dev/null || true; \
+		$(STOW) -v -d "$(DOTFILES_DIR)" -t "$(HOME)" -D "$$package"; \
 	done
 	@echo "Uninstallation complete!"
 
+status: plan
+
+doctor: check-stow check-profile
+	@set -eu; for package in $(PACKAGES); do \
+		test -d "$(DOTFILES_DIR)/$$package" || { echo "Missing package: $$package" >&2; exit 1; }; \
+	done
+	@echo "Profile '$(PROFILE)' is valid. Run 'make plan PROFILE=$(PROFILE)' to check its Stow links."
+
 list:
 	@echo "Available packages:"
-	@find "$(DOTFILES_DIR)" -maxdepth 1 -type d ! -name '.*' ! -path "$(DOTFILES_DIR)" -printf '%f\n' | sort
+	@for path in "$(DOTFILES_DIR)"/*; do \
+		[ -d "$$path" ] || continue; \
+		name="$${path##*/}"; \
+		case "$$name" in packages|profiles) continue ;; esac; \
+		echo "$$name"; \
+	done | sort
+
+list-profiles:
+	@for profile in "$(DOTFILES_DIR)"/profiles/*.mk; do \
+		[ -f "$$profile" ] || continue; \
+		name="$${profile##*/}"; echo "$${name%.mk}"; \
+	done | sort
 
 check-stow:
 	@command -v $(STOW) >/dev/null 2>&1 || { \
@@ -96,6 +102,16 @@ check-stow:
 		echo "  Ubuntu/Debian: sudo apt install stow"; \
 		echo "  Arch Linux: sudo pacman -S stow"; \
 		echo "  macOS: brew install stow"; \
+		exit 1; \
+	}
+
+check-profile:
+	@test -f "$(PROFILE_FILE)" || { \
+		echo "Unknown profile '$(PROFILE)'. Run 'make list-profiles'." >&2; \
+		exit 1; \
+	}
+	@test -n "$(strip $(PACKAGES))" || { \
+		echo "Profile '$(PROFILE)' has no packages." >&2; \
 		exit 1; \
 	}
 

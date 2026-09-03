@@ -1,17 +1,30 @@
 # dotfiles
-Personal __dotfiles__ for Linux systems with Arch.
+
+Personal configuration deployed with [GNU Stow](https://www.gnu.org/software/stow/).
 
 ## Installing
 
-This dotfiles repository uses [GNU Stow](https://www.gnu.org/software/stow/):
+Each machine is declared by one explicit profile manifest in `profiles/`. A
+profile is an allowlist: only its listed packages are linked into the home
+directory. Package variants such as `git-work` are selected by the profile;
+there is no hostname-based package replacement.
 
 ```sh
-$ git clone https://github.com/davafons/dotfiles
+$ jj git clone https://github.com/davafons/dotfiles
 $ cd dotfiles
-$ make install <package>  # e.g., stow git bash nvim
+$ make list-profiles
+$ make plan PROFILE=mb
+$ make install PROFILE=mb
 ```
 
-### Hostname resolution
+`make` defaults `PROFILE` to the current hostname for compatibility. Specify
+`PROFILE` explicitly on a new machine.
 
-You can suffix a package with `-$(hostname)`, and it will be preferred over the global package if
-installing in a device with the same hostname.
+Useful commands:
+
+```sh
+make doctor PROFILE=mb
+make status PROFILE=mb
+make install PROFILE=work
+make install PACKAGES="shell git jj" PROFILE=mb
+```
