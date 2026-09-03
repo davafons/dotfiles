@@ -1,0 +1,4 @@
+interface:
+  display_name: "Notes"
+  short_description: "Find and maintain Obsidian notes"
+  default_prompt: "Use $notes to find and update my Obsidian notes."

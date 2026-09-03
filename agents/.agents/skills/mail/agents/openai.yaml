@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mail"
+  short_description: "Read, organize, and draft email"
+  default_prompt: "Use $mail to help me with my email."

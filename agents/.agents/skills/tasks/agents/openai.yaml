@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tasks"
+  short_description: "Capture and organize actionable work"
+  default_prompt: "Use $tasks to help me organize my tasks."
