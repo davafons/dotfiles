@@ -1,23 +1,24 @@
-# Shared desktop: background by default
+# Shared desktop
 
 The user may be typing in another app at any time. This applies to every project
 and delegated agent, not only browser tests.
 
-- Prefer APIs, CLIs and verified background interactions. Do not activate apps,
-  bring windows or tabs forward, switch workspaces, or send system-wide mouse or
-  keyboard input without explicit foreground permission for that run.
-- Starting or reconnecting an automation tool can take focus too. Do not rely on
-  restoring focus afterward; the user's keystrokes can land in the wrong window.
-- Permission to implement, test, keep working, or work overnight is not permission
-  to use the foreground. Do not set foreground opt-ins permanently or bypass a
-  tool's foreground guard.
+- Prefer APIs, CLIs and verified background interactions.
+- Browser work through the configured `browser` skill is pre-authorized to
+  attach, create or select tabs, and activate its visible browser. Stay inside
+  the wrapper-owned session and tab group; never use David's tabs or system-wide
+  mouse and keyboard input.
+- For other native GUI automation, do not activate apps, switch workspaces, or
+  send system-wide input without explicit permission for that run. Starting or
+  reconnecting a native automation tool can take focus too; do not rely on
+  restoring it afterward.
 - Use AeroSpace workspace 10 for agent-owned test windows. Name new test windows
   `Agent Tests <task>` where supported. Leave regular user windows alone. Another
   workspace does not isolate keyboard input or make native GUI automation safe.
 - Preserve the user's clipboard. Do not play test audio without permission for
   audible testing. Use saved artifacts when showing progress does not need a window.
-- If an action cannot run without interference, pause that action and continue
-  safe work. Coordinate a foreground period only when needed, or use a separately
+- If native GUI work cannot run without interference, pause that action and
+  continue safe work. Coordinate access only when needed, or use a separately
   authorized desktop session or VM. Pass this restriction to delegated agents.
 
 # Version control: use jj, never git
@@ -53,26 +54,20 @@ command failed; ask instead.
 Read-only git plumbing is fine where jj has no equivalent (`git blame`, `gh` commands),
 but prefer the jj command whenever one exists.
 
-The **mutating** rows above (`describe`, `new`, `squash`, `rebase`, `bookmark`, `push`) are
-the right translation *when I have asked you to do that operation*. Unasked, they are off
-limits — see the next section.
+Use the mutating jj commands when they are needed to complete the requested work.
+Follow the branch workflow below.
 
-## The working copy is shared with other agents
+## Work on top of main
 
-Several agents work in the same checkout at the same time, on the same revset. **A dirty
-working copy full of someone else's changes is the normal, expected state** — it is not a
-problem to clean up and not a reason to stop.
-
-- **Do not restructure the revset.** No `jj split`, no `jj new`, no `jj rebase`, no
-  `jj squash`, no `jj abandon`, no moving bookmarks. Any of these yank the working copy out
-  from under whoever else is mid-edit.
-- **Do not `jj describe` the working copy** to claim your work: `@` holds everyone's
-  changes, so a message describing only yours mislabels theirs (this once swept ~2,100 lines
-  of unrelated work onto main).
-- **Just edit the files you were asked to edit and leave them.** Committing and organising
-  the revset is the human's job unless they explicitly ask you for it.
-- Read-only inspection is always fine: `jj st`, `jj log`, `jj diff --git`, `jj show`.
-- If you genuinely need work isolated, ask — do not isolate it yourself.
+- Always start feature branches or change stacks on top of `main` and keep them
+  rebased onto `main` as development continues.
+- Use mutating jj commands, including rebase, describe, new, squash, split, and
+  bookmark updates, when needed to complete the requested work. There is no blanket
+  prohibition on restructuring the working revset.
+- Preserve unrelated changes when other agents share a checkout. Coordinate edits
+  and inspect the current state before changing history; do not discard others' work.
+- Use an isolated checkout when it is useful for concurrent work or testing, not
+  as a mandatory substitute for updating the user's active checkout.
 
 ## Things that trip agents up
 

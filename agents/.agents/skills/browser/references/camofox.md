@@ -13,5 +13,4 @@ control and refresh the page snapshot before continuing.
 For ordinary navigation, use browser snapshots and element references. For
 web-app debugging, collect console and network evidence in the affected task
 tab and enable a session trace when available. Do not access cookies, profile
-files, or the Camofox API directly. Stop before irreversible production
-actions.
+files, or the Camofox API directly.

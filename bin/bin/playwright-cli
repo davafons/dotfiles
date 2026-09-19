@@ -3,14 +3,9 @@
 # CDP). Token + Brave path live in ~/.config/playwright-cli/env.
 set -euo pipefail
 
-allow_foreground=0
 activity_option=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --allow-foreground)
-      allow_foreground=1
-      shift
-      ;;
     --activity)
       if [[ $# -lt 2 ]]; then
         echo "playwright-cli: --activity requires a name" >&2
@@ -88,7 +83,9 @@ owned_session_name="$session_name"
 export DAVAFONS_BROWSER_GROUP_NAME="${controller_label} · ${activity_slug}"
 
 redact_output() {
-  sed -E 's/([?&]token=)[^&[:space:])]+/\1<redacted>/g'
+  sed -E \
+    -e 's/([?&]token=)[^&[:space:])]+/\1<redacted>/g' \
+    -e '/^Run commands with: playwright-cli -s=/d'
 }
 
 cli() {
@@ -107,12 +104,25 @@ run_cli() {
     2> >(redact_output >&2)
 }
 
-require_foreground() {
-  if [[ "$allow_foreground" != "1" ]]; then
-    echo "playwright-cli: '${command_name}' may take desktop focus; background mode refused it." >&2
-    echo "After explicit foreground permission, use: playwright-cli --allow-foreground <command> ..." >&2
-    exit 75
+verify_owned_session() {
+  local session_list tab_list
+  session_list="$(cli list --json | jq --arg name "$owned_session_name" '{browsers: [.browsers[]? | select(.name == $name)]}')"
+  if ! printf '%s\n' "$session_list" \
+    | jq -e --arg name "$owned_session_name" \
+      '.browsers[]? | select(.name == $name and .status == "open" and .browserType == "chrome" and .attached == true)' \
+      >/dev/null; then
+    echo "playwright-cli: attachment verification failed for '${owned_session_name}'" >&2
+    return 1
   fi
+
+  tab_list="$(cli "-s=${owned_session_name}" tab-list --raw)"
+  if [[ -z "$(printf '%s' "$tab_list" | tr -d '[:space:]')" ]]; then
+    echo "playwright-cli: attached session '${owned_session_name}' has no tabs" >&2
+    return 1
+  fi
+
+  echo "playwright-cli: verified Brave group '${owned_session_name}'"
+  printf '%s\n' "$tab_list" | redact_output
 }
 
 if [[ -z "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-}" ]]; then
@@ -228,16 +238,9 @@ done
 # This performs a read-only tab check and never closes browser tabs.
 if [[ "$attach_command" == "1" && "$extension_attach" == "1" && "$help_requested" == "0" ]]; then
   if cli list --json 2>/dev/null | jq -e --arg name "$session_name" \
-      '.browsers[]? | select(.name == $name and .status == "open" and .attached == true)' >/dev/null \
-      && existing_tabs="$(cli "-s=${session_name}" tab-list --raw 2>/dev/null)" \
-      && [[ -n "$existing_tabs" ]]; then
-    target_tabs="$(printf '%s\n' "$existing_tabs" | sed '/chrome-extension:\/\/mmlmfjhmonkocbjadbfplnigmagldckm\/connect\.html/d' | sed '/^[[:space:]]*$/d')"
-    if [[ -n "$target_tabs" ]]; then
-      echo "playwright-cli: reusing attached Brave group '${session_name}'"
-    else
-      echo "playwright-cli: reusing attached Brave group '${session_name}' (Welcome tab only)"
-      echo "playwright-cli: tab-new requires explicit foreground permission"
-    fi
+      '.browsers[]? | select(.name == $name and .status == "open" and .attached == true)' >/dev/null; then
+    echo "playwright-cli: reusing attached Brave group '${session_name}'"
+    verify_owned_session
     exit 0
   fi
 fi
@@ -252,7 +255,6 @@ if [[ "$help_requested" == "0" ]]; then
       echo "playwright-cli: launching another browser is disabled; use the attached Brave session" >&2
       exit 64
       ;;
-    attach|tab-new|tab-select|recording-start|show) require_foreground ;;
   esac
 fi
 
@@ -269,4 +271,8 @@ elif [[ "$explicit_session_name" == "1" ]]; then
   run_cli "${args[@]}"
 else
   run_cli "-s=${session_name}" "${args[@]}"
+fi
+
+if [[ "$attach_command" == "1" && "$help_requested" == "0" ]]; then
+  verify_owned_session
 fi

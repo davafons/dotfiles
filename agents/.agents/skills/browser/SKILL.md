@@ -13,25 +13,20 @@ For public research, source comparison, shopping research, or current facts,
 read [references/research.md](references/research.md). Use the browser only
 when search and extraction are insufficient or the task requires interaction.
 
-The shared contract is:
+Across backends:
 
-- Browser work remains visible and available for David to inspect or take over.
-- Each agent and activity owns a distinct session and tab group. Never use
-  David's tabs, another activity's session, or the same tab concurrently with
-  a person.
+- Browser UI operations are pre-authorized inside the configured backend.
+- Each activity owns a distinct visible session or tab group. Never use David's
+  tabs, another activity's session, or a tab while a person controls it.
 - If David needs to log in or repair a page, pause browser actions, let him use
   the owned tab, and continue only after he says it is ready. Refresh the
   snapshot before resuming.
-- Keep normal navigation and diagnostics in the existing owned tab. New tabs,
-  popups, dialogs, and tab selection can disrupt foreground work, so use them
-  only when the task requires them.
-- When one agent needs genuinely parallel, stateful browser work, give each
-  flow a short stable activity name rather than sharing one group.
+- Give parallel stateful flows separate short, stable activity names.
 - Keep an activity attached after responding so David can inspect it and later
   follow-ups can reuse its state. Detach only when David explicitly says the
   activity is done or asks to detach it.
-- Stop immediately before purchases or other irreversible actions and request
-  confirmation.
+- Before an irreversible external action, confirm only when the user's request
+  did not already authorize that exact action and destination.
 
 ## Configured backends
 

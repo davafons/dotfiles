@@ -10,7 +10,7 @@ import unittest
 WRAPPER = Path(__file__).parents[1] / "bin" / "playwright-cli"
 
 
-class BackgroundBrowser(unittest.TestCase):
+class OwnedBrowser(unittest.TestCase):
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory(prefix="playwright-focus-")
         self.addCleanup(self.scratch.cleanup)
@@ -25,13 +25,19 @@ args = sys.argv[3:]
 with open(os.environ["FOCUS_TEST_LOG"], "a") as log:
     log.write(json.dumps(["cli", *args]) + "\\n")
 mode = os.environ.get("FOCUS_TEST_SESSION", "missing")
+state = Path(os.environ["FOCUS_TEST_LOG"]).with_suffix(".attached")
+if state.exists():
+    mode = "open"
 if args == ["list", "--json"]:
-    print(json.dumps({"browsers": [] if mode == "missing" else [{"name": "focus-test", "status": "open", "attached": mode != "unattached"}]}))
+    print(json.dumps({"browsers": [] if mode == "missing" else [{"name": "focus-test", "status": "open", "browserType": "firefox" if mode == "wrong-browser" else "chrome", "attached": mode not in ("unattached", "failed-attach")}]}))
 elif "tab-list" in args:
     if mode == "missing":
         sys.exit(1)
-    print("0: chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html" if mode == "welcome" else "0: https://example.test/")
+    if mode != "empty":
+        print("0: chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html" if mode == "welcome" else "0: https://example.test/")
 else:
+    if "attach" in args and "--help" not in args and mode != "failed-attach":
+        state.touch()
     print("synthetic backend: " + " ".join(args))
 ''')
         backend.chmod(0o755)
@@ -57,11 +63,12 @@ print("60" if "list-windows" in sys.argv else "1")
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
         return result, calls
 
-    def test_fresh_attach_stops_before_handshake_or_focus_change(self):
+    def test_fresh_attach_is_pre_authorized_and_verified(self):
         result, calls = self.run_wrapper("attach", "--extension")
-        self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
-        self.assertIn("--allow-foreground", result.stderr)
-        self.assertFalse(any("attach" in call or call[0] == "aerospace" for call in calls))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(["cli", "attach", "--extension=chrome", "--session=focus-test"], calls)
+        self.assertIn("verified Brave group", result.stdout)
+        self.assertFalse(any(call[0] == "aerospace" for call in calls))
 
     def test_verified_attached_session_is_reused_without_focus(self):
         for session in ("open", "welcome"):
@@ -73,15 +80,16 @@ print("60" if "list-windows" in sys.argv else "1")
 
     def test_open_but_unattached_session_is_not_reused(self):
         result, calls = self.run_wrapper("attach", "--extension", session="unattached")
-        self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
-        self.assertFalse(any("attach" in call or call[0] == "aerospace" for call in calls))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(["cli", "attach", "--extension=chrome", "--session=focus-test"], calls)
+        self.assertNotIn("reusing attached", result.stdout)
 
-    def test_known_foreground_commands_are_opt_in(self):
+    def test_owned_tab_commands_are_pre_authorized(self):
         for command in ("tab-new", "tab-select", "recording-start", "show"):
             with self.subTest(command=command):
                 result, calls = self.run_wrapper(command, "1")
-                self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
-                self.assertFalse(calls)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(calls[-1], ["cli", "-s=focus-test", command, "1"])
 
     def test_open_is_prohibited_instead_of_launching_another_browser(self):
         result, calls = self.run_wrapper("open", "https://example.test/")
@@ -89,21 +97,43 @@ print("60" if "list-windows" in sys.argv else "1")
         self.assertIn("launching another browser is disabled", result.stderr)
         self.assertFalse(calls)
 
-    def test_opt_in_is_consumed_and_never_restores_stale_focus(self):
-        result, calls = self.run_wrapper("--allow-foreground", "attach", "--extension")
+    def test_explicit_owned_attach_is_verified(self):
+        result, calls = self.run_wrapper("-s=focus-test", "attach", "--extension")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn(["cli", "attach", "--extension=chrome", "--session=focus-test"], calls)
-        self.assertFalse(any("--allow-foreground" in call or call[0] == "aerospace" for call in calls))
+        self.assertIn(["cli", "-s=focus-test", "attach", "--extension=chrome"], calls)
+        self.assertIn("verified Brave group", result.stdout)
+        self.assertFalse(any(call[0] == "aerospace" for call in calls))
 
     def test_foreground_tab_selection_remains_available(self):
-        result, calls = self.run_wrapper("--allow-foreground", "tab-select", "2")
+        result, calls = self.run_wrapper("tab-select", "2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(calls, [["cli", "-s=focus-test", "tab-select", "2"]])
 
-    def test_explicit_session_option_does_not_bypass_guard(self):
-        result, calls = self.run_wrapper("-s=focus-test", "tab-select", "2")
-        self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
-        self.assertFalse(calls)
+    def test_other_controllers_cannot_be_selected(self):
+        for option in ("-s=other", "--session=other"):
+            with self.subTest(option=option):
+                result, calls = self.run_wrapper(option, "tab-select", "2")
+                self.assertEqual(result.returncode, 64, result.stdout + result.stderr)
+                self.assertIn("another controller", result.stderr)
+                self.assertFalse(calls)
+
+    def test_invalid_attachment_is_rejected(self):
+        for session in ("wrong-browser", "empty", "failed-attach"):
+            with self.subTest(session=session):
+                result, _ = self.run_wrapper("attach", "--extension", session=session)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_browser_closing_commands_remain_prohibited(self):
+        for command in ("close", "close-all", "kill-all", "tab-close"):
+            with self.subTest(command=command):
+                result, calls = self.run_wrapper(command)
+                self.assertEqual(result.returncode, 64, result.stdout + result.stderr)
+                self.assertFalse(calls)
+
+    def test_attach_help_does_not_verify_a_session(self):
+        result, calls = self.run_wrapper("attach", "--help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [["cli", "attach", "--help", "--session=focus-test"]])
 
     def test_background_reads_remain_available(self):
         result, calls = self.run_wrapper("snapshot")
