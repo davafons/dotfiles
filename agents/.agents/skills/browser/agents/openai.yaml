@@ -1,4 +1,4 @@
 interface:
   display_name: "Browser"
-  short_description: "Use the configured personal browser safely"
-  default_prompt: "Use $browser to navigate or debug a website safely."
+  short_description: "Research or use the configured browser safely"
+  default_prompt: "Use $browser to research, navigate, or debug a website safely."

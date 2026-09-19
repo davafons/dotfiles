@@ -1,6 +1,6 @@
 ---
 name: browser
-description: Navigate or debug websites through the configured visible browser backend. Use for logged-in browsing, web app investigation, and browser-console or network diagnostics.
+description: Research current public information or navigate and debug websites through the configured tools and visible browser backend.
 ---
 
 # Browser
@@ -8,6 +8,10 @@ description: Navigate or debug websites through the configured visible browser b
 Use only the backend configured for the current runtime. A missing backend is a
 connection problem, not permission to launch a hidden browser or substitute a
 different controller.
+
+For public research, source comparison, shopping research, or current facts,
+read [references/research.md](references/research.md). Use the browser only
+when search and extraction are insufficient or the task requires interaction.
 
 The shared contract is:
 
@@ -31,10 +35,15 @@ The shared contract is:
 
 ## Configured backends
 
-- `brave-extension` is the local backend. Read
-  [references/brave-extension.md](references/brave-extension.md) before using it.
-- `camofox` is Roxy's backend and is documented by Roxy's environment-specific
-  Browser skill.
+Resolve the backend before operating the browser. An explicit
+`DAVAFONS_BROWSER_BACKEND` wins; when it is unset, a Codex session identified
+by `CODEX_SESSION_ID` uses `brave-extension`:
+
+- For `brave-extension`, read
+  [references/brave-extension.md](references/brave-extension.md).
+- For `camofox`, read [references/camofox.md](references/camofox.md).
+- If neither an explicit supported value nor a Codex session identifies the
+  backend, stop and report that no supported backend is configured.
 
 Future backends such as Firefox must be configured explicitly. Never infer a
 backend from an installed application.
