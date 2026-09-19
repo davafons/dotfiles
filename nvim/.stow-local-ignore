@@ -1,0 +1,21 @@
+# Preserve Stow's default exclusions when adding package-specific rules.
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# Editor runtime files belong on the local machine.
+^/nvim\.log$
+^/\.ruby-lsp

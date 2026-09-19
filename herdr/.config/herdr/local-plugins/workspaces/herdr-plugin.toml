@@ -1,0 +1,118 @@
+id = "david.workspaces"
+name = "jj and Git Workspaces"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Create/open jj workspaces or Git worktrees and show each active checkout in the sidebar."
+platforms = ["macos", "linux"]
+
+[[startup]]
+command = ["python3", "workspaces.py", "sync"]
+
+# Startup hooks are one-shot; launchd supervises periodic read-only refreshes.
+[[startup]]
+platforms = ["macos"]
+command = ["python3", "workspaces.py", "install-refresh"]
+
+[[actions]]
+id = "create"
+title = "Create jj workspace / Git worktree"
+contexts = ["workspace", "pane"]
+command = ["python3", "workspaces.py", "create"]
+
+[[actions]]
+id = "open"
+title = "Open jj workspace / Git worktree"
+contexts = ["workspace", "pane"]
+command = ["python3", "workspaces.py", "open"]
+
+[[actions]]
+id = "refresh"
+title = "Refresh checkout sidebar"
+contexts = ["global"]
+command = ["python3", "workspaces.py", "sync"]
+
+[[actions]]
+id = "install-refresh"
+title = "Install automatic checkout refresh (this session)"
+platforms = ["macos"]
+contexts = ["global"]
+command = ["python3", "workspaces.py", "install-refresh"]
+
+[[actions]]
+id = "uninstall-refresh"
+title = "Remove automatic checkout refresh (this session)"
+platforms = ["macos"]
+contexts = ["global"]
+command = ["python3", "workspaces.py", "uninstall-refresh"]
+
+[[panes]]
+id = "create"
+title = "Create checkout"
+placement = "popup"
+width = "85%"
+height = 16
+command = ["python3", "workspaces.py", "ui-create"]
+
+[[panes]]
+id = "open"
+title = "Open checkout"
+placement = "popup"
+width = "85%"
+height = "70%"
+command = ["python3", "workspaces.py", "ui-open"]
+
+[[events]]
+on = "workspace.created"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "workspace.focused"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "worktree.created"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "worktree.opened"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "worktree.removed"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "tab.focused"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "tab.closed"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.created"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.closed"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.focused"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.moved"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.exited"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["python3", "workspaces.py", "sync"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "workspaces.py", "sync"]

@@ -1,0 +1,75 @@
+id = "sidebar-numbers"
+name = "Sidebar Numbers"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Show shortcut positions in the sidebar and agent numbers in tab labels."
+platforms = ["macos", "linux"]
+
+[[startup]]
+command = ["python3", "sync.py"]
+
+[[actions]]
+id = "sync"
+title = "Refresh sidebar numbers"
+contexts = ["global"]
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "workspace.created"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "workspace.closed"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "workspace.moved"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "workspace.reordered"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "workspace.focused"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "tab.created"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "tab.closed"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "tab.moved"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "tab.renamed"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.created"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.closed"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.moved"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.exited"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["python3", "sync.py"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "sync.py"]

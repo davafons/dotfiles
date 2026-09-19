@@ -1,0 +1,33 @@
+id = "david.nvim-navigation"
+name = "Neovim Navigation"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Vim/Neovim-aware Herdr pane navigation actions"
+platforms = ["linux", "macos"]
+
+[[build]]
+command = ["cargo", "build", "--release"]
+
+[[actions]]
+id = "left"
+title = "Navigate left"
+contexts = ["pane"]
+command = ["bin/herdr-navigator", "left", "ctrl+h"]
+
+[[actions]]
+id = "down"
+title = "Navigate down"
+contexts = ["pane"]
+command = ["bin/herdr-navigator", "down", "ctrl+j"]
+
+[[actions]]
+id = "up"
+title = "Navigate up"
+contexts = ["pane"]
+command = ["bin/herdr-navigator", "up", "ctrl+k"]
+
+[[actions]]
+id = "right"
+title = "Navigate right"
+contexts = ["pane"]
+command = ["bin/herdr-navigator", "right", "ctrl+l"]

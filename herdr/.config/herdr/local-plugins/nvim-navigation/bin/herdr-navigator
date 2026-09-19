@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+plugin_root="${HERDR_PLUGIN_ROOT:-$(unset CDPATH; cd "$(dirname "$0")/.." && pwd)}"
+binary="$plugin_root/target/release/herdr-navigator"
+
+if [ ! -x "$binary" ]; then
+  printf 'herdr-navigator binary is missing; run cargo build --release in %s\n' "$plugin_root" >&2
+  exit 127
+fi
+
+exec "$binary" "$@"

@@ -13,3 +13,8 @@ jj-GTXP9KXYTQ/.config/jj/conf.d/*.toml
 jj/.config/jj/repos/
 
 obsidian/
+
+# Local build output and editor logs
+herdr/.config/herdr/local-plugins/*/target/
+nvim/nvim.log
+nvim/.ruby-lsp/

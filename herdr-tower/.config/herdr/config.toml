@@ -1,0 +1,45 @@
+[theme]
+name = "terminal"
+
+[theme.custom]
+panel_bg = "black"
+
+[terminal]
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+a"
+remote_image_paste = ""
+reload_config = "prefix+q"
+help = "prefix+?"
+detach = "prefix+d"
+copy_mode = "prefix+["
+split_horizontal = "prefix+minus"
+split_vertical = "prefix+v"
+close_pane = "prefix+x"
+zoom = "prefix+z"
+last_pane = "prefix+;"
+resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
+rename_pane = "prefix+shift+o"
+new_tab = "prefix+c"
+rename_tab = "prefix+r"
+close_tab = "prefix+k"
+switch_tab = "prefix+1..9"
+previous_tab = "prefix+p"
+next_tab = "prefix+n"
+new_workspace = "prefix+shift+c"
+rename_workspace = "prefix+shift+r"
+close_workspace = "prefix+shift+k"
+previous_workspace = "prefix+shift+p"
+next_workspace = "prefix+shift+n"
+
+[ui]
+accent = "blue"
+pane_gaps = false
+pane_outer_borders = false
+pane_scrollbars = false
+confirm_close = false
+prompt_new_tab_name = false
+mouse_capture = true
+tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
+window_title = "{hostname}: {workspace}"

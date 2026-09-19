@@ -1,0 +1,90 @@
+onboarding = false
+
+[keys]
+prefix = "ctrl+a"
+remote_image_paste = ""
+switch_workspace = "prefix+shift+1..9"
+previous_workspace = "prefix+shift+p"
+next_workspace = "prefix+shift+n"
+new_workspace = "prefix+shift+c"
+rename_pane = "prefix+comma"
+cycle_pane_previous = "prefix+shift+tab"
+cycle_pane_next = "prefix+tab"
+previous_agent = "prefix+ctrl+p"
+next_agent = "prefix+ctrl+n"
+focus_agent = "prefix+ctrl+1..9"
+switch_tab = "prefix+1..9"
+# Route checkout creation through jj detection instead of the Git-only default.
+new_worktree = ""
+
+[[keys.command]]
+key = "prefix+g"
+type = "plugin_action"
+command = "david.workspaces.create"
+description = "create a jj workspace or Git worktree from main"
+
+[[keys.command]]
+key = "prefix+shift+g"
+type = "plugin_action"
+command = "david.workspaces.open"
+description = "open a jj workspace or Git worktree"
+
+[[keys.command]]
+key = "prefix+shift+u"
+type = "plugin_action"
+command = "david.workspaces.refresh"
+description = "refresh active checkout status"
+
+[[keys.command]]
+key = "prefix+t"
+type = "plugin_action"
+command = "herdr-navigator.open"
+description = "find a workspace, agent, or project"
+
+[[keys.command]]
+key = "ctrl+h"
+type = "plugin_action"
+command = "david.nvim-navigation.left"
+description = "navigate left through Neovim and Herdr"
+
+[[keys.command]]
+key = "ctrl+j"
+type = "plugin_action"
+command = "david.nvim-navigation.down"
+description = "navigate down through Neovim and Herdr"
+
+[[keys.command]]
+key = "ctrl+k"
+type = "plugin_action"
+command = "david.nvim-navigation.up"
+description = "navigate up through Neovim and Herdr"
+
+[[keys.command]]
+key = "ctrl+l"
+type = "plugin_action"
+command = "david.nvim-navigation.right"
+description = "navigate right through Neovim and Herdr"
+
+[theme]
+name = "terminal"
+auto_switch = false
+
+# Keep blue text while giving the active workspace and agent a distinct highlight.
+[theme.custom]
+panel_bg = "#082b34"
+active_row_bg = "#164650"
+selection_bg = "#0d303a"
+surface1 = "#0d303a"
+
+[ui]
+sidebar_width = 36
+prompt_new_tab_name = false
+agent_panel_sort = "spaces"
+status_indicators = "symbols"
+
+[ui.sidebar.spaces]
+# The active tab/pane determines checkout context, not the workspace label.
+rows = [["$shortcut_number", "state_icon", "workspace"], ["$checkout"], ["$revision", "$vcs_status"], ["$change_description"]]
+
+[ui.sidebar.agents]
+rows = [["$shortcut_number", "state_icon", "workspace"], ["$checkout", "$revision"], ["terminal_title_stripped", "$summary"]]
