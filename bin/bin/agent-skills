@@ -162,10 +162,22 @@ case "$command_name" in
     link_facades
     for provider in "${providers[@]}"; do sync_provider "$provider"; done
     ;;
+  sync-providers)
+    shift
+    selected=("$@")
+    if [[ ${#selected[@]} -eq 0 ]]; then selected=("${providers[@]}"); fi
+    for provider in "${selected[@]}"; do
+      case " ${providers[*]} " in
+        *" ${provider} "*) ;;
+        *) echo "agent-skills: unknown provider: $provider" >&2; exit 64 ;;
+      esac
+      sync_provider "$provider"
+    done
+    ;;
   check) check ;;
   status) status ;;
   *)
-    echo "usage: agent-skills {link|sync|check|status}" >&2
+    echo "usage: agent-skills {link|sync|sync-providers [name...]|check|status}" >&2
     exit 64
     ;;
 esac
