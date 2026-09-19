@@ -5,7 +5,11 @@ description: "Manage David's email, contacts, and drafts through HEY. Use for ma
 
 # Mail
 
-Use the installed `hey` CLI as the internal mail adapter.
+Before using the HEY CLI, read its internal adapter manual. Use
+`$PERSONAL_SKILLS_ADAPTER_DIR/hey/SKILL.md` when that variable is set;
+otherwise use `~/.agents/skills/hey/SKILL.md`. The provider skill is
+intentionally hidden from normal skill discovery; do not copy its manual into
+this facade.
 
 - Read, search, organize, and draft mail when requested.
 - Prefer drafts for new messages and replies unless David explicitly asks to send.

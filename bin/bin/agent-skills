@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# Keep provider-owned skills outside the dotfiles tree. Facade skills remain
+# versioned under dotfiles/agents; HEY, Fizzy, and WariWari own their manuals.
+set -euo pipefail
+
+command_name="${1:-status}"
+providers=(hey fizzy wariwari)
+facades=(browser calendar mail notes plan tasks)
+real_home="${HOME}"
+skill_root="${real_home}/.agents/skills"
+script_path="$(realpath "${BASH_SOURCE[0]}")"
+dotfiles_root="$(cd "$(dirname "$script_path")/../.." && pwd)"
+
+provider_version() {
+  "$1" --version 2>/dev/null | head -n 1
+}
+
+status() {
+  for provider in "${providers[@]}"; do
+    if command -v "$provider" >/dev/null 2>&1; then
+      printf '%-10s %s (%s)\n' "$provider" "$(provider_version "$provider")" "$(command -v "$provider")"
+    else
+      printf '%-10s missing\n' "$provider"
+    fi
+  done
+}
+
+link_facade() {
+  local facade="$1" source destination item relative expected
+  source="${dotfiles_root}/agents/.agents/skills/${facade}"
+  destination="${skill_root}/${facade}"
+
+  [[ -f "${source}/SKILL.md" ]] || {
+    echo "agent-skills: missing facade source: ${source}/SKILL.md" >&2
+    return 1
+  }
+  mkdir -p "$skill_root"
+
+  if [[ -L "$destination" ]]; then
+    if [[ "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
+      return
+    fi
+    echo "agent-skills: refusing to replace unrelated link: $destination" >&2
+    return 1
+  fi
+
+  if [[ -e "$destination" ]]; then
+    [[ -d "$destination" ]] || {
+      echo "agent-skills: refusing to replace non-directory: $destination" >&2
+      return 1
+    }
+    while IFS= read -r item; do
+      if [[ ! -L "$item" ]]; then
+        echo "agent-skills: refusing to replace unmanaged facade content: $item" >&2
+        return 1
+      fi
+      relative="${item#"$destination"/}"
+      expected="${source}/${relative}"
+      if [[ "$(realpath "$item")" != "$(realpath "$expected")" ]]; then
+        echo "agent-skills: refusing to replace unrelated facade link: $item" >&2
+        return 1
+      fi
+    done < <(find "$destination" -mindepth 1 ! -type d)
+    rm -r -- "$destination"
+  fi
+
+  ln -s "$source" "$destination"
+  echo "agent-skills: linked facade $facade"
+}
+
+link_facades() {
+  local facade
+  for facade in "${facades[@]}"; do link_facade "$facade"; done
+}
+
+sync_provider() (
+  local provider="$1" scratch source destination replacement previous
+  command -v "$provider" >/dev/null 2>&1 || {
+    echo "agent-skills: '$provider' is not installed" >&2
+    return 1
+  }
+
+  scratch="$(mktemp -d "${TMPDIR:-/tmp}/agent-skills.${provider}.XXXXXX")"
+  trap 'rm -rf "$scratch"' EXIT
+  if ! HOME="$scratch" "$provider" skill install >/dev/null 2>"$scratch/install.err"; then
+    cat "$scratch/install.err" >&2
+    return 1
+  fi
+  source="${scratch}/.agents/skills/${provider}"
+  destination="${skill_root}/${provider}"
+  replacement="${skill_root}/.${provider}.new.$$"
+  previous="${skill_root}/.${provider}.old.$$"
+
+  if [[ ! -f "${source}/SKILL.md" ]]; then
+    echo "agent-skills: '$provider skill install' did not produce ${source}/SKILL.md" >&2
+    return 1
+  fi
+
+  mkdir -p "$skill_root"
+  rm -rf "$replacement" "$previous"
+  cp -R "$source" "$replacement"
+  if [[ "$provider" == "hey" || "$provider" == "fizzy" ]]; then
+    # Provider manuals remain explicitly available to facade skills without
+    # competing with those facades for ordinary user requests.
+    mkdir -p "$replacement/agents"
+    printf 'policy:\n  allow_implicit_invocation: false\n' > "$replacement/agents/openai.yaml"
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    mv "$destination" "$previous"
+  fi
+  mv "$replacement" "$destination"
+  rm -rf "$previous"
+  echo "agent-skills: refreshed $provider"
+)
+
+check() {
+  local failed=0 provider facade skill legacy resolved expected
+  for facade in "${facades[@]}"; do
+    skill="${skill_root}/${facade}"
+    expected="${dotfiles_root}/agents/.agents/skills/${facade}"
+    if [[ ! -L "$skill" ]]; then
+      echo "agent-skills: facade must be a directory symlink: $skill (run make install)" >&2
+      failed=1
+    elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
+      echo "agent-skills: facade points to the wrong source: $skill" >&2
+      failed=1
+    fi
+  done
+  for provider in "${providers[@]}"; do
+    skill="${skill_root}/${provider}/SKILL.md"
+    legacy="${real_home}/.codex/skills/${provider}/SKILL.md"
+    if ! command -v "$provider" >/dev/null 2>&1; then
+      echo "agent-skills: missing CLI: $provider" >&2
+      failed=1
+    elif [[ ! -f "$skill" ]]; then
+      echo "agent-skills: missing provider skill: $skill (run make skills-sync)" >&2
+      failed=1
+    else
+      resolved="$(realpath "$skill")"
+      if [[ "$resolved" == "${dotfiles_root}/"* ]]; then
+        echo "agent-skills: provider skill is accidentally stored in dotfiles: $provider" >&2
+        failed=1
+      fi
+      if [[ "$provider" == "hey" || "$provider" == "fizzy" ]]; then
+        if ! grep -q 'allow_implicit_invocation: false' "${skill_root}/${provider}/agents/openai.yaml" 2>/dev/null; then
+          echo "agent-skills: provider adapter must be explicit-only: $provider" >&2
+          failed=1
+        fi
+      fi
+    fi
+    if [[ -f "$legacy" ]]; then
+      echo "agent-skills: duplicate legacy Codex skill: $legacy" >&2
+      failed=1
+    fi
+  done
+  return "$failed"
+}
+
+case "$command_name" in
+  link) link_facades ;;
+  sync)
+    link_facades
+    for provider in "${providers[@]}"; do sync_provider "$provider"; done
+    ;;
+  check) check ;;
+  status) status ;;
+  *)
+    echo "usage: agent-skills {link|sync|check|status}" >&2
+    exit 64
+    ;;
+esac

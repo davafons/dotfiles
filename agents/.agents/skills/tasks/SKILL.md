@@ -12,7 +12,14 @@ Tasks are tracked in Fizzy. Treat Fizzy as the source of truth for what needs do
 - Put continuing areas such as study or photography in `Ongoing`.
 - Use `Next`, `Today`, `Doing`, and `Done` as workflow states. Keep `Today` small and intentional.
 
-Use the installed `fizzy` CLI as the internal adapter. Resolve the target board before a write and make changes only when the user has clearly requested them.
+Before using the Fizzy CLI, read its internal adapter manual. Use
+`$PERSONAL_SKILLS_ADAPTER_DIR/fizzy/SKILL.md` when that variable is set;
+otherwise use `~/.agents/skills/fizzy/SKILL.md`. The provider skill is
+intentionally hidden from normal skill discovery; do not copy its manual into
+this facade. Resolve the target board and check for an existing matching card
+before a write. Read the card back afterward. If another agent changed the
+same card, refresh and reconcile once instead of blindly retrying. Different
+cards may be handled in parallel.
 
 Interpret natural capture requests by their commitment:
 
@@ -22,4 +29,6 @@ Interpret natural capture requests by their commitment:
 
 For a scheduled task, keep a concise `Planned:` line in the card description with the local date and time. The matching calendar event carries the Fizzy card reference. If the user later completes the task, close the card; do not remove its planning history.
 
-For a combined day plan, prioritization, or time-blocking request, use `plan`. Board migrations, tags, columns, exports, and other structural changes belong to the explicit `$fizzy` adapter skill.
+For a combined day plan, prioritization, or time-blocking request, use `plan`.
+For board migrations, tags, columns, exports, and other structural changes,
+stay within this facade and apply the Fizzy adapter's advanced instructions.
