@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brave Browser"
+  short_description: "Safely use David’s logged-in Brave profile"
+  default_prompt: "Use $brave-browser to navigate my Brave browser safely."

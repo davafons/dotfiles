@@ -1,9 +1,9 @@
 ---
-name: playwright-cli
-description: Drive the user's visible, logged-in Brave profile through an isolated Playwright CLI extension connection, independently opening requested pages while allowing other agents to control separate tab groups concurrently.
+name: brave-browser
+description: Navigate David's visible, logged-in Brave profile safely through the personal Playwright wrapper. Use for browser work that needs his existing cookies or logins.
 ---
 
-# Playwright CLI
+# Brave Browser
 
 Use this skill for browser work that needs the user's existing visible Brave
 profile, cookies, or logins. The Playwright CLI extension connection is the
