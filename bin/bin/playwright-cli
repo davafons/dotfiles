@@ -1,13 +1,31 @@
 #!/usr/bin/env bash
 # Drive the real Brave profile through the Playwright Extension (tab group, not
-# CDP on :9222). Token + Brave path live in ~/.config/playwright-cli/env.
+# CDP). Token + Brave path live in ~/.config/playwright-cli/env.
 set -euo pipefail
 
 allow_foreground=0
-if [[ "${1:-}" == "--allow-foreground" ]]; then
-  allow_foreground=1
-  shift
-fi
+activity_option=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --allow-foreground)
+      allow_foreground=1
+      shift
+      ;;
+    --activity)
+      if [[ $# -lt 2 ]]; then
+        echo "playwright-cli: --activity requires a name" >&2
+        exit 64
+      fi
+      activity_option="$2"
+      shift 2
+      ;;
+    --activity=*)
+      activity_option="${1#--activity=}"
+      shift
+      ;;
+    *) break ;;
+  esac
+done
 
 ENV_FILE="${HOME}/.config/playwright-cli/env"
 if [[ -f "$ENV_FILE" ]]; then
@@ -17,35 +35,70 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-: "${PLAYWRIGHT_MCP_EXECUTABLE_PATH:=/Applications/Brave Browser.app/Contents/MacOS/Brave Browser}"
-export PLAYWRIGHT_MCP_EXECUTABLE_PATH
+configured_brave_executable="${PLAYWRIGHT_MCP_EXECUTABLE_PATH:-/Applications/Brave Browser.app/Contents/MacOS/Brave Browser}"
+brave_launcher="${HOME}/bin/playwright-brave-launcher"
+export PLAYWRIGHT_BRAVE_EXECUTABLE="$configured_brave_executable"
+export PLAYWRIGHT_MCP_EXECUTABLE_PATH="$brave_launcher"
 
-CLI_PACKAGE="${PLAYWRIGHT_CLI_PACKAGE:-@playwright/cli@latest}"
+# Keep backend selection explicit. This wrapper deliberately implements only
+# the local Brave adapter; other backends must have their own guarded adapter.
+: "${DAVAFONS_BROWSER_BACKEND:=brave-extension}"
+if [[ "$DAVAFONS_BROWSER_BACKEND" != "brave-extension" ]]; then
+  echo "playwright-cli: backend '$DAVAFONS_BROWSER_BACKEND' is not supported by the Brave adapter" >&2
+  exit 64
+fi
+export DAVAFONS_BROWSER_BACKEND
 
-default_session_name() {
+CLI_PACKAGE="${PLAYWRIGHT_CLI_PACKAGE:-@playwright/cli@0.1.21}"
+CONTROL_DIR="${PLAYWRIGHT_CLI_CONTROL_DIR:-${HOME}/.local/state/playwright-cli/control}"
+mkdir -p "$CONTROL_DIR"
+
+set_controller_identity() {
   if [[ -n "${PLAYWRIGHT_CLI_SESSION:-}" ]]; then
-    printf '%s\n' "$PLAYWRIGHT_CLI_SESSION"
+    controller_suffix="${PLAYWRIGHT_CLI_SESSION//[^[:alnum:]_-]/-}"
+    controller_label="Agent ${controller_suffix:0:12}"
+    session_name="$controller_suffix"
     return
   fi
 
   if [[ -n "${CODEX_SESSION_ID:-}" ]]; then
-    session_suffix="${CODEX_SESSION_ID//[^[:alnum:]_-]/-}"
-    printf 'codex-%s\n' "$session_suffix"
+    controller_suffix="${CODEX_SESSION_ID//[^[:alnum:]_-]/-}"
+    controller_label="Codex ${controller_suffix:0:8}"
+    session_name="codex-${controller_suffix}"
     return
   fi
 
-  workspace_hash="$(printf '%s' "$PWD" | shasum -a 256 | cut -c1-12)"
-  printf 'workspace-%s\n' "$workspace_hash"
+  echo "playwright-cli: non-Codex controllers must set PLAYWRIGHT_CLI_SESSION" >&2
+  return 64
 }
 
-session_name="$(default_session_name)"
+activity_slug="${activity_option:-${PLAYWRIGHT_BROWSER_ACTIVITY:-main}}"
+if [[ ! "$activity_slug" =~ ^[a-z0-9][a-z0-9-]{0,39}$ ]]; then
+  echo "playwright-cli: activity must be a unique lowercase slug (1-40 letters, digits, or hyphens)" >&2
+  exit 64
+fi
+
+session_name=""
+controller_label=""
+set_controller_identity
+if [[ "$activity_slug" != "main" ]]; then
+  session_name="${session_name}--${activity_slug}"
+fi
+owned_session_name="$session_name"
+export DAVAFONS_BROWSER_GROUP_NAME="${controller_label} · ${activity_slug}"
 
 redact_output() {
   sed -E 's/([?&]token=)[^&[:space:])]+/\1<redacted>/g'
 }
 
 cli() {
-  npx --yes "$CLI_PACKAGE" "$@"
+  # Playwright includes the current workspace in its daemon identity. Run the
+  # control plane from one neutral directory so the same controller does not
+  # create a second tab group merely because a command came from another repo.
+  mkdir -p "$CONTROL_DIR/locks"
+  # Serialize only this controller/activity. Different agents and activities
+  # use different lock files and continue in parallel.
+  (cd "$CONTROL_DIR" && lockf -t 10 "$CONTROL_DIR/locks/${owned_session_name}.lock" npx --yes "$CLI_PACKAGE" "$@")
 }
 
 run_cli() {
@@ -69,8 +122,12 @@ if [[ -z "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-}" ]]; then
 fi
 
 if [[ "${1:-}" == "doctor" ]]; then
-  if [[ ! -x "$PLAYWRIGHT_MCP_EXECUTABLE_PATH" ]]; then
-    echo "playwright-cli: Brave executable is missing: $PLAYWRIGHT_MCP_EXECUTABLE_PATH" >&2
+  if [[ ! -x "$configured_brave_executable" ]]; then
+    echo "playwright-cli: Brave executable is missing: $configured_brave_executable" >&2
+    exit 1
+  fi
+  if [[ ! -x "$brave_launcher" ]]; then
+    echo "playwright-cli: managed Brave launcher is missing: $brave_launcher" >&2
     exit 1
   fi
 
@@ -87,11 +144,13 @@ if [[ "${1:-}" == "doctor" ]]; then
   fi
 
   echo "playwright-cli: Brave executable: ok"
+  echo "playwright-cli: group: ${DAVAFONS_BROWSER_GROUP_NAME}"
+  echo "playwright-cli: browser backend: ${DAVAFONS_BROWSER_BACKEND}"
   echo "playwright-cli: extension token: configured (redacted)"
   echo "playwright-cli: Playwright Extension: installed"
   echo "playwright-cli: CLI version: $(cli --version)"
   doctor_session="$session_name"
-  session_list="$(cli list --json)"
+  session_list="$(cli list --json | jq --arg name "$doctor_session" '{browsers: [.browsers[]? | select(.name == $name)]}')"
   printf '%s\n' "$session_list" | redact_output
   if printf '%s\n' "$session_list" \
     | jq -e --arg name "$doctor_session" \
@@ -145,6 +204,25 @@ if [[ "$command_name" == "attach" ]]; then
   attach_command=1
 fi
 
+if [[ "$explicit_session_name" == "1" && "$session_name" != "$owned_session_name" ]]; then
+  echo "playwright-cli: refusing another controller's session" >&2
+  exit 64
+fi
+
+if [[ "$attach_command" == "1" && "$extension_attach" != "1" && "$help_requested" == "0" ]]; then
+  echo "playwright-cli: only 'attach --extension' is supported" >&2
+  exit 64
+fi
+
+for a in "${args[@]}"; do
+  case "$a" in
+    --cdp|--cdp=*|--endpoint|--endpoint=*)
+      echo "playwright-cli: raw CDP and endpoint connections are disabled" >&2
+      exit 64
+      ;;
+  esac
+done
+
 # A new extension attach creates a visible handshake/Welcome tab. If the
 # configured session is already live, keep using it instead of reattaching.
 # This performs a read-only tab check and never closes browser tabs.
@@ -166,21 +244,29 @@ fi
 
 if [[ "$help_requested" == "0" ]]; then
   case "$command_name" in
-    attach|open|tab-new|tab-select|recording-start|show) require_foreground ;;
+    close|close-all|kill-all|tab-close)
+      echo "playwright-cli: browser-closing commands are disabled" >&2
+      exit 64
+      ;;
+    open)
+      echo "playwright-cli: launching another browser is disabled; use the attached Brave session" >&2
+      exit 64
+      ;;
+    attach|tab-new|tab-select|recording-start|show) require_foreground ;;
   esac
 fi
 
-case "$command_name" in
-  list|close-all|kill-all)
-    run_cli "${args[@]}"
-    ;;
-  *)
-    if [[ "$attach_command" == "1" && "$explicit_session_name" == "0" ]]; then
-      run_cli "${args[@]}" "--session=${session_name}"
-    elif [[ "$explicit_session_name" == "1" ]]; then
-      run_cli "${args[@]}"
-    else
-      run_cli "-s=${session_name}" "${args[@]}"
-    fi
-    ;;
-esac
+# `list` is required to verify an attachment, but the underlying global command
+# must not disclose other agents' session names or tabs.
+if [[ "$command_name" == "list" && "$help_requested" == "0" ]]; then
+  cli list --json | jq --arg name "$owned_session_name" '{browsers: [.browsers[]? | select(.name == $name)]}' | redact_output
+  exit 0
+fi
+
+if [[ "$attach_command" == "1" && "$explicit_session_name" == "0" ]]; then
+  run_cli "${args[@]}" "--session=${session_name}"
+elif [[ "$explicit_session_name" == "1" ]]; then
+  run_cli "${args[@]}"
+else
+  run_cli "-s=${session_name}" "${args[@]}"
+fi

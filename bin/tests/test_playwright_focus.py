@@ -50,7 +50,8 @@ print("60" if "list-windows" in sys.argv else "1")
         script = script.replace(assignment, 'ENV_FILE="${FOCUS_TEST_ENV_FILE}"')
         env = {**os.environ, "PATH": f"{self.root}:/opt/homebrew/bin:/usr/bin:/bin",
                "FOCUS_TEST_LOG": str(self.log), "FOCUS_TEST_ENV_FILE": str(self.env_file),
-               "FOCUS_TEST_SESSION": session, "PLAYWRIGHT_CLI_SESSION": "focus-test"}
+               "FOCUS_TEST_SESSION": session, "PLAYWRIGHT_CLI_SESSION": "focus-test",
+               "PLAYWRIGHT_CLI_CONTROL_DIR": str(self.root / "control")}
         result = subprocess.run(["/bin/bash", "-c", script, str(WRAPPER), *args], env=env,
                                 capture_output=True, text=True, timeout=10)
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -76,11 +77,17 @@ print("60" if "list-windows" in sys.argv else "1")
         self.assertFalse(any("attach" in call or call[0] == "aerospace" for call in calls))
 
     def test_known_foreground_commands_are_opt_in(self):
-        for command in ("open", "tab-new", "tab-select", "recording-start", "show"):
+        for command in ("tab-new", "tab-select", "recording-start", "show"):
             with self.subTest(command=command):
                 result, calls = self.run_wrapper(command, "1")
                 self.assertEqual(result.returncode, 75, result.stdout + result.stderr)
                 self.assertFalse(calls)
+
+    def test_open_is_prohibited_instead_of_launching_another_browser(self):
+        result, calls = self.run_wrapper("open", "https://example.test/")
+        self.assertEqual(result.returncode, 64, result.stdout + result.stderr)
+        self.assertIn("launching another browser is disabled", result.stderr)
+        self.assertFalse(calls)
 
     def test_opt_in_is_consumed_and_never_restores_stale_focus(self):
         result, calls = self.run_wrapper("--allow-foreground", "attach", "--extension")
@@ -102,6 +109,19 @@ print("60" if "list-windows" in sys.argv else "1")
         result, calls = self.run_wrapper("snapshot")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(calls, [["cli", "-s=focus-test", "snapshot"]])
+
+    def test_activity_gets_an_independent_session(self):
+        result, calls = self.run_wrapper("--activity=research", "snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [["cli", "-s=focus-test--research", "snapshot"]])
+
+    def test_activity_name_must_be_an_unambiguous_slug(self):
+        for activity in ("Research Notes", "research_notes", "-research", "x" * 41):
+            with self.subTest(activity=activity):
+                result, calls = self.run_wrapper(f"--activity={activity}", "snapshot")
+                self.assertEqual(result.returncode, 64, result.stdout + result.stderr)
+                self.assertIn("unique lowercase slug", result.stderr)
+                self.assertFalse(calls)
 
     def test_text_arguments_are_not_commands_or_permission(self):
         result, calls = self.run_wrapper("fill", "e2", "attach")

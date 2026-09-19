@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Internal launcher used by ~/bin/playwright-cli to give each extension tab
+# group a human-readable controller/activity label.
+set -euo pipefail
+
+: "${PLAYWRIGHT_BRAVE_EXECUTABLE:?missing PLAYWRIGHT_BRAVE_EXECUTABLE}"
+: "${DAVAFONS_BROWSER_GROUP_NAME:=playwright-cli}"
+
+rewritten_args=()
+for argument in "$@"; do
+  case "$argument" in
+    chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html*)
+      argument="$(node - "$argument" "$DAVAFONS_BROWSER_GROUP_NAME" <<'NODE'
+const url = new URL(process.argv[2]);
+const label = process.argv[3];
+let client = {};
+try {
+  client = JSON.parse(url.searchParams.get('client') || '{}');
+} catch {
+  // Preserve the rest of the connection URL even if an upstream client value
+  // is malformed; Playwright will report the connection error itself.
+}
+client.name = label;
+url.searchParams.set('client', JSON.stringify(client));
+process.stdout.write(url.toString());
+NODE
+)"
+      ;;
+  esac
+  rewritten_args+=("$argument")
+done
+
+exec "$PLAYWRIGHT_BRAVE_EXECUTABLE" "${rewritten_args[@]}"
