@@ -181,7 +181,7 @@ stt:
   model: whisper-1
 
 voice:
-  record_key: ctrl+b
+  record_key: super+shift+e
   max_recording_seconds: 120
   auto_tts: false
   silence_threshold: 200

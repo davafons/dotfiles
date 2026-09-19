@@ -72,3 +72,6 @@ exec jj git push "$@"
 backend = "gpg"
 behavior = "own"
 key = "09C635A88F755238"
+
+[ui]
+default-command = "log"

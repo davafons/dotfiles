@@ -1,3 +1,6 @@
+# Keep using Bash without macOS's zsh migration notice.
+export BASH_SILENCE_DEPRECATION_WARNING=1
+
 [[ -f ~/.bashrc ]] && . ~/.bashrc
 
 if command -v mise >/dev/null 2>&1; then

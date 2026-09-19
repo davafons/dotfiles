@@ -61,7 +61,6 @@ cmd-shift-alt-r = 'reload-config'
 cmd-shift-enter = 'exec-and-forget open -n -a "Ghostty"'
 cmd-b = 'exec-and-forget open -n -a "Google Chrome"'
 cmd-m = 'exec-and-forget open -n -a "Spotify"'
-cmd-shift-e = 'exec-and-forget ~/.config/aerospace/scripts/powermenu.sh'
 
 [workspace-to-monitor-force-assignment]
 1 = 'main'

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Keep using Bash without macOS's zsh migration notice.
+export BASH_SILENCE_DEPRECATION_WARNING=1
+
 # If not running interactively, don't do anything
 case $- in
 *i*) ;;
@@ -61,5 +64,3 @@ export PATH="$HOME/.grok/bin:$PATH"
 # <<< grok installer <<<
 . "$HOME/.cargo/env"
 
-# yuke dev watcher
-alias yukewatch='cd /Users/davafons/workspace/yuke && bin/yukewatch'

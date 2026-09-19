@@ -3,28 +3,18 @@ command = /bin/bash -l
 font-family = SauceCodePro Nerd Font Mono
 font-size = 14
 
-background = #002b36
-foreground = #839496
-cursor-color = #839496
+# https://github.com/jan-warchol/selenized
+theme = Selenized Dark
+# Darken reading and selection surfaces without changing the text palette.
+background = #082b34
+cursor-text = #082b34
+selection-background = #0d303a
 
-palette = 0=#073642
-palette = 1=#dc322f
-palette = 2=#859900
-palette = 3=#b58900
-palette = 4=#268bd2
-palette = 5=#d33682
-palette = 6=#2aa198
-palette = 7=#eee8d5
-palette = 8=#586e75
-palette = 9=#cb4b16
-palette = 10=#586e75
-palette = 11=#657b83
-palette = 12=#839496
-palette = 13=#6c71c4
-palette = 14=#93a1a1
-palette = 15=#fdf6e3
-
-background-opacity = 0.94
+# Keep reading contrast independent of the wallpaper.
+background-opacity = 1
 window-decoration = false
 window-padding-x = 5
 window-padding-y = 5
+
+# Preserve Shift+Enter as a modified Enter key for terminal applications.
+keybind = shift+enter=csi:13;2u

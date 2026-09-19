@@ -1,32 +1,36 @@
-general.import = ["~/.config/omarchy/current/theme/alacritty.toml"]
+# Selenized Dark: https://github.com/jan-warchol/selenized
 
 [colors.bright]
-black = "#586e75"
-blue = "#839496"
-cyan = "#93a1a1"
-green = "#586e75"
-magenta = "#6c71c4"
-red = "#cb4b16"
-white = "#fdf6e3"
-yellow = "#657b83"
+black = "#72898f"
+blue = "#58a3ff"
+cyan = "#53d6c7"
+green = "#84c747"
+magenta = "#ff84cd"
+red = "#ff665c"
+white = "#cad8d9"
+yellow = "#ebc13d"
 
 [colors.cursor]
-cursor = "#839496"
-text = "#002b36"
+cursor = "#adbcbc"
+text = "#082b34"
 
 [colors.normal]
-black = "#073642"
-blue = "#268bd2"
-cyan = "#2aa198"
-green = "#859900"
-magenta = "#d33682"
-red = "#dc322f"
-white = "#eee8d5"
-yellow = "#b58900"
+black = "#184956"
+blue = "#4695f7"
+cyan = "#41c7b9"
+green = "#75b938"
+magenta = "#f275be"
+red = "#fa5750"
+white = "#adbcbc"
+yellow = "#dbb32d"
 
 [colors.primary]
-background = "#002b36"
-foreground = "#839496"
+background = "#082b34"
+foreground = "#adbcbc"
+
+[colors.selection]
+background = "#0d303a"
+text = "#53d6c7"
 
 [env]
 TERM = "xterm-256color"
@@ -38,7 +42,7 @@ italic = { family = "iA Writer Mono S" }
 size = 12
 
 [window]
-opacity = 0.94
+opacity = 1
 
 [window.padding]
 x = 4
