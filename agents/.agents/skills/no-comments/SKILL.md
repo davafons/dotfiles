@@ -44,10 +44,13 @@ Reject, and say why:
 - A `MUST KILL` whose stated reason misreads the code.
 - A flag on code that is intentional and correct.
 - A deletion of a suppression without the exact exception that makes it safe.
+- Removal of a load-bearing constraint before it is encoded or disproved.
 
-Do not restore a comment just because a kill was aggressive. **If a kill is ambiguous, do not
-restore. If a keep is refuted or still ambiguous, delete it.** A `KEEP` survives only with
-proof it is about something we cannot change; check each one against category 2 yourself.
+Do not restore a comment just because a kill was aggressive. A `KEEP` must fit
+one of comment-sicko's five categories; check each one yourself. For category 2,
+require proof it is about something we cannot change. Retain an unencoded
+load-bearing constraint until verified; otherwise ambiguity is not a reason to
+restore a doomed comment.
 
 Before accepting a thin `IMPORTANT` or `do not remove` either way, read the surrounding code
 and the line's history (using the repository's version-control tool).
@@ -60,11 +63,11 @@ second and stop: report the scope as unswept rather than applying a report you d
 Apply the accepted line ranges yourself, in one pass, bottom-up per file so earlier ranges do
 not shift later ones. The agent never edits: this checkout is shared.
 
-Then run the narrowest suite that covers the touched files. A comment-only change cannot break
-behaviour, so a failure means a range was wrong (a deletion that ate a line of code, or a
-`rubocop:disable` that was load-bearing). Also run the project's house/style checks and the affected linter on any
-file where a suppression was removed. Retain a load-bearing constraint until it
-is encoded or disproved.
+Then run the narrowest suite that covers the touched files. Ordinary prose
+comments do not affect behaviour, but directives, pragmas, and generated-code
+annotations can. Verify those before deletion. Also run the project's
+house/style checks and the affected linter on any file where a suppression was
+removed. Retain a load-bearing constraint until it is encoded or disproved.
 
 ## 4. Fix what needed explaining
 

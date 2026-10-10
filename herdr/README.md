@@ -10,8 +10,10 @@ Press `Ctrl+a`, release it, then press the action key.
 | --- | --- |
 | `Ctrl+p` / `Ctrl+n` | Previous / next agent across workspaces |
 | `Ctrl+1` through `Ctrl+9`, then `Ctrl+0` | Jump to agent 1 through 10 |
+| `Ctrl+Alt+1` through `Ctrl+Alt+9`, then `Ctrl+Alt+0` | Jump to agent 11 through 20 |
 | `w` | Open workspace navigation |
 | `Shift+1` through `Shift+9`, then `Shift+0` | Jump to workspace 1 through 10 |
+| `Shift+Alt+1` through `Shift+Alt+9`, then `Shift+Alt+0` | Jump to workspace 11 through 20 |
 | `Shift+p` / `Shift+n` | Previous / next workspace |
 | `Shift+c` | Create a workspace |
 | `t` | Open the fuzzy navigator |
@@ -23,6 +25,7 @@ Press `Ctrl+a`, release it, then press the action key.
 | `h` / `j` / `k` / `l` | Focus the pane to the left / down / up / right |
 | `p` / `n` | Previous / next tab |
 | `1` through `9`, then `0` | Jump to tab 1 through 10 |
+| `Alt+1` through `Alt+9`, then `Alt+0` | Jump to tab 11 through 20 in this workspace |
 | `Shift+Tab` / `Tab` | Previous / next pane |
 | `,` | Rename the current pane |
 | `[` | Enter copy mode |
@@ -31,7 +34,28 @@ Press `Ctrl+a`, release it, then press the action key.
 The tenth workspace and agent sidebar entry shows `0`, matching its shortcut.
 Tab badges retain the ordinal `10` for compatibility with the local status-color
 patch. The local `sidebar-numbers` plugin supplies the three `0` bindings because
-Herdr's built-in indexed bindings only accept `1..9`.
+Herdr's built-in indexed bindings only accept `1..9`. It also supplies the second
+bank, mirroring the first with Alt added: `Ctrl+a → Alt+5` jumps to tab 15,
+`Ctrl+a → Ctrl+Alt+5` to agent 15, and `Ctrl+a → Shift+Alt+5` to workspace 15.
+The `0` key selects item 20 in each second bank. Sidebar numbers 11–20 remain
+ordinal numbers. Both banks follow the current resource order; tabs are scoped
+to the invoking workspace, and missing positions leave focus unchanged.
+
+Ctrl+Alt+digits require enhanced keyboard input (CSI-u/Kitty). Shift+Alt+6 also
+requires it because its legacy `ESC ^` sequence starts an ANSI privacy message.
+The workspace bindings include shifted-symbol aliases for other legacy inputs.
+
+Verify the shortcut plugin and actual key dispatch without touching user panes:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s herdr/.config/herdr/local-plugins/sidebar-numbers -p 'test_*.py' -v
+PYTHONDONTWRITEBYTECODE=1 python3 herdr/.config/herdr/local-plugins/sidebar-numbers/tests/check-shortcuts.py
+```
+
+The live check requires Herdr and tmux and uses a disposable named session with
+20 workspaces, 20 tabs in the first workspace, and 20 reported test agents in a
+detached terminal. It checks all 30 second-bank shortcuts with CSI-u, supported
+legacy Alt inputs, all three `0` shortcuts, and missing positions in each bank.
 
 Direct `Ctrl+h`, `Ctrl+j`, `Ctrl+k`, `Ctrl+l`, `Ctrl+p`, and `Ctrl+n` pass through
 to the application. Use `Ctrl+a`, then `h/j/k/l`, for Herdr pane navigation.

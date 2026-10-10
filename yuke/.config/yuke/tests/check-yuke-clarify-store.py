@@ -31,6 +31,7 @@ with tempfile.TemporaryDirectory(prefix="yuke-clarify-store-") as directory:
     assert sorted(code for _, code in results) == [0, 1], results
     claim = json.loads(next(output[0] for output, code in results if code == 0))
     assert run("list")[0]["status"] == "sending", "crashed sends must not be automatically retried"
+    assert run("add", {"site": "one:3:1", "session": "one", "question": question})["id"] == first["id"]
     rejected = subprocess.run(command("finish", {"id": first["id"], "token": "not-owner", "input_id": "input"}), capture_output=True)
     assert rejected.returncode == 1
     run("release", {"id": first["id"], "token": claim["token"], "error": "engine refused"})

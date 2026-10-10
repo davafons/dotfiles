@@ -27,7 +27,7 @@ def operate(path, action, args):
             question = args["question"]
             fingerprint = json.dumps(question, sort_keys=True, ensure_ascii=False)
             existing = db.execute(
-                "SELECT data FROM questions WHERE site=? OR (session=? AND fingerprint=? AND status='pending') LIMIT 1",
+                "SELECT data FROM questions WHERE site=? OR (session=? AND fingerprint=? AND status IN ('pending', 'sending')) LIMIT 1",
                 (args["site"], args["session"], fingerprint)).fetchone()
             if existing:
                 return json.loads(existing[0])

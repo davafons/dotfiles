@@ -67,6 +67,15 @@ workflows stay in davstack. A plan is a current resume snapshot, not a second
 permanent home or a diary. Promote durable facts, then retire the plan according
 to the project's conventions. Version control is the archive.
 
+## Writing agent instructions
+
+An unhelpful sentence in an agent-facing file becomes an instruction. Tell the
+agent to do the thing and skip the reason; explain only where the rule is
+confusing without one. Point at the structural source rather than copying a
+detail out of it. Link another skill by path instead of restating its rules.
+A line earns its keep by changing a decision. Validate metadata and local links
+mechanically rather than checking those by eye.
+
 ## Shared-desktop and external-state safety
 
 Follow the user's shared-desktop restrictions even when a playbook calls for a

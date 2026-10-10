@@ -92,6 +92,126 @@ title = "Jump to tab 10"
 contexts = ["pane"]
 command = ["python3", "focus.py", "tab", "10"]
 
+[[actions]]
+id = "tab-11"
+title = "Jump to tab 11"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "11"]
+
+[[actions]]
+id = "tab-12"
+title = "Jump to tab 12"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "12"]
+
+[[actions]]
+id = "tab-13"
+title = "Jump to tab 13"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "13"]
+
+[[actions]]
+id = "tab-14"
+title = "Jump to tab 14"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "14"]
+
+[[actions]]
+id = "tab-15"
+title = "Jump to tab 15"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "15"]
+
+[[actions]]
+id = "tab-16"
+title = "Jump to tab 16"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "16"]
+
+[[actions]]
+id = "tab-17"
+title = "Jump to tab 17"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "17"]
+
+[[actions]]
+id = "tab-18"
+title = "Jump to tab 18"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "18"]
+
+[[actions]]
+id = "tab-19"
+title = "Jump to tab 19"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "19"]
+
+[[actions]]
+id = "tab-20"
+title = "Jump to tab 20"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "20"]
+
+[[actions]]
+id = "workspace-11"
+title = "Jump to workspace 11"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "11"]
+
+[[actions]]
+id = "workspace-12"
+title = "Jump to workspace 12"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "12"]
+
+[[actions]]
+id = "workspace-13"
+title = "Jump to workspace 13"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "13"]
+
+[[actions]]
+id = "workspace-14"
+title = "Jump to workspace 14"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "14"]
+
+[[actions]]
+id = "workspace-15"
+title = "Jump to workspace 15"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "15"]
+
+[[actions]]
+id = "workspace-16"
+title = "Jump to workspace 16"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "16"]
+
+[[actions]]
+id = "workspace-17"
+title = "Jump to workspace 17"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "17"]
+
+[[actions]]
+id = "workspace-18"
+title = "Jump to workspace 18"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "18"]
+
+[[actions]]
+id = "workspace-19"
+title = "Jump to workspace 19"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "19"]
+
+[[actions]]
+id = "workspace-20"
+title = "Jump to workspace 20"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "20"]
+
 [[events]]
 on = "workspace.created"
 command = ["python3", "sync.py"]

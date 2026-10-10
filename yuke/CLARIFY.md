@@ -2,8 +2,22 @@
 
 A background clarification inbox for this Yuke profile. The model queues a
 question with `ask_question`; the tool returns immediately, without opening a
-popup or stealing focus. The focused chat shows `3 questions · ⇧←` in the status
-bar until its questions have been answered or explicitly declined.
+popup or stealing focus. Pending questions appear as a numbered, framed stack
+**above the chat prompt**, alongside `3 questions · ⇧←` in the status bar:
+
+```text
+╭─ Questions waiting for response · Shift+Left
+│  1) Deployment target — Where should this run?
+│  2) Project name — What should we call it?
+│  3) Storage — Which database should we use?
+╰─ Answer when ready; Esc leaves questions pending
+─────────────────────────────────────────────────
+› Your unsent draft
+```
+
+The stack preserves Yuke's queued-input and working-prompt rows. Long summaries
+are clipped with an ellipsis; large backlogs show a `+N more` row rather than
+crowding out the transcript. Open the inbox for the full questions.
 
 ## Open and answer
 
@@ -28,6 +42,14 @@ attachments, caret, and Vim mode.
 Recommendations are labels, not approvals. No answer is submitted just by opening
 the inbox. An accepted answer advances to the next question; the final answer
 closes the inbox. Clicking an option selects it; Enter still submits.
+
+The picker numbers both questions and response choices (`1)`, `2)`, `3)`). It
+sizes itself to the question, context, and response rows instead of taking a
+fixed percentage of the screen; free-text editors grow with their content. A
+small terminal caps the window and scrolls the choices or context as needed.
+Question headings, subdued context/descriptions, recommendation badges, and
+selected-row backgrounds use dedicated `Clarify*` highlight groups and the
+current theme's palette. Theme overrides remain possible.
 
 ## Model contract
 
@@ -113,7 +135,8 @@ questions, draft persistence, and private file modes. The TUI checks use a
 unique detached tmux window and temporary XDG directories: real keys, the real
 plugin and SQLite, but mocked engine answer delivery. They verify draft/caret
 preservation, choice and custom answers, navigation, retry, decline, restart,
-reload, transcript/insert/normal shortcuts, the slash fallback, and the empty
-inbox. Captures are saved to a temporary text artifact and sessions are cleaned
-up. No desktop app is activated, no desktop keys are sent, and the clipboard is
+reload, transcript/insert/normal shortcuts, the slash fallback, the empty
+inbox, numbered stacks above the prompt, coexistence with existing strip rows,
+content-fit window heights, context scrolling, and actual ANSI selection colors.
+Captures are saved to a temporary text artifact and sessions are cleaned up. No desktop app is activated, no desktop keys are sent, and the clipboard is
 not accessed.

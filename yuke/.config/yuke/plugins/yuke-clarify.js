@@ -1,7 +1,7 @@
 //! A quiet, persistent clarification inbox. Never borrows the chat composer.
-import { client, env, exec } from "yuke";
+import { client, env, events, exec } from "yuke";
 import { currentSession } from "yuke:session";
-import { Composer, List, Pager, Window } from "yuke:ui";
+import { clip, Composer, List, Pager, Window } from "yuke:ui";
 import { wrapRows } from "yuke:chat";
 /** @import { Plugin } from "yuke" */
 /** @import { Rect } from "yuke:ui" */
@@ -139,7 +139,12 @@ export const yukeClarify = /** @type {Plugin} */ ({
           site: `${toolCtx.sessionId}:${toolCtx.messageId}:${toolCtx.partId}`,
         }));
         await refresh();
-        return JSON.stringify({ id: entry.id, status: entry.status, message: "Queued, not answered. Continue independent work only. The user can answer with Shift+Left or /questions in this chat." });
+        const message = entry.status === "pending"
+          ? "Queued, not answered. Continue independent work only. The user can answer with Shift+Left or /questions in this chat."
+          : entry.status === "sending"
+            ? "An answer delivery is in progress or uncertain. Do not ask again or assume approval."
+            : "This tool call has already been resolved. Read the recorded answer or decline; do not queue it again.";
+        return JSON.stringify({ id: entry.id, status: entry.status, message, ...(entry.answer ? { answer: entry.answer } : {}) });
       },
     });
 
@@ -148,6 +153,19 @@ export const yukeClarify = /** @type {Plugin} */ ({
     });
 
     ctx.inject(["tui"], (c) => {
+      c.tui.style.set({
+        ClarifyTitle: { fg: "accent", bold: true },
+        ClarifyBorder: { fg: "accent" },
+        ClarifyQuestion: { fg: "strongFg", bold: true },
+        ClarifyContext: { link: "UIDim" },
+        ClarifyChoice: { fg: "fg" },
+        ClarifyRecommended: { fg: "warn", bold: true },
+        ClarifySelected: { fg: "surfaceFg", bg: "accentMuted", bold: true },
+        ClarifySelectedDetail: { fg: "surfaceFg", bg: "accentMuted" },
+        ClarifySelectedBadge: { fg: "warn", bg: "accentMuted", bold: true },
+        ClarifyWarning: { fg: "warn", bold: true },
+        ClarifyError: { fg: "danger", bold: true },
+      }, { default: true });
       repaint = () => c.tui.root.invalidate();
       c.own(() => { repaint = () => {}; });
       c.tui.status.add({ side: "left", order: 45, render: () => {
@@ -155,6 +173,27 @@ export const yukeClarify = /** @type {Plugin} */ ({
         const count = entries.filter((entry) => entry.session === currentSession()?.sessionId).length;
         return count ? `${count} question${count === 1 ? "" : "s"} · ⇧←` : "";
       } });
+      // chat.strip is a bail event: a plain listener would replace queued-input
+      // and working-prompt rows. Append to the existing answer instead.
+      c.advise(events, "bail", "around", (next, name, ...args) => {
+        const rows = next(name, ...args);
+        if (name !== "chat.strip") return rows;
+        const view = /** @type {import("yuke:chat").ChatView} */ (args[0]);
+        const waiting = entries.filter((item) => item.session === view.session.sessionId);
+        if (!waiting.length) return rows;
+        const limit = Math.max(1, Math.floor(view.rect.h / 3) - 2);
+        const shown = waiting.slice(0, limit);
+        const stack = [
+          { text: "╭─ Questions waiting for response · Shift+Left", group: "ClarifyTitle" },
+          ...shown.map((item, number) => ({
+            text: clip(`│  ${number + 1}) ${item.title} — ${item.question.replace(/\s+/gu, " ")}${item.status === "sending" ? " [delivery pending]" : ""}`, view.rect.w, true),
+            group: item.status === "sending" ? "ClarifyWarning" : "ClarifyQuestion",
+          })),
+          ...(waiting.length > shown.length ? [{ text: `│  +${waiting.length - shown.length} more · /questions`, group: "ClarifyContext" }] : []),
+          { text: "╰─ Answer when ready; Esc leaves questions pending", group: "ClarifyContext" },
+        ];
+        return [...(Array.isArray(rows) ? rows : []), ...stack];
+      });
       let opened = false;
 
       async function openInbox() {
@@ -186,11 +225,18 @@ export const yukeClarify = /** @type {Plugin} */ ({
         let headingRows = 0;
         const answer = new Composer({ placeholder: "Type your answer" });
         answer.maxRows = 5;
+        /** @type {List<Choice>} */
         const choices = new List({
           items: /** @type {Choice[]} */ ([]), itemHeight: 2,
-          format: (choice) => ({ lines: [
-            { text: choice.label + (choice.recommended ? " (recommended)" : "") },
-            { text: choice.description, group: "UIDim" },
+          group: "ClarifyChoice", selGroup: "ClarifySelected",
+          dimGroup: "ClarifyContext", dimSelGroup: "ClarifySelectedDetail",
+          format: (choice, number) => ({ lines: [
+            { text: `${number + 1}) ${choice.label}`, indent: 2,
+              marker: choices.selectedIndex() === number ? "›" : " ",
+              markerGroup: "ClarifyTitle", markerSelGroup: "ClarifySelected",
+              right: choice.recommended ? "recommended" : "",
+              rightGroup: "ClarifyRecommended", rightSelGroup: "ClarifySelectedBadge" },
+            { text: choice.description, indent: 5, group: "ClarifyContext", selGroup: "ClarifySelectedDetail" },
           ] }),
         });
         let editing = false;
@@ -226,6 +272,7 @@ export const yukeClarify = /** @type {Plugin} */ ({
           heading.toTop();
           answer.text = entry.draft.text;
           editing = entry.options.length === 0 || entry.draft.other;
+          choices.itemHeight = entry.options.some((choice) => choice.description) ? 2 : 1;
           choices.setItems([...entry.options, { label: "Other…", description: "Write a custom answer", recommended: false }]);
           choices.navEdge(-1);
           choices.navBy(Math.min(entry.draft.selected, entry.options.length));
@@ -283,29 +330,51 @@ export const yukeClarify = /** @type {Plugin} */ ({
           } finally { busy = false; repaint(); }
         }
 
+        /** @param {number} width */
+        function questionRows(width) {
+          const blocks = [
+            { text: `${index + 1}) ${entry.question}`, group: "ClarifyQuestion" },
+            { text: entry.context, group: "ClarifyContext" },
+            { text: notice, group: notice.startsWith("Could not") ? "ClarifyError" : "ClarifyWarning" },
+            { text: entry.status !== "pending" ? "Delivery in progress or uncertain. Automatic resend is disabled." : "", group: "ClarifyWarning" },
+            { text: confirmingDismiss ? "Decline this question? Enter confirms; Esc keeps it pending." : "", group: "ClarifyWarning" },
+          ].filter((block) => block.text);
+          return blocks.flatMap((block, number) => [
+            ...(number ? [{ text: "", group: "ClarifyContext" }] : []),
+            ...wrapRows(block.text, width, block.group, 0),
+          ]);
+        }
+        /** @param {number} width */
+        function responsesHeight(width) {
+          if (entry.status !== "pending" || confirmingDismiss) return 0;
+          return editing ? Math.max(1, answer.height(width)) : choices.items.length * choices.itemHeight;
+        }
         /** @type {WindowContent} */
         const content = {
           layout(rect) {
-            const value = [entry.question, entry.context, notice,
-              entry.status !== "pending" ? "Delivery in progress or uncertain. Automatic resend is disabled." : "",
-              confirmingDismiss ? "Decline this question? Enter confirms; Esc keeps it pending." : "",
-            ].filter(Boolean).join("\n\n");
+            const rows = questionRows(rect.w);
+            const value = JSON.stringify(rows);
             if (value !== headingText || rect.w !== headingWidth) {
-              const rows = wrapRows(value, rect.w, "Normal", 0);
               headingRows = rows.length;
+              if (!notice && !confirmingDismiss && entry.status === "pending") heading.stuck = false;
               heading.setRows(rows);
               if (notice || confirmingDismiss || entry.status !== "pending") heading.toBottom();
               headingText = value;
               headingWidth = rect.w;
             }
-            const headerHeight = Math.min(headingRows, Math.max(1, rect.h - 6));
+            const bodyHeight = responsesHeight(rect.w);
+            const gap = bodyHeight ? 1 : 0;
+            const headerHeight = Math.min(rect.h, headingRows, Math.max(1, rect.h - bodyHeight - gap));
             headingRect = { ...rect, h: headerHeight };
-            const rest = { ...rect, y: rect.y + headerHeight + 1, h: Math.max(0, rect.h - headerHeight - 1) };
+            const rest = { ...rect, y: rect.y + headerHeight + gap, h: Math.max(0, rect.h - headerHeight - gap) };
             if (editing) answer.layout(rest);
             else choiceRect = rest;
           },
           draw(focused) {
-            if (headingRect) heading.draw(headingRect);
+            if (headingRect) {
+              if (!notice && !confirmingDismiss && entry.status === "pending") heading.stuck = false;
+              heading.draw(headingRect);
+            }
             if (entry.status !== "pending" || confirmingDismiss) return;
             if (editing) answer.draw(focused);
             else if (choiceRect) choices.draw(choiceRect);
@@ -348,10 +417,23 @@ export const yukeClarify = /** @type {Plugin} */ ({
         };
         const win = new Window({
           name: "yuke-clarify", content, outsidePress: "ignore",
-          title: () => `${entry.title} · ${index + 1}/${pending.length}`,
-          footer: () => busy ? "delivering…" : "enter answer · tab next · pgup/dn context · ctrl+b choices · ctrl+d decline · esc later",
+          title: () => `${index + 1}) ${entry.title} · ${index + 1}/${pending.length}`,
+          titleGroup: "ClarifyTitle", borderGroup: "ClarifyBorder", footerGroup: "ClarifyContext",
+          footer: () => {
+            if (busy) return "delivering…";
+            if (confirmingDismiss) return "enter decline · esc keep pending";
+            if (entry.status !== "pending") return "tab next · pgup/dn context · esc close";
+            const scroll = headingRect && headingRows > headingRect.h ? "pgup/dn context · " : "";
+            if (headingRect && headingRect.w < 76) return (editing ? "enter send" : "enter answer") + " · esc later · tab next" + (scroll ? " · pgup/dn context" : "");
+            return scroll + (editing
+              ? `enter send · ⇧enter newline · tab next · ${entry.options.length ? "ctrl+b choices" : "ctrl+d decline"} · esc later`
+              : "↑↓ choose · enter answer · tab next · ctrl+d decline · esc later");
+          },
           width: (max) => Math.min(100, Math.max(1, Math.floor(max * 0.85))),
-          height: (max) => Math.max(1, Math.floor(max * 0.8)),
+          contentHeight: (max, width) => {
+            const body = responsesHeight(width);
+            return Math.min(max, questionRows(width).length + (body ? 1 : 0) + body);
+          },
         });
         load();
         const releaseDraft = c.own(() => { clearTimeout(saveTimer); return saveDraft(); });

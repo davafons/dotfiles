@@ -2,6 +2,7 @@ import importlib.util
 import os
 from pathlib import Path
 import unittest
+import tomllib
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("sidebar_focus", Path(__file__).with_name("focus.py"))
@@ -24,6 +25,55 @@ class FocusTests(unittest.TestCase):
     def test_zero_binding_targets_tenth_agent_not_first_or_last(self):
         focus.focus("agent", 10)
         self.assertEqual(self.api.call_args.args, ("pane.focus", {"pane_id": "w-agent:p10"}))
+
+    def test_second_bank_targets_every_position_from_eleven_to_twenty(self):
+        with patch.dict(os.environ, {"HERDR_WORKSPACE_ID": "w-caller"}):
+            for kind, target, id_prefix in (("agent", "pane", "w-agent:p"),
+                                             ("workspace", "workspace", "w"),
+                                             ("tab", "tab", "w-caller:t")):
+                for number in range(11, 21):
+                    with self.subTest(kind=kind, number=number):
+                        focus.focus(kind, number)
+                        self.assertEqual(self.api.call_args.args,
+                                         (target + ".focus", {target + "_id": f"{id_prefix}{number}"}))
+
+    def test_second_bank_config_and_manifest_agree(self):
+        root = Path(__file__).resolve().parent
+        config = tomllib.loads((root.parent.parent / "config.toml").read_text())
+        manifest = tomllib.loads((root / "herdr-plugin.toml").read_text())
+        actions = {action["id"]: action for action in manifest["actions"]}
+        commands = {}
+        for command in config["keys"]["command"]:
+            keys = command["key"] if isinstance(command["key"], list) else [command["key"]]
+            for key in keys:
+                self.assertNotIn(key, commands, "Duplicate shortcut")
+                commands[key] = command
+        for kind, modifiers, context in (("tab", "alt", "pane"),
+                                          ("agent", "ctrl+alt", "global"),
+                                          ("workspace", "shift+alt", "global")):
+            for number in range(11, 21):
+                with self.subTest(kind=kind, number=number):
+                    command = commands[f"prefix+{modifiers}+{number % 10}"]
+                    self.assertEqual(command["type"], "plugin_action")
+                    self.assertEqual(command["command"], f"sidebar-numbers.{kind}-{number}")
+                    action = actions[f"{kind}-{number}"]
+                    self.assertEqual(action["contexts"], [context])
+                    self.assertEqual(action["command"], ["python3", "focus.py", kind, str(number)])
+                    if kind == "workspace":
+                        symbol = ")!@#$%^&*("[number % 10]
+                        self.assertIs(commands[f"prefix+alt+{symbol}"], command)
+
+    def test_missing_second_bank_positions_do_not_focus_anything(self):
+        self.snapshot["agents"] = self.snapshot["agents"][:15]
+        self.snapshot["workspaces"] = self.snapshot["workspaces"][:15]
+        self.snapshot["tabs"] = [tab for tab in self.snapshot["tabs"] if tab["tab_id"] != "w-caller:t20"]
+        with patch.dict(os.environ, {"HERDR_WORKSPACE_ID": "w-caller"}):
+            for kind in ("agent", "workspace", "tab"):
+                with self.subTest(kind=kind):
+                    self.api.reset_mock()
+                    with self.assertRaisesRegex(RuntimeError, f"No {kind} at position 20"):
+                        focus.focus(kind, 20)
+                    self.assertEqual(self.api.call_count, 1)
 
     def test_tenth_workspace(self):
         focus.focus("workspace", 10)

@@ -1,7 +1,7 @@
 command = /bin/bash -l
 
-font-family = Iosevka Nerd Font Mono
-font-size = 14
+font-family = HackGen Console NF
+font-size = 15
 
 # https://github.com/jan-warchol/selenized
 theme = Selenized Dark

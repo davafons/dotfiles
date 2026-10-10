@@ -38,7 +38,8 @@ Use `/reload` after a plugin code change. Restart only after changing the stable
 ### Background clarification inbox (`yuke-clarify`)
 
 - The agent's `ask_question` tool queues a question without opening a popup or waiting for an answer.
-- Pending questions for the focused chat appear as `3 questions · ⇧←` in the left status bar.
+- Pending questions for the focused chat appear in a framed `1)`, `2)`, `3)` stack above the prompt, plus `3 questions · ⇧←` in the left status bar. Existing queued-input and working-prompt rows stay intact.
+- The picker also numbers its response choices and fits its height to the content. Question headings, recommendations, descriptions, and the selected option have theme-aware colors and highlights.
 - `Shift+Left` opens the inbox from composer insert/normal mode or transcript focus. `/questions` is the fallback.
 - Choose an option with arrows, `j`/`k`, or `Ctrl+N`/`Ctrl+P`; Enter submits. `Other…` opens a separate custom-answer editor. `Ctrl+B` returns to choices.
 - In the answer editor, `Shift+Enter` and `Ctrl+J` insert a newline.

@@ -55,66 +55,186 @@ type = "plugin_action"
 command = "sidebar-numbers.tab-10"
 description = "jump to tab 10"
 
-# Second agent bank: Alt+1..9 = 11..19, Alt+0 = 20.
+# Second bank mirrors the first: tabs use Alt, agents Ctrl+Alt, workspaces Shift+Alt.
 [[keys.command]]
 key = "prefix+alt+1"
+type = "plugin_action"
+command = "sidebar-numbers.tab-11"
+description = "jump to tab 11"
+
+[[keys.command]]
+key = "prefix+alt+2"
+type = "plugin_action"
+command = "sidebar-numbers.tab-12"
+description = "jump to tab 12"
+
+[[keys.command]]
+key = "prefix+alt+3"
+type = "plugin_action"
+command = "sidebar-numbers.tab-13"
+description = "jump to tab 13"
+
+[[keys.command]]
+key = "prefix+alt+4"
+type = "plugin_action"
+command = "sidebar-numbers.tab-14"
+description = "jump to tab 14"
+
+[[keys.command]]
+key = "prefix+alt+5"
+type = "plugin_action"
+command = "sidebar-numbers.tab-15"
+description = "jump to tab 15"
+
+[[keys.command]]
+key = "prefix+alt+6"
+type = "plugin_action"
+command = "sidebar-numbers.tab-16"
+description = "jump to tab 16"
+
+[[keys.command]]
+key = "prefix+alt+7"
+type = "plugin_action"
+command = "sidebar-numbers.tab-17"
+description = "jump to tab 17"
+
+[[keys.command]]
+key = "prefix+alt+8"
+type = "plugin_action"
+command = "sidebar-numbers.tab-18"
+description = "jump to tab 18"
+
+[[keys.command]]
+key = "prefix+alt+9"
+type = "plugin_action"
+command = "sidebar-numbers.tab-19"
+description = "jump to tab 19"
+
+[[keys.command]]
+key = "prefix+alt+0"
+type = "plugin_action"
+command = "sidebar-numbers.tab-20"
+description = "jump to tab 20"
+
+[[keys.command]]
+key = "prefix+ctrl+alt+1"
 type = "plugin_action"
 command = "sidebar-numbers.agent-11"
 description = "jump to agent 11"
 
 [[keys.command]]
-key = "prefix+alt+2"
+key = "prefix+ctrl+alt+2"
 type = "plugin_action"
 command = "sidebar-numbers.agent-12"
 description = "jump to agent 12"
 
 [[keys.command]]
-key = "prefix+alt+3"
+key = "prefix+ctrl+alt+3"
 type = "plugin_action"
 command = "sidebar-numbers.agent-13"
 description = "jump to agent 13"
 
 [[keys.command]]
-key = "prefix+alt+4"
+key = "prefix+ctrl+alt+4"
 type = "plugin_action"
 command = "sidebar-numbers.agent-14"
 description = "jump to agent 14"
 
 [[keys.command]]
-key = "prefix+alt+5"
+key = "prefix+ctrl+alt+5"
 type = "plugin_action"
 command = "sidebar-numbers.agent-15"
 description = "jump to agent 15"
 
 [[keys.command]]
-key = "prefix+alt+6"
+key = "prefix+ctrl+alt+6"
 type = "plugin_action"
 command = "sidebar-numbers.agent-16"
 description = "jump to agent 16"
 
 [[keys.command]]
-key = "prefix+alt+7"
+key = "prefix+ctrl+alt+7"
 type = "plugin_action"
 command = "sidebar-numbers.agent-17"
 description = "jump to agent 17"
 
 [[keys.command]]
-key = "prefix+alt+8"
+key = "prefix+ctrl+alt+8"
 type = "plugin_action"
 command = "sidebar-numbers.agent-18"
 description = "jump to agent 18"
 
 [[keys.command]]
-key = "prefix+alt+9"
+key = "prefix+ctrl+alt+9"
 type = "plugin_action"
 command = "sidebar-numbers.agent-19"
 description = "jump to agent 19"
 
 [[keys.command]]
-key = "prefix+alt+0"
+key = "prefix+ctrl+alt+0"
 type = "plugin_action"
 command = "sidebar-numbers.agent-20"
 description = "jump to agent 20"
+
+[[keys.command]]
+key = ["prefix+shift+alt+1", "prefix+alt+!"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-11"
+description = "jump to workspace 11"
+
+[[keys.command]]
+key = ["prefix+shift+alt+2", "prefix+alt+@"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-12"
+description = "jump to workspace 12"
+
+[[keys.command]]
+key = ["prefix+shift+alt+3", "prefix+alt+#"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-13"
+description = "jump to workspace 13"
+
+[[keys.command]]
+key = ["prefix+shift+alt+4", "prefix+alt+$"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-14"
+description = "jump to workspace 14"
+
+[[keys.command]]
+key = ["prefix+shift+alt+5", "prefix+alt+%"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-15"
+description = "jump to workspace 15"
+
+[[keys.command]]
+key = ["prefix+shift+alt+6", "prefix+alt+^"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-16"
+description = "jump to workspace 16"
+
+[[keys.command]]
+key = ["prefix+shift+alt+7", "prefix+alt+&"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-17"
+description = "jump to workspace 17"
+
+[[keys.command]]
+key = ["prefix+shift+alt+8", "prefix+alt+*"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-18"
+description = "jump to workspace 18"
+
+[[keys.command]]
+key = ["prefix+shift+alt+9", "prefix+alt+("]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-19"
+description = "jump to workspace 19"
+
+[[keys.command]]
+key = ["prefix+shift+alt+0", "prefix+alt+)"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-20"
+description = "jump to workspace 20"
 
 [[keys.command]]
 key = "prefix+t"

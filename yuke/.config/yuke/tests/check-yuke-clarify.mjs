@@ -17,16 +17,16 @@ try {
   await copyFile(new URL("../plugins/yuke-clarify-store.py", import.meta.url), path.join(config, "yuke-clarify-store.py"));
   const variables = { HOME: root, XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") };
   globalThis.clarifyTest = {
-    client: {}, env: { get: (name) => variables[name] },
+    client: {}, events: {}, env: { get: (name) => variables[name] },
     exec: async (command) => {
       try { return { ...await promisify(shell)(command), code: 0 }; }
       catch (error) { return { stdout: error.stdout, stderr: error.stderr, code: error.code }; }
     },
   };
   let source = await readFile(new URL("../plugins/yuke-clarify.js", import.meta.url), "utf8");
-  source = source.replace('import { client, env, exec } from "yuke";', 'const { client, env, exec } = globalThis.clarifyTest;')
+  source = source.replace('import { client, env, events, exec } from "yuke";', 'const { client, env, events, exec } = globalThis.clarifyTest;')
     .replace('import { currentSession } from "yuke:session";', 'const currentSession = () => null;')
-    .replace('import { Composer, List, Pager, Window } from "yuke:ui";', 'const Composer = class {}, List = class {}, Pager = class {}, Window = class {};')
+    .replace('import { clip, Composer, List, Pager, Window } from "yuke:ui";', 'const clip = (s) => s, Composer = class {}, List = class {}, Pager = class {}, Window = class {};')
     .replace('import { wrapRows } from "yuke:chat";', 'const wrapRows = () => [];');
   const { yukeClarify, validateQuestion, answerMessage } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
   const ctx = { alive: true, own: (fn) => cleanup.push(fn), hook: (name, fn) => hooks.set(name, fn),
