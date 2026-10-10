@@ -1,0 +1,67 @@
+id = "david.code"
+name = "Workspace Code"
+version = "0.1.3"
+min_herdr_version = "0.9.3"
+description = "A persistent checkout editor with a Code tab and quick overlay."
+platforms = ["macos", "linux"]
+
+[[startup]]
+command = ["python3", "code.py", "pin-current"]
+
+[[actions]]
+id = "pin"
+title = "Restore pinned Code tabs"
+contexts = ["global"]
+command = ["python3", "code.py", "pin-current"]
+
+[[actions]]
+id = "toggle"
+title = "Code tab / return to agent"
+contexts = ["pane"]
+command = ["python3", "code.py", "toggle"]
+
+[[actions]]
+id = "overlay"
+title = "Quick code overlay"
+contexts = ["pane"]
+command = ["python3", "code.py", "overlay"]
+
+[[actions]]
+id = "changes"
+title = "Checkout changes in Code"
+contexts = ["pane"]
+command = ["python3", "code.py", "changes"]
+
+[[panes]]
+id = "code"
+title = "Code"
+placement = "tab"
+command = ["sh", "-c", 'exec python3 "$HERDR_PLUGIN_ROOT/code.py" host']
+
+[[panes]]
+id = "overlay"
+title = "Code · Ctrl+a e returns"
+placement = "popup"
+width = "95%"
+height = "90%"
+command = ["sh", "-c", 'exec python3 "$HERDR_PLUGIN_ROOT/code.py" ui-overlay']
+
+[[events]]
+on = "tab.focused"
+command = ["python3", "code.py", "sync"]
+
+[[events]]
+on = "tab.created"
+command = ["python3", "code.py", "pin"]
+
+[[events]]
+on = "tab.moved"
+command = ["python3", "code.py", "pin"]
+
+[[events]]
+on = "tab.closed"
+command = ["python3", "code.py", "pin"]
+
+[[events]]
+on = "workspace.focused"
+command = ["python3", "code.py", "pin"]

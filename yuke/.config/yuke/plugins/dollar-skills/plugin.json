@@ -1,0 +1,11 @@
+{
+  "name": "dollar-skills",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

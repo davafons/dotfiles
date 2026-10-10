@@ -105,6 +105,7 @@ def snapshot(database, workspace=None, now=None):
         skills = {}
         seen_skills = set()
         pending_skills = defaultdict(list)
+        active_runs = {}
         active_days = set()
         completed_runs = 0
 
@@ -127,9 +128,11 @@ def snapshot(database, workspace=None, now=None):
             meta = json.loads(row["metadata"])
             chat = sessions[sid]
             if row["name"] == "run.started":
+                active_runs[sid] = meta["run_id"]
                 for name in pending_skills.pop(sid, []):
                     skill_use(sid, meta["run_id"], name, "invocations")
             elif row["name"] == "run.done":
+                active_runs.pop(sid, None)
                 timing = meta["timing"]
                 chat["activeMs"] += max(0, timing["ended_at_ms"] - timing["started_at_ms"])
                 completed_runs += 1
@@ -142,15 +145,20 @@ def snapshot(database, workspace=None, now=None):
                 ended = meta["time"].get("completed_at_ms", timestamp)
                 chat["lastMessage"] = ended if chat["lastMessage"] is None else max(chat["lastMessage"], ended)
                 roles["engine" if role == "user" and meta.get("source") else role] += 1
-                if role == "user" and meta.get("skill_name"):
-                    pending_skills[sid].append(meta["skill_name"])
+                if role == "user":
+                    invoked = meta.get("skill_names") or ([meta["skill_name"]] if meta.get("skill_name") else [])
+                    for name in invoked:
+                        if sid in active_runs:
+                            skill_use(sid, active_runs[sid], name, "invocations")
+                        else:
+                            pending_skills[sid].append(name)
                 if role != "assistant":
                     continue
                 day = datetime.fromtimestamp(timestamp / 1000).astimezone().date().isoformat()
                 active_days.add(day)
                 finishes[meta.get("finish", "unknown")] += 1
                 model, effort = configs.get((sid, meta.get("config_rev")), ("Unknown", "Unknown"))
-                model = meta.get("provenance", {}).get("model", model)
+                model = meta.get("model") or model
                 provider = model.split("/", 1)[0] if "/" in model else "Unknown"
                 efforts[effort or "default"] += 1
                 add_usage(observed, meta)

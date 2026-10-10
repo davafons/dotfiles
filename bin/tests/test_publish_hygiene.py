@@ -35,7 +35,7 @@ class PublishHygiene(unittest.TestCase):
             "fxwald1le1.tmp",
             "yuke/.config/yuke/questions.sqlite3",
         ]
-        visible = ["yuke/.config/yuke/.env.example", "yuke/.config/yuke/profile.js"]
+        visible = ["yuke/.config/yuke/.env.example", "yuke/.config/yuke/config.json"]
         with tempfile.TemporaryDirectory(prefix="dotfiles-ignore-tests-") as directory:
             checkout = Path(directory)
             self.assertFalse((checkout / ".jj").exists())
@@ -56,7 +56,12 @@ class PublishHygiene(unittest.TestCase):
                 capture_output=True, text=True, check=True,
             )
             output = result.stdout + result.stderr
-            self.assertIn("LINK: .config/yuke/profile.js =>", output)
+            self.assertIn("LINK: .config/yuke/config.json =>", output)
+            self.assertIn("LINK: .config/yuke/plugins/vim-mode/plugin.json =>", output)
+            for obsolete in ("profile.js", "index.js"):
+                self.assertNotIn(f"LINK: .config/yuke/{obsolete} =>", output)
+            for private in ("tests/", "experimental/", "migration/"):
+                self.assertNotIn(f"LINK: {private}", output)
             for document in (ROOT / "yuke").glob("*.md"):
                 self.assertNotIn(f"LINK: {document.name} =>", output)
             self.assertEqual(list(Path(home).iterdir()), [])

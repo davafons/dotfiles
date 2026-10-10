@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test agent banks and zero shortcuts in a private Herdr/detached tmux session."""
+"""Test function-key banks and scrollback in a private Herdr/detached terminal."""
 
 import json
 import os
@@ -63,11 +63,28 @@ def send(data):
     tmux("send-keys", "-t", "test", "-H", *(f"{byte:02x}" for byte in data))
 
 
+def function_key(number, modifier, protocol):
+    if protocol == "CSI-u":
+        return f"\x1b[{57363 + number};{modifier}u".encode()
+    if protocol == "SS3/CSI" and number <= 4:
+        suffix = "PQRS"[number - 1]
+        return ("\x1bO" + suffix if modifier == 1 else f"\x1b[1;{modifier}{suffix}").encode()
+    code = (11, 12, 13, 14, 15, 17, 18, 19, 20, 21)[number - 1]
+    return (f"\x1b[{code}~" if modifier == 1 else f"\x1b[{code};{modifier}~").encode()
+
+
 try:
     with tempfile.TemporaryDirectory(prefix="hs-", dir="/tmp") as directory:
         root = Path(directory)
         for kind in ("CONFIG", "STATE", "CACHE", "DATA"):
             ENV[f"XDG_{kind}_HOME"] = str(root / kind.lower())
+        capture = root / "scrollback-capture.json"
+        editor = root / "capture-editor.py"
+        editor.write_text("#!/usr/bin/env python3\nimport json,sys\nfrom pathlib import Path\n"
+                          + "Path(" + repr(str(capture)) + ").write_text(json.dumps({'args':sys.argv[1:],'text':Path(sys.argv[1]).read_text()}))\n")
+        editor.chmod(0o700)
+        ENV["EDITOR"] = shlex.quote(str(editor))
+        ENV["SHELL"] = "/bin/sh"
         plugin = Path(__file__).resolve().parents[1]
         config = root / "config/herdr"
         config.mkdir(parents=True)
@@ -104,42 +121,59 @@ try:
             wait(lambda: snapshot()["focused_workspace_id"] == workspace10, "Ctrl+a Shift+0 -> workspace 10")
             print("PASS: tab, agent, and workspace 0 shortcuts")
             first = snap["agents"][0]["pane_id"]
+            api("pane.focus", {"pane_id": first})
+            herdr("pane", "run", first, "printf 'SCROLLBACK-FIXTURE\\n'")
+            wait(lambda: "SCROLLBACK-FIXTURE" in herdr("pane", "read", first, "--source", "recent").stdout,
+                 "scrollback fixture output")
+            for protocol, sequence in (("legacy", b"\x01\x05"), ("CSI-u", b"\x01\x1b[101;5u")):
+                time.sleep(.2)
+                send(sequence)
+                wait(capture.exists, "Ctrl+a Ctrl+e launches $EDITOR (" + protocol + ")")
+                captured = json.loads(capture.read_text())
+                assert len(captured["args"]) == 1
+                assert "SCROLLBACK-FIXTURE" in captured["text"], captured
+                wait(lambda: not Path(captured["args"][0]).exists(), "scrollback temporary file cleaned up")
+                capture.unlink()
+                assert snapshot()["focused_pane_id"] == first
+                print(f"PASS: Ctrl+a Ctrl+e opens focused pane scrollback ({protocol})")
             tabs = [tab for tab in snap["tabs"] if tab["workspace_id"] == workspace["workspace_id"]]
+            for kind, focused_field, resources, id_field in (
+                ("tab", "focused_tab_id", tabs, "tab_id"),
+                ("agent", "focused_pane_id", snap["agents"], "pane_id"),
+                ("workspace", "focused_workspace_id", snap["workspaces"], "workspace_id"),
+            ):
+                for number in range(1, 10):
+                    api("pane.focus", {"pane_id": first})
+                    time.sleep(.1)
+                    sequence = str(number).encode() if kind == "tab" else (
+                        f"\x1b[{ord(str(number))};5u".encode() if kind == "agent"
+                        else ")!@#$%^&*("[number].encode())
+                    send(b"\x01" + sequence)
+                    target = resources[number - 1][id_field]
+                    wait(lambda: snapshot()[focused_field] == target, f"{kind} {number} unchanged")
+                print(f"PASS: {kind} 1–9 shortcuts unchanged")
             banks = (
-                ("tab", 3, "focused_tab_id", tabs, "tab_id", ("legacy", "CSI-u")),
-                ("agent", 7, "focused_pane_id", snap["agents"], "pane_id", ("CSI-u",)),
-                ("workspace", 4, "focused_workspace_id", snap["workspaces"], "workspace_id",
-                 ("legacy", "CSI-u", "shifted CSI-u")),
+                ("tab", 1, "focused_tab_id", tabs, "tab_id"),
+                ("agent", 6, "focused_pane_id", snap["agents"], "pane_id"),
+                ("workspace", 2, "focused_workspace_id", snap["workspaces"], "workspace_id"),
             )
-            for kind, modifier, focused_field, resources, id_field, protocols in banks:
-                for protocol in protocols:
+            for kind, modifier, focused_field, resources, id_field in banks:
+                for protocol in ("SS3/CSI", "CSI tilde", "CSI-u"):
                     for number in range(11, 21):
-                        # ESC ^ begins an ANSI privacy message, not an Alt key.
-                        # Shift+Alt+6 needs CSI-u; Ctrl+Alt digits also need it.
-                        if kind == "workspace" and protocol == "legacy" and number == 16:
-                            continue
-                        digit = str(number % 10)
-                        symbol = ")!@#$%^&*("[number % 10] if kind == "workspace" else digit
                         api("pane.focus", {"pane_id": first})
                         time.sleep(.1)
-                        if protocol == "legacy":
-                            sequence = "\x1b" + symbol
-                        else:
-                            code = symbol if protocol == "shifted CSI-u" else digit
-                            sequence = f"\x1b[{ord(code)};{modifier}u"
-                        send(b"\x01" + sequence.encode())
+                        send(b"\x01" + function_key(number - 10, modifier, protocol))
                         target = resources[number - 1][id_field]
                         wait(lambda: snapshot()[focused_field] == target,
                              f"{kind} {number} ({protocol})")
-                    count = 9 if kind == "workspace" and protocol == "legacy" else 10
-                    print(f"PASS: {count} {kind} bank shortcuts ({protocol})")
+                    print(f"PASS: 10 {kind} function-key shortcuts ({protocol})")
             # Remove only fixtures, then verify missing positions preserve focus.
             api("tab.close", {"tab_id": tabs[19]["tab_id"]})
             api("workspace.close", {"workspace_id": snap["agents"][19]["workspace_id"]})
             for kind, modifier, *_ in banks:
                 api("pane.focus", {"pane_id": first})
                 time.sleep(.1)
-                send(b"\x01" + f"\x1b[48;{modifier}u".encode())
+                send(b"\x01" + function_key(10, modifier, "CSI-u"))
                 time.sleep(.5)
                 assert snapshot()["focused_pane_id"] == first, f"Missing {kind} 20 focused another pane"
                 print(f"PASS: missing {kind} 20 preserves focus")

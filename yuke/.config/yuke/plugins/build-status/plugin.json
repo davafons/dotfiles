@@ -1,0 +1,11 @@
+{
+  "name": "build-status",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

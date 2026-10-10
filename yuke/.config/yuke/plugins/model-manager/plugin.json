@@ -1,0 +1,11 @@
+{
+  "name": "model-manager",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

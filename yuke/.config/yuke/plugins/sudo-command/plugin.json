@@ -1,0 +1,12 @@
+{
+  "name": "sudo-command",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui",
+        "chat"
+      ]
+    }
+  }
+}

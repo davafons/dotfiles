@@ -4,9 +4,9 @@
 import json
 import os
 from pathlib import Path
-import plistlib
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -218,26 +218,61 @@ class Checkouts(unittest.TestCase):
             ws.ui("open")
         opened.assert_called_once_with(str(root), "default")
 
-    def test_periodic_refresh_respects_plugin_disable(self):
+    def test_startup_does_not_register_background_jobs(self):
+        manifest = tomllib.loads(Path(ws.__file__).with_name("herdr-plugin.toml").read_text())
+        bin_dir = self.base / "bin"
+        bin_dir.mkdir()
+        calls = self.base / "launchctl-calls"
+        launchctl = bin_dir / "launchctl"
+        launchctl.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$LAUNCHCTL_CALLS"\n')
+        launchctl.chmod(0o755)
+        environment = dict(os.environ, HOME=str(self.base),
+                           HERDR_SOCKET_PATH=str(self.base / "missing.sock"),
+                           HERDR_PLUGIN_STATE_DIR=str(self.base / "state"),
+                           LAUNCHCTL_CALLS=str(calls), PATH=f"{bin_dir}:{os.environ['PATH']}")
+        for hook in manifest.get("startup", []):
+            if "macos" in hook.get("platforms", ["macos"]):
+                result = subprocess.run(hook["command"], cwd=Path(ws.__file__).parent,
+                                        env=environment, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.base / "Library" / "LaunchAgents").exists())
+        self.assertFalse(calls.exists())
+        for action in manifest["actions"]:
+            self.assertNotIn("install-refresh", action["command"])
+
+    def test_event_metadata_does_not_expire_without_a_timer(self):
+        snapshot = self.snapshot(self.base)
+        def api(method, params=None):
+            if method == "session.snapshot":
+                return {"snapshot": snapshot}
+            self.assertIsNone(params.get("ttl_ms"))
+            return {}
+        with patch.dict(os.environ, {"HERDR_PLUGIN_STATE_DIR": str(self.base / "state"), "HERDR_SOCKET_PATH": "/tmp/tests.sock"}), patch.object(ws.sys, "platform", "darwin"), patch.object(ws, "request", side_effect=api):
+            ws.sync()
+
+    def test_refresh_respects_plugin_disable(self):
         for enabled in (True, False):
             with patch.object(ws, "request", return_value={"plugins": [{"plugin_id": ws.PLUGIN, "enabled": enabled}]}):
-                self.assertEqual(ws.periodic_refresh_enabled(), enabled)
+                self.assertEqual(ws.refresh_enabled(), enabled)
         with patch.object(ws, "request", return_value={"plugins": []}):
-            self.assertFalse(ws.periodic_refresh_enabled())
+            self.assertFalse(ws.refresh_enabled())
 
-    def test_launchd_one_shot_configuration_and_uninstall(self):
-        environment = {"HERDR_SOCKET_PATH": "/tmp/tests.sock", "HERDR_PLUGIN_STATE_DIR": str(self.base / "state")}
-        with patch.dict(os.environ, environment), patch.object(ws.sys, "platform", "darwin"), patch.object(ws.Path, "home", return_value=self.base), patch.object(ws, "run") as run, patch.object(ws.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)):
-            ws.install_refresh()
-            plists = list((self.base / "Library" / "LaunchAgents").glob("*.plist"))
-            self.assertEqual(len(plists), 1)
-            config = plistlib.loads(plists[0].read_bytes())
-            self.assertEqual(config["StartInterval"], 15)
-            self.assertEqual(config["ProgramArguments"][-1], "sync")
-            self.assertNotIn("KeepAlive", config)
-            run.assert_called_once()
+    def test_uninstall_removes_only_the_current_session_legacy_timer(self):
+        socket_path = "/tmp/tests.sock"
+        digest = ws.hashlib.sha256(socket_path.encode()).hexdigest()[:12]
+        label = f"dev.herdr.workspaces.{digest}"
+        directory = self.base / "Library" / "LaunchAgents"
+        directory.mkdir(parents=True)
+        timer = directory / f"{label}.plist"
+        timer.write_text("legacy timer")
+        unrelated = directory / "com.example.other.plist"
+        unrelated.write_text("leave alone")
+        with patch.dict(os.environ, {"HERDR_SOCKET_PATH": socket_path}), patch.object(ws.Path, "home", return_value=self.base), patch.object(ws.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as launchctl:
             ws.uninstall_refresh()
-            self.assertFalse(plists[0].exists())
+            self.assertFalse(timer.exists())
+            self.assertEqual(unrelated.read_text(), "leave alone")
+            launchctl.assert_called_once_with(["launchctl", "bootout", f"gui/{os.getuid()}/{label}"], capture_output=True)
+            ws.uninstall_refresh()
 
     def test_sidebar_strings_strip_controls(self):
         self.assertEqual(ws.clean("Login\n\tfix\x00"), "Login fix")

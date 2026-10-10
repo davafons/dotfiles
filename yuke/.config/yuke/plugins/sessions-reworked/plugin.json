@@ -1,0 +1,11 @@
+{
+  "name": "sessions-reworked",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

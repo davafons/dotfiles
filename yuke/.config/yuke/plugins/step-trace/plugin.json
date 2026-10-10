@@ -1,0 +1,11 @@
+{
+  "name": "step-trace",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

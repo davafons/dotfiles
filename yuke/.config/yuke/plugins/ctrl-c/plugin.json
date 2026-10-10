@@ -1,0 +1,12 @@
+{
+  "name": "ctrl-c",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui",
+        "composer-vim"
+      ]
+    }
+  }
+}

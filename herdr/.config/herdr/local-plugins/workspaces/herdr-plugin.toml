@@ -1,17 +1,12 @@
 id = "david.workspaces"
 name = "jj and Git Workspaces"
-version = "0.1.0"
+version = "0.1.1"
 min_herdr_version = "0.9.3"
 description = "Create/open jj workspaces or Git worktrees and show each active checkout in the sidebar."
 platforms = ["macos", "linux"]
 
 [[startup]]
 command = ["python3", "workspaces.py", "sync"]
-
-# Startup hooks are one-shot; launchd supervises periodic read-only refreshes.
-[[startup]]
-platforms = ["macos"]
-command = ["python3", "workspaces.py", "install-refresh"]
 
 [[actions]]
 id = "create"
@@ -32,15 +27,8 @@ contexts = ["global"]
 command = ["python3", "workspaces.py", "sync"]
 
 [[actions]]
-id = "install-refresh"
-title = "Install automatic checkout refresh (this session)"
-platforms = ["macos"]
-contexts = ["global"]
-command = ["python3", "workspaces.py", "install-refresh"]
-
-[[actions]]
 id = "uninstall-refresh"
-title = "Remove automatic checkout refresh (this session)"
+title = "Remove legacy background refresh (this session)"
 platforms = ["macos"]
 contexts = ["global"]
 command = ["python3", "workspaces.py", "uninstall-refresh"]

@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Describe a pstack reference checkout without installing or executing its skills."""
+import argparse
+import json
+from pathlib import Path
+import subprocess
+
+
+DOTFILES = Path(__file__).resolve().parents[2]
+
+
+def tree_delta(local, upstream):
+    left = {p.relative_to(local): p for p in local.rglob("*") if p.is_file()}
+    right = {p.relative_to(upstream): p for p in upstream.rglob("*") if p.is_file()}
+    common = left.keys() & right.keys()
+    return {
+        "changed": sorted(str(p) for p in common if left[p].read_bytes() != right[p].read_bytes()),
+        "unchanged": sorted(str(p) for p in common if left[p].read_bytes() == right[p].read_bytes()),
+        "local_only": sorted(str(p) for p in left.keys() - right.keys()),
+        "upstream_only": sorted(str(p) for p in right.keys() - left.keys()),
+    }
+
+
+def inventory(reference, local):
+    plugin = reference / "pstack"
+    manifest = json.loads((plugin / ".cursor-plugin/plugin.json").read_text())
+    skills = sorted(p.parent.name for p in (plugin / "skills").glob("*/SKILL.md"))
+    principles = [name for name in skills if name.startswith("principle-")]
+    workflows = [name for name in skills if name not in principles]
+    installed = sorted(p.parent.name for p in local.glob("*/SKILL.md"))
+    comparisons = {
+        name: tree_delta(local / name, plugin / "skills" / name)
+        for name in installed if name in skills
+    }
+    return {
+        "version": manifest["version"],
+        "counts": {"registered_skills": len(skills), "workflow_skills": len(workflows),
+                   "principles": len(principles)},
+        "workflow_skills": workflows,
+        "principles": principles,
+        "playbooks": sorted(p.stem for p in (plugin / "skills/poteto-mode/playbooks").glob("*.md")),
+        "agents": sorted(p.stem for p in (plugin / "agents").glob("*.md")),
+        "dormant_automation_skills": sorted(str(p.relative_to(plugin)) for p in (plugin / "automations").rglob("SKILL.md")),
+        "local_skills": installed,
+        "same_name_comparisons": comparisons,
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("reference", type=Path, help="Separate cursor/plugins jj checkout")
+    parser.add_argument("--local", type=Path, default=DOTFILES / "agents/.agents/davstack/skills")
+    args = parser.parse_args()
+    reference = args.reference.expanduser().resolve()
+    local = args.local.expanduser().resolve()
+    if not (reference / ".jj").is_dir():
+        parser.error("reference must be a jj checkout; no Git fallback is used")
+    if not local.is_dir():
+        parser.error("local skill directory does not exist")
+    result = inventory(reference, local)
+    revision = subprocess.run(
+        ["jj", "--ignore-working-copy", "log", "--no-graph", "-r", "main@origin", "-T", "commit_id"],
+        cwd=reference, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    result["upstream_main_revision"] = revision
+    result["reference"] = str(reference)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

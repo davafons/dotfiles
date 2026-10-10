@@ -114,9 +114,8 @@ try:
         run([TMUX, "-L", SESSION, "new-session", "-d", "-s", "test", "-x", "180", "-y", "52",
              "exec " + shlex.quote(HERDR) + " --session " + shlex.quote(SESSION)])
         api("pane.focus", {"pane_id": source["pane_id"]})
-        # Exercise the actual user's keybinding through the private TUI.
         wait(lambda: run([TMUX,"-L",SESSION,"capture-pane","-t","test","-p"]).stdout.strip(), "test client")
-        run([TMUX,"-L",SESSION,"send-keys","-t","test","-H","01","72"])
+        invoke(source)
         record = review_record(source)
         wait(lambda: lua(record, "vim.fn.exists(':HerdrReviewReturn')") == "2", "review setup")
         wait(lambda: "CodeDiff" in herdr("pane", "read", record["review_pane"], "--source", "visible").stdout
@@ -128,7 +127,9 @@ try:
             return text if 'before' in text and 'after' in text else None
         evidence["initial_render"] = wait(rendered_diff,"before/after rendered in inline review")
         evidence["real_diff_opened"] = True
-        evidence["actual_ctrl_a_r_binding"] = True
+        assert lua(record, "require('codediff.ui.lifecycle').get_layout(vim.api.nvim_get_current_tabpage())") == "inline"
+        assert lua(record, "require('codediff.ui.lifecycle').get_panel_view(vim.api.nvim_get_current_tabpage()).is_hidden") == "true"
+        evidence["legacy_plugin_action_uses_inline_default_with_hidden_list"] = True
         evidence["agent_target"] = source["pane_id"]
         count = len(snapshot()["panes"])
         invoke(record | {"pane_id": record["review_pane"], "workspace_id": source["workspace_id"], "tab_id": source["tab_id"]})

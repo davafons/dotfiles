@@ -1,0 +1,12 @@
+{
+  "name": "step-timers",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui",
+        "chat"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "yuke-clarify",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "chat",
+        "tui"
+      ]
+    }
+  }
+}

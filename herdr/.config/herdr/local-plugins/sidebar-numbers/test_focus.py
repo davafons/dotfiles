@@ -48,20 +48,30 @@ class FocusTests(unittest.TestCase):
             for key in keys:
                 self.assertNotIn(key, commands, "Duplicate shortcut")
                 commands[key] = command
-        for kind, modifiers, context in (("tab", "alt", "pane"),
-                                          ("agent", "ctrl+alt", "global"),
-                                          ("workspace", "shift+alt", "global")):
+        for kind, modifiers, context in (("tab", "", "pane"),
+                                          ("agent", "ctrl+shift+", "global"),
+                                          ("workspace", "shift+", "global")):
             for number in range(11, 21):
                 with self.subTest(kind=kind, number=number):
-                    command = commands[f"prefix+{modifiers}+{number % 10}"]
+                    command = commands[f"prefix+{modifiers}f{number - 10}"]
                     self.assertEqual(command["type"], "plugin_action")
                     self.assertEqual(command["command"], f"sidebar-numbers.{kind}-{number}")
                     action = actions[f"{kind}-{number}"]
                     self.assertEqual(action["contexts"], [context])
                     self.assertEqual(action["command"], ["python3", "focus.py", kind, str(number)])
-                    if kind == "workspace":
-                        symbol = ")!@#$%^&*("[number % 10]
-                        self.assertIs(commands[f"prefix+alt+{symbol}"], command)
+
+    def test_scrollback_uses_control_e_and_no_bindings_require_alt(self):
+        config = tomllib.loads((Path(__file__).resolve().parent.parent.parent / "config.toml").read_text())
+        self.assertEqual(config["keys"]["edit_scrollback"], "prefix+ctrl+e")
+        for field, binding in config["keys"].items():
+            if field == "command":
+                bindings = [key for command in binding for key in
+                            (command["key"] if isinstance(command["key"], list) else [command["key"]])]
+            else:
+                bindings = binding if isinstance(binding, list) else [binding]
+            for key in bindings:
+                self.assertNotIn("alt", key.lower(), key)
+                self.assertNotIn("option", key.lower(), key)
 
     def test_missing_second_bank_positions_do_not_focus_anything(self):
         self.snapshot["agents"] = self.snapshot["agents"][:15]

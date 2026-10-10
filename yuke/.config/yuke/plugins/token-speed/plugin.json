@@ -1,0 +1,11 @@
+{
+  "name": "token-speed",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

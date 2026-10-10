@@ -1,0 +1,11 @@
+{
+  "name": "project-work",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

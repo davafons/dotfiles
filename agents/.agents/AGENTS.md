@@ -2,10 +2,11 @@
 
 For multi-step software development work, read
 `~/.agents/skills/dav-mode/SKILL.md` and use its matching playbook unless the
-user opts out. Personal workflows live in davstack; repository AGENTS.md files
-supply project-specific architecture, commands, and constraints. User and
-runtime instructions take precedence. If davstack is unavailable, report the
-missing skill and continue from the available project instructions.
+user opts out. Development workflows live in davstack; personal-tool skills
+remain separate. Repository AGENTS.md files supply project-specific architecture,
+commands, and constraints. User and runtime instructions take precedence.
+If davstack is unavailable, report the missing skill and continue from the
+available project instructions.
 
 # Shared desktop
 

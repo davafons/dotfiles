@@ -1,0 +1,11 @@
+{
+  "name": "exit-command",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

@@ -10,14 +10,17 @@ Press `Ctrl+a`, release it, then press the action key.
 | --- | --- |
 | `Ctrl+p` / `Ctrl+n` | Previous / next agent across workspaces |
 | `Ctrl+1` through `Ctrl+9`, then `Ctrl+0` | Jump to agent 1 through 10 |
-| `Ctrl+Alt+1` through `Ctrl+Alt+9`, then `Ctrl+Alt+0` | Jump to agent 11 through 20 |
+| `Ctrl+Shift+F1` through `Ctrl+Shift+F10` | Jump to agent 11 through 20 |
 | `w` | Open workspace navigation |
 | `Shift+1` through `Shift+9`, then `Shift+0` | Jump to workspace 1 through 10 |
-| `Shift+Alt+1` through `Shift+Alt+9`, then `Shift+Alt+0` | Jump to workspace 11 through 20 |
+| `Shift+F1` through `Shift+F10` | Jump to workspace 11 through 20 |
 | `Shift+p` / `Shift+n` | Previous / next workspace |
 | `Shift+c` | Create a workspace |
 | `t` | Open the fuzzy navigator |
-| `r` | Open checkout review beside this pane; from review, return to its source |
+| `e` | Open this checkout's shared Code tab; from Code, return to the last source pane |
+| `Shift+e` | Open the same editor in a quick overlay |
+| `r` | Open checkout changes in the full shared Code tab |
+| `Ctrl+e` | Edit terminal scrollback (moved from `e`) |
 | `Shift+z` | Resize mode (moved from `r` to make room for review) |
 | `g` | Create a jj workspace or Git worktree from `main` |
 | `Shift+g` | Pick an existing jj workspace or Git worktree |
@@ -25,7 +28,7 @@ Press `Ctrl+a`, release it, then press the action key.
 | `h` / `j` / `k` / `l` | Focus the pane to the left / down / up / right |
 | `p` / `n` | Previous / next tab |
 | `1` through `9`, then `0` | Jump to tab 1 through 10 |
-| `Alt+1` through `Alt+9`, then `Alt+0` | Jump to tab 11 through 20 in this workspace |
+| `F1` through `F10` | Jump to tab 11 through 20 in this workspace |
 | `Shift+Tab` / `Tab` | Previous / next pane |
 | `,` | Rename the current pane |
 | `[` | Enter copy mode |
@@ -34,16 +37,17 @@ Press `Ctrl+a`, release it, then press the action key.
 The tenth workspace and agent sidebar entry shows `0`, matching its shortcut.
 Tab badges retain the ordinal `10` for compatibility with the local status-color
 patch. The local `sidebar-numbers` plugin supplies the three `0` bindings because
-Herdr's built-in indexed bindings only accept `1..9`. It also supplies the second
-bank, mirroring the first with Alt added: `Ctrl+a → Alt+5` jumps to tab 15,
-`Ctrl+a → Ctrl+Alt+5` to agent 15, and `Ctrl+a → Shift+Alt+5` to workspace 15.
-The `0` key selects item 20 in each second bank. Sidebar numbers 11–20 remain
-ordinal numbers. Both banks follow the current resource order; tabs are scoped
-to the invoking workspace, and missing positions leave focus unchanged.
+Herdr's built-in indexed bindings only accept `1..9`. For items 11–20, the plugin
+uses function keys: `Ctrl+a → F5` jumps to tab 15, `Ctrl+a → Ctrl+Shift+F5` to
+agent 15, and `Ctrl+a → Shift+F5` to workspace 15. F10 selects item 20.
+Sidebar numbers 11–20 remain ordinal numbers. Both banks follow the current
+resource order; tabs are scoped to the invoking workspace, and missing
+positions leave focus unchanged.
 
-Ctrl+Alt+digits require enhanced keyboard input (CSI-u/Kitty). Shift+Alt+6 also
-requires it because its legacy `ESC ^` sequence starts an ANSI privacy message.
-The workspace bindings include shifted-symbol aliases for other legacy inputs.
+No configured Herdr shortcut requires Alt/Option. The function-key banks accept
+standard terminal sequences and CSI-u/Kitty input. On Mac, function keys may
+require Fn if the top row controls media or brightness. macOS can also reserve
+modified function keys; `Ctrl+a t` remains available to find any item.
 
 Verify the shortcut plugin and actual key dispatch without touching user panes:
 
@@ -54,8 +58,11 @@ PYTHONDONTWRITEBYTECODE=1 python3 herdr/.config/herdr/local-plugins/sidebar-numb
 
 The live check requires Herdr and tmux and uses a disposable named session with
 20 workspaces, 20 tabs in the first workspace, and 20 reported test agents in a
-detached terminal. It checks all 30 second-bank shortcuts with CSI-u, supported
-legacy Alt inputs, all three `0` shortcuts, and missing positions in each bank.
+detached terminal. It checks all 30 function-key shortcuts with SS3/CSI,
+CSI-tilde and CSI-u input, the unchanged 1–10 banks, and missing positions in
+each bank. A capture executable verifies the scrollback shortcut launches
+`$EDITOR` with the focused pane's text and cleans up its temporary file.
+No desktop input or real editor launch is used.
 
 Direct `Ctrl+h`, `Ctrl+j`, `Ctrl+k`, `Ctrl+l`, `Ctrl+p`, and `Ctrl+n` pass through
 to the application. Use `Ctrl+a`, then `h/j/k/l`, for Herdr pane navigation.
@@ -117,13 +124,10 @@ cyan. File counts and clean/empty status are not displayed. The second row shows
 Codex terminal titles or Yuke session summaries in the same explicit dark gray,
 without stacking terminal faint. Workspace/machine rows remain labels only.
 
-Status refreshes on focus, pane, worktree, and agent-state events. On macOS, a
-per-session launchd job also refreshes every 15 seconds, picking up changes in
-pane cwd and repository state without opening a terminal or switching focus.
-The job is a periodic one-shot command, not an unsupervised plugin daemon.
-Metadata expires after 60 seconds if the refresher stops, and the job stops
-publishing if the plugin is disabled or unlinked. Linux uses event/manual
-refreshes only (no launchd installation or expiring heartbeat).
+Status refreshes at startup and on focus, pane, worktree, and agent-state events
+on both macOS and Linux. Press `Ctrl+a`, then `Shift+u`, to refresh manually after
+repository edits while staying in the same pane. Metadata remains until the next
+refresh or until the pane/workspace closes; it no longer expires after 60 seconds.
 
 **jj background reads deliberately do not snapshot or merge operations.** File
 counts, descriptions, and conflicts reflect the saved `@` change from the last
@@ -136,26 +140,33 @@ On a new machine, Stow installs the sources/config; link and enable the plugin:
 
 ```sh
 herdr plugin link "$HOME/.config/herdr/local-plugins/workspaces" --enabled
-herdr plugin action invoke david.workspaces.install-refresh  # macOS, current session
 herdr plugin action invoke david.workspaces.refresh
 herdr config check
 herdr server reload-config
 ```
 
 Requires Python 3.9+, jj 0.40+ for the jj template/root APIs, Git, and `fzf` for
-the picker. Startup restores metadata and registers automatic refresh for new
-macOS sessions. Linking into an already-running session requires the explicit
-`install-refresh` invocation above. To remove a session's timer:
+the picker. Startup restores metadata. After linking into a running session, use
+the explicit `refresh` invocation above. Locks live in Herdr's plugin state
+directory, not in this repository.
+
+### Background activity notifications (0.1.1)
+
+The workspace plugin no longer installs per-session macOS LaunchAgents. Those
+jobs caused macOS to announce that Python could run in the background, including
+for temporary test sessions. Event/manual refresh replaces the 15-second timer;
+creating, opening, and inspecting jj workspaces or Git worktrees is unchanged.
+
+For a session with an old timer, remove it with:
 
 ```sh
 herdr plugin action invoke david.workspaces.uninstall-refresh
 ```
 
-Timers live under `~/Library/LaunchAgents/dev.herdr.workspaces.<session-id>.plist`;
-locks and refresher logs live in the plugin's Herdr-managed state directory, not
-in this repository. To disable the integration, uninstall its timer, disable the
-plugin, and remove its key/sidebar configuration. Startup reinstalls a removed
-timer while the plugin remains enabled.
+This removes only that session's `dev.herdr.workspaces.<session-id>.plist` job.
+It does not disable Python, other background services, or the workspace plugin.
+To disable the integration itself, disable the plugin and remove its key/sidebar
+configuration.
 
 Run the isolated repository tests without touching user history or GUI focus:
 
@@ -164,10 +175,10 @@ cd "$HOME/.config/herdr/local-plugins/workspaces"
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_workspaces
 ```
 
-Validated with Herdr 0.9.3 and jj 0.40.0: 17 tests, live jj creation/open/reuse
-and metadata, actual create and fzf picker popups in a private PTY-backed test
-session, native Git worktree creation/opening with dirty checkout metadata, and
-successful periodic launchd refreshes. No desktop window was opened or activated.
+The test suite requires Python 3.11+ and covers read-only jj status, creation
+from `main`, existing-checkout reuse, Git-only fallback, event metadata, and
+startup without background-job registration. Repository tests run in temporary
+checkouts and do not open desktop windows.
 
 Navigation/color regression checks:
 
@@ -190,16 +201,153 @@ After a config edit, run `herdr config check`, then `herdr server reload-config`
 If an attached client retains its old keys, press `Ctrl+a`, then `Shift+r` to
 reload its local config.
 
-## Neovim checkout review
+## Workspace Code tab and overlay
+
+Press `Ctrl+a`, then `e`, from a pane in a checkout. The local `david.code`
+plugin opens a `Code · <checkout>` tab inside the current Herdr workspace.
+Press the same shortcut from Code to return to the pane you came from. Opening
+from another agent in the same checkout reuses the editor and updates the return
+destination, not the message recipient. Each worktree gets its own editor,
+buffers, queued tags and recipient. The key includes the canonical checkout
+path, Herdr workspace ID and Herdr session socket; another workspace or session
+gets a separate editor even for the same checkout. Workspace labels are not used
+to infer paths.
+
+Code tabs stay in the leftmost group of the top tab bar. Opening or selecting a
+worktree's Code tab brings it first; other Code tabs follow in recent-use order.
+Moving an ordinary tab ahead of that group, or dragging a Code tab away, restores
+the pinned group without changing pane focus or the ordinary tabs' relative order.
+An ordinary tab named Code is not pinned. To restore existing tabs after linking
+an update, invoke `herdr plugin action invoke david.code.pin`.
+
+The Code host pane, quick overlay and Neovim all start in the invoking pane's
+canonical checkout root, including when invoked from a nested directory. The
+launcher resolves its script from the plugin directory, not from the checkout.
+No Herdr core modification or workspace-name override is needed. Herdr keeps its
+normal first-tab naming: a single-checkout workspace retains its checkout name;
+with several checkouts, its automatic name can follow the leftmost Code tab's
+checkout. Explicit workspace names remain unchanged.
+
+`Ctrl+a`, then `Shift+e`, opens that editor in a large terminal overlay above the
+source pane. The tab and overlay share buffers, cursor positions, undo history,
+LSP state and queued comments. Only one Neovim UI attaches at a time. In normal
+mode, `,ab` returns and dismisses the overlay; `,ae` promotes it to the full Code
+tab. `Ctrl+a e` or `Ctrl+a Shift+e` also dismisses the overlay in normal mode.
+Escape keeps its normal Vim meaning. Popups receive all terminal input, so leave
+insert mode before using these normal-mode shortcuts.
+
+The editor opens with the checkout's existing file tree. The main Vim controls
+are:
+
+| Keys | Action |
+| --- | --- |
+| `,ad` | Toggle file explorer / checkout changes |
+| `,aa` | Tag the current line or visual selection with a comment |
+| `,as` | Choose a recipient, then send queued tags |
+| `,at` | Choose the default agent without sending |
+
+`:HerdrCode` does the same files/changes toggle. Both views keep their buffers,
+cursors and queued tags. File search (`,tt`, `,tg`), comment preview (`,ap`),
+and direct questions (`,ac`, `,ar`) still use the existing Neovim controls.
+The older `,af` (files), `,ab` (return), `,ae` (full tab) and `,aS` (send) shortcuts
+remain as aliases; they are not needed for the basic workflow. These local Code
+controls do not change mappings in ordinary Neovim or legacy review panes.
+
+From an agent, `Ctrl+a`, then `r`, opens changes in the full Code tab rather
+than beside the agent. Reviews start inline with the changed-file list hidden.
+`,b` shows or hides that list; `t` switches between inline and side-by-side.
+`]f` / `[f` navigate files even with the list hidden; `]c` / `[c` navigate hunks.
+`gc` folds unchanged code. Closing CodeDiff with `q` returns to files, not to
+the agent. `Ctrl+a e` or `,ab` returns to the source pane. Files changed on disk
+reload through the existing Neovim watcher; modified buffers are not overwritten.
+
+Every tag delivery opens a recipient picker first, including `,as`, the older
+`,aS`, and `:HerdrSend`. Only current agent panes in this Herdr session are listed,
+not saved/stopped conversations. Type to filter by number, pane ID, agent kind,
+status, directory, summary or reported session ID. The previous/default recipient
+is first, followed by other agents in this workspace. Enter confirms and sends;
+Escape cancels and keeps the queued tags. Empty or failed agent lists also keep
+the tags and allow another attempt.
+
+The default initially comes from the agent that created the editor. The window
+header shows its captured sidebar number, stable pane ID and task summary.
+`,at` changes that default without sending. Direct questions use the default;
+tags always require confirmation, even when a default exists. Each worktree keeps
+its own default. Selecting an agent rechecks the displayed pane, terminal and
+reported conversation identity before saving the choice; delivery checks again,
+including Yuke's session token. Replaced agents refuse delivery and keep tags or
+question drafts. Agents without reported session identity can only be checked by
+pane, terminal and kind. Opening, dismissing or switching the editor never
+submits a prompt.
+
+Changes compare a jj checkout with `@-` or a Git checkout with `HEAD`. They include
+manual edits and other agents' work in that checkout. Opening a jj diff snapshots
+normally; it does not create a new change or bookmark. Code editing also works in
+non-colocated jj workspaces, but their diff view reports that CodeDiff requires a
+Git-backed checkout. Agent-only attribution and historical checkpoints are not
+implemented.
+
+The Code tab owns the headless editor. Hiding it keeps the process alive; closing
+its Herdr tab ends it. A lifetime pipe also ends Neovim if its owner disappears.
+Before shutdown it attempts to save unsaved buffer text in a private recovery
+file, not in the original files. Reopening the same checkout/workspace restores
+those buffers as modified and labels them as recovered. This is best-effort crash
+recovery, not durable preservation of every editor setting or queued annotation
+across tab closure. If the editor is stuck during shutdown, it exits after three
+seconds; see its `.log` file for recovery failures. Runtime records, logs and
+recovery files live in Herdr's state directory under `plugins/david.code/`.
+
+Sources and the Lua adapter live in `local-plugins/code`; they do not modify the
+Neovim submodule or install another copy of `herdr-nvim`. The adapter uses the
+existing personal Neovim config and its pinned `herdr-nvim`, CodeDiff and jj.nvim.
+On a new machine after Stow has linked the package:
+
+```sh
+herdr plugin link "$HOME/.config/herdr/local-plugins/code" --enabled
+herdr config check
+herdr server reload-config
+```
+
+An already-attached client may need `Ctrl+a Shift+r` to reload its local keys.
+Existing Code editors keep their running host and loaded Lua; server/client config
+reload does not update their host directory or Vim behavior. To load plugin
+updates, save your work and finish any queued tags, then close and reopen that
+Code tab. The plugin does not restart active editors automatically.
+Scrollback editing uses `Ctrl+a`, then `Ctrl+e`. Checkout review uses `Ctrl+a r`.
+The legacy split remains available through `david.review.toggle`.
+
+Verification uses only private sessions and detached terminals:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/code/tests/test_code.py"
+PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/code/tests/check-code.py"
+```
+
+The live check requires Neovim, Herdr, tmux, jj and the linked plugin. It uses the
+installed Herdr by default; set `HERDR_CODE_TEST_BIN` to an absolute binary path
+to test another build. It checks initial pinning, event-driven re-pinning,
+multi-worktree ordering, checkout directories for the host and Neovim, automatic
+checkout names and ordinary Code-named tabs. It also exercises
+file-tree selection, files/changes toggling, tagging and sending through actual
+shortcuts, ten tab/overlay cycles, insert-mode edits, cursor preservation,
+resizing, external file reload, and worktree isolation. Delivery uses a capture
+executable; a real companion check verifies that blocked agents receive no
+terminal input. It also covers replaced agent sessions, simulated Yuke session
+rejection, explicit retargeting, immediate close/reopen recovery and owner/session
+shutdown. No model or live-agent prompt is used. It saves
+`/tmp/herdr-code-integration-result.json`.
+
+## Neovim checkout review (legacy split)
 
 The local `david.review` plugin opens a persistent Neovim split beside the
 invoking pane, using that pane's actual checkout. Wide panes split right;
-narrow ones split down. CodeDiff starts inline below 100 editor columns,
-otherwise side by side; `t` changes the layout inside the diff.
+narrow ones split down. CodeDiff uses the same inline default and hidden
+changed-file list as Code; `t` changes the layout inside the diff.
 
-Press `Ctrl+a`, then `r`, from an agent pane to open review. Press it from
-the review pane to return. `,ab` or `:HerdrReviewReturn` also returns to the
-source pane. Closing the CodeDiff tab with `q` returns automatically. The
+The split is no longer bound to `Ctrl+a r`. The action
+`herdr plugin action invoke david.review.toggle` opens it from the calling pane
+or returns from the review pane. `,ab` or `:HerdrReviewReturn` also returns to
+the source pane. Closing the CodeDiff tab with `q` returns automatically. The
 editor remains alive, retaining buffers, unsaved edits and queued annotations;
 opening review again focuses that editor and reopens its diff if needed.
 Each source pane/checkout has its own review editor.

@@ -18,3 +18,8 @@ _darcs
 
 # Keep package documentation in the repository, not at the home-directory root.
 ^/.*\.md$
+^/tests
+^/experimental
+^/migration
+__pycache__
+\.pyc$

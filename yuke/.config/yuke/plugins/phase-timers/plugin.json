@@ -1,0 +1,11 @@
+{
+  "name": "phase-timers",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui"
+      ]
+    }
+  }
+}

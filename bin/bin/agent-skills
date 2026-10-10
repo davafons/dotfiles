@@ -7,9 +7,10 @@ command_name="${1:-status}"
 providers=(hey fizzy wariwari)
 davstack_skills=(
   how why teach recall create-verification-skill
-  dav-mode blast-radius comment-sicko no-comments reflect tdd unslop figure-it-out
+  dav-mode blast-radius comment-sicko no-comments reflect tdd unslop technical-writing deslop loop figure-it-out
 )
-facades=(browser calendar mail notes plan tasks "${davstack_skills[@]}")
+personal_skills=(browser calendar mail notes plan tasks)
+linked_skills=("${personal_skills[@]}" "${davstack_skills[@]}")
 real_home="${HOME}"
 skill_root="${real_home}/.agents/skills"
 script_path="$(realpath "${BASH_SOURCE[0]}")"
@@ -29,16 +30,36 @@ status() {
   done
 }
 
-link_facade() {
-  local facade="$1" source destination item relative expected
-  source="${dotfiles_root}/agents/.agents/skills/${facade}"
-  destination="${2:-${skill_root}/${facade}}"
+skill_source() {
+  local name="$1" group
+  case " ${davstack_skills[*]} " in
+    *" $name "*) group=davstack ;;
+    *) group=personal ;;
+  esac
+  printf '%s/agents/.agents/%s/skills/%s\n' "$dotfiles_root" "$group" "$name"
+}
+
+migrate_owned_link() {
+  local source="$1" destination="$2" legacy="$3"
+  if [[ -L "$destination" && "$(readlink "$destination")" == "$legacy" ]]; then
+    rm -- "$destination"
+    ln -s "$source" "$destination"
+    echo "agent-skills: migrated $destination"
+  fi
+}
+
+link_skill() {
+  local skill="$1" source destination item relative expected legacy
+  source="$(skill_source "$skill")"
+  legacy="${dotfiles_root}/agents/.agents/skills/${skill}"
+  destination="${2:-${skill_root}/${skill}}"
 
   [[ -f "${source}/SKILL.md" ]] || {
-    echo "agent-skills: missing facade source: ${source}/SKILL.md" >&2
+    echo "agent-skills: missing skill source: ${source}/SKILL.md" >&2
     return 1
   }
   mkdir -p "$(dirname "$destination")"
+  migrate_owned_link "$source" "$destination" "$legacy"
 
   if [[ -L "$destination" ]]; then
     if [[ "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
@@ -55,13 +76,14 @@ link_facade() {
     }
     while IFS= read -r item; do
       if [[ ! -L "$item" ]]; then
-        echo "agent-skills: refusing to replace unmanaged facade content: $item" >&2
+        echo "agent-skills: refusing to replace unmanaged skill content: $item" >&2
         return 1
       fi
       relative="${item#"$destination"/}"
       expected="${source}/${relative}"
-      if [[ "$(realpath "$item")" != "$(realpath "$expected")" ]]; then
-        echo "agent-skills: refusing to replace unrelated facade link: $item" >&2
+      if [[ "$(readlink "$item")" != "${legacy}/${relative}" &&
+            "$(realpath "$item" 2>/dev/null)" != "$(realpath "$expected")" ]]; then
+        echo "agent-skills: refusing to replace unrelated skill link: $item" >&2
         return 1
       fi
     done < <(find "$destination" -mindepth 1 ! -type d)
@@ -72,10 +94,14 @@ link_facade() {
   echo "agent-skills: linked $destination"
 }
 
-link_comment_agent() {
-  local source="${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
-  local destination="${real_home}/.claude/agents/comment-sicko.md"
+link_agent() {
+  local harness="$1" filename="$2" name="$3" package="$4" source destination
+  source="$(skill_source "$package")/agents/${filename}"
+  destination="${real_home}/.${harness}/agents/${name}.${filename##*.}"
   [[ -f "$source" ]] || { echo "agent-skills: missing agent source: $source" >&2; return 1; }
+  if [[ "$harness" == claude && "$name" == comment-sicko ]]; then
+    migrate_owned_link "$source" "$destination" "${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
+  fi
   if [[ -L "$destination" && "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
     return
   fi
@@ -88,13 +114,16 @@ link_comment_agent() {
   echo "agent-skills: linked $destination"
 }
 
-link_facades() {
-  local facade
-  for facade in "${facades[@]}"; do link_facade "$facade"; done
-  for facade in "${davstack_skills[@]}"; do
-    link_facade "$facade" "${real_home}/.claude/skills/${facade}"
+link_skills() {
+  local skill
+  for skill in "${linked_skills[@]}"; do link_skill "$skill"; done
+  for skill in "${davstack_skills[@]}"; do
+    link_skill "$skill" "${real_home}/.claude/skills/${skill}"
   done
-  link_comment_agent
+  link_agent claude claude.md comment-sicko comment-sicko
+  link_agent codex codex.toml comment-sicko comment-sicko
+  link_agent claude claude.md dav-agent dav-mode
+  link_agent codex codex.toml dav-agent dav-mode
 }
 
 sync_provider() (
@@ -138,21 +167,21 @@ sync_provider() (
 )
 
 check() {
-  local failed=0 provider facade skill legacy resolved expected
-  for facade in "${facades[@]}"; do
-    skill="${skill_root}/${facade}"
-    expected="${dotfiles_root}/agents/.agents/skills/${facade}"
+  local failed=0 provider name skill legacy resolved expected harness filename agent_skill
+  for name in "${linked_skills[@]}"; do
+    skill="${skill_root}/${name}"
+    expected="$(skill_source "$name")"
     if [[ ! -L "$skill" ]]; then
-      echo "agent-skills: facade must be a directory symlink: $skill (run make install)" >&2
+      echo "agent-skills: skill must be a directory symlink: $skill (run make install)" >&2
       failed=1
     elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
-      echo "agent-skills: facade points to the wrong source: $skill" >&2
+      echo "agent-skills: skill points to the wrong source: $skill" >&2
       failed=1
     fi
   done
-  for facade in "${davstack_skills[@]}"; do
-    skill="${real_home}/.claude/skills/${facade}"
-    expected="${dotfiles_root}/agents/.agents/skills/${facade}"
+  for name in "${davstack_skills[@]}"; do
+    skill="${real_home}/.claude/skills/${name}"
+    expected="$(skill_source "$name")"
     if [[ ! -L "$skill" ]]; then
       echo "agent-skills: missing Claude skill link: $skill (run agent-skills link)" >&2
       failed=1
@@ -161,12 +190,23 @@ check() {
       failed=1
     fi
   done
-  skill="${real_home}/.claude/agents/comment-sicko.md"
-  expected="${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
-  if [[ ! -L "$skill" ]] || [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
-    echo "agent-skills: missing or incorrect Claude agent link: $skill (run agent-skills link)" >&2
-    failed=1
-  fi
+  for name in comment-sicko dav-agent; do
+    case "$name" in
+      comment-sicko) agent_skill=comment-sicko ;;
+      dav-agent) agent_skill=dav-mode ;;
+    esac
+    for harness in Claude Codex; do
+      case "$harness" in
+        Claude) filename=claude.md; skill="${real_home}/.claude/agents/${name}.md" ;;
+        Codex) filename=codex.toml; skill="${real_home}/.codex/agents/${name}.toml" ;;
+      esac
+      expected="$(skill_source "$agent_skill")/agents/${filename}"
+      if [[ ! -L "$skill" ]] || [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
+        echo "agent-skills: missing or incorrect $harness agent link: $skill (run agent-skills link)" >&2
+        failed=1
+      fi
+    done
+  done
   for provider in "${providers[@]}"; do
     skill="${skill_root}/${provider}/SKILL.md"
     legacy="${real_home}/.codex/skills/${provider}/SKILL.md"
@@ -198,9 +238,9 @@ check() {
 }
 
 case "$command_name" in
-  link) link_facades ;;
+  link) link_skills ;;
   sync)
-    link_facades
+    link_skills
     for provider in "${providers[@]}"; do sync_provider "$provider"; done
     ;;
   sync-providers)

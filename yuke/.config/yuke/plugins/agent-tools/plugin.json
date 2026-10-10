@@ -1,0 +1,8 @@
+{
+  "name": "agent-tools",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js"
+    }
+  }
+}

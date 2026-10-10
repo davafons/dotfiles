@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import plistlib
 import re
 import shutil
 import socket
@@ -180,14 +179,13 @@ def sync():
                     cache[key]["vcs_status"] = "status unavailable" if repo else None
             return cache[key]
 
-        # Publish heartbeats: expiring tokens disappear if the refresher stops.
         for workspace in snapshot["workspaces"]:
             tokens = metadata(pane_cwd(active_pane(snapshot, workspace)))
             request("workspace.report_metadata", {"workspace_id": workspace["workspace_id"],
-                    "source": SOURCE, "tokens": tokens, "ttl_ms": 60000 if sys.platform == "darwin" else None})
+                    "source": SOURCE, "tokens": tokens})
         for pane in snapshot["panes"]:
             request("pane.report_metadata", {"pane_id": pane["pane_id"], "source": SOURCE,
-                    "tokens": metadata(pane_cwd(pane)), "ttl_ms": 60000 if sys.platform == "darwin" else None})
+                    "tokens": metadata(pane_cwd(pane))})
 
 
 def context():
@@ -302,53 +300,22 @@ def ui(mode):
     sync()
 
 
-def install_refresh():
-    """Use launchd for periodic one-shot refreshes, not unsupervised startup daemons."""
-    if sys.platform != "darwin":
-        return
-    sock = os.environ["HERDR_SOCKET_PATH"]
-    digest = hashlib.sha256(sock.encode()).hexdigest()[:12]
-    label = f"dev.herdr.workspaces.{digest}"
-    directory = Path.home() / "Library" / "LaunchAgents"
-    directory.mkdir(parents=True, exist_ok=True)
-    state = Path(os.environ["HERDR_PLUGIN_STATE_DIR"])
-    state.mkdir(parents=True, exist_ok=True)
-    plist = directory / f"{label}.plist"
-    config = {"Label": label, "ProgramArguments": [sys.executable, str(Path(__file__).resolve()), "sync"],
-              "RunAtLoad": True, "StartInterval": 15,
-              "EnvironmentVariables": {"HERDR_ENV": "1", "HERDR_SOCKET_PATH": sock,
-                                       "HERDR_PLUGIN_STATE_DIR": str(state), "PATH": os.environ["PATH"]},
-              "StandardErrorPath": str(state / f"refresh-{digest}.log")}
-    contents = plistlib.dumps(config)
-    # No bootout/restart during normal server startup if already configured.
-    if plist.exists() and plist.read_bytes() == contents:
-        result = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{label}"], capture_output=True)
-        if result.returncode == 0:
-            return
-    else:
-        subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{label}"], capture_output=True)
-        plist.write_bytes(contents)
-    run(["launchctl", "bootstrap", f"gui/{os.getuid()}", str(plist)])
-    print(f"Installed 15-second read-only refresh: {label}")
-
-
 def uninstall_refresh():
     digest = hashlib.sha256(os.environ["HERDR_SOCKET_PATH"].encode()).hexdigest()[:12]
     label = f"dev.herdr.workspaces.{digest}"
     subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{label}"], capture_output=True)
     (Path.home() / "Library" / "LaunchAgents" / f"{label}.plist").unlink(missing_ok=True)
-    print(f"Removed automatic refresh: {label}")
+    print(f"Removed legacy background refresh: {label}")
 
 
-def periodic_refresh_enabled():
-    # A launchd job outlives its Herdr plugin; don't publish after disable/unlink.
+def refresh_enabled():
     plugins = request("plugin.list")["plugins"]
     return any(plugin["plugin_id"] == PLUGIN and plugin["enabled"] for plugin in plugins)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["sync", "create", "open", "ui-create", "ui-open", "install-refresh", "uninstall-refresh", "create-jj", "open-jj"])
+    parser.add_argument("command", choices=["sync", "create", "open", "ui-create", "ui-open", "uninstall-refresh", "create-jj", "open-jj"])
     parser.add_argument("--cwd", default=os.getcwd())
     parser.add_argument("--name")
     parser.add_argument("--path")
@@ -357,12 +324,9 @@ def main():
     if os.environ.get("HERDR_ENV") != "1":
         parser.error("Run inside Herdr")
     if args.command == "sync":
-        # launchd runs even while Herdr is stopped; do not autostart a server.
         if Path(os.environ["HERDR_SOCKET_PATH"]).exists():
-            if os.environ.get("HERDR_PLUGIN_ID") or periodic_refresh_enabled():
+            if os.environ.get("HERDR_PLUGIN_ID") or refresh_enabled():
                 sync()
-    elif args.command == "install-refresh":
-        install_refresh()
     elif args.command == "uninstall-refresh":
         uninstall_refresh()
     elif args.command in {"create", "open"}:

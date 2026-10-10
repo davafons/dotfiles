@@ -27,3 +27,7 @@ source ~/.orbstack/shell/init.bash 2>/dev/null || :
 
 [[ -r ~/.bashrc ]] && source ~/.bashrc
 . "$HOME/.cargo/env"
+
+# >>> Codex installer >>>
+export PATH="/Users/davafons/.local/bin:$PATH"
+# <<< Codex installer <<<
