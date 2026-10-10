@@ -18,9 +18,21 @@ assert YUKE, "yuke is required"
 plugin = pathlib.Path(__file__).resolve().parents[1] / "plugins" / "herdr.js"
 
 profile_source = r'''
-import { plugins } from "yuke";
+import { events, plugins } from "yuke";
 import { herdr, herdrAgentState, herdrPromptSummary } from PLUGIN;
 plugins.use(herdr());
+import { currentPane } from "yuke:session";
+plugins.use({ name: "herdr-session-probe", apply(ctx) {
+  ctx.inject(["tui"], c => {
+    let index = 0;
+    c.tui.keymap.add({ "ctrl+t": () => {
+      currentPane().session.sessionId = ["test-session-one", "test-session-two", null, "test-session-two"][index++];
+      events.emit("session.current.changed");
+      c.tui.root.invalidatePaint();
+    } }, "chat && !overlay");
+    c.tui.status.add({ side: "left", render: () => "HERDR SESSION PROBE" });
+  });
+}});
 const assistant = (error) => ({ id: 2, type: "assistant", ...(error ? { error } : {}) });
 const failed = { messages: [
   { id: 1, type: "user" },
@@ -95,6 +107,7 @@ with tempfile.TemporaryDirectory(prefix="yuke-herdr-") as directory:
     }
     for name in ("AI_AGENT", "CLAUDECODE"):
         env.pop(name, None)
+    captures = []
     try:
         result = subprocess.run(
             [YUKE, "check"], env=env, check=False, text=True,
@@ -118,6 +131,40 @@ with tempfile.TemporaryDirectory(prefix="yuke-herdr-") as directory:
             time.sleep(0.05)
         else:
             raise AssertionError(f"interactive yuke did not report idle to Herdr: {requests}")
+        for expected in ("test-session-one", "test-session-two", ""):
+            subprocess.run([TMUX, "-L", tmux_socket, "send-keys", "-t", "test", "C-t"], check=True)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                reports = [r for r in requests if r["method"] == "pane.report_metadata"]
+                if reports and reports[-1]["params"]["tokens"].get("yuke_session_id") == expected:
+                    break
+                time.sleep(0.05)
+            else:
+                raise AssertionError(f"session mapping did not change to {expected!r}: {requests}")
+            assert reports[-1]["params"]["tokens"]["summary"] == "", "mapping depended on a changed prompt summary"
+            captures.append(f"=== reported session {expected!r} ===\n" + subprocess.check_output(
+                [TMUX, "-L", tmux_socket, "capture-pane", "-t", "test", "-p"], text=True))
+        # Exit while a session is held, so disposal must clear its mapping.
+        subprocess.run([TMUX, "-L", tmux_socket, "send-keys", "-t", "test", "C-t"], check=True)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            reports = [r for r in requests if r["method"] == "pane.report_metadata"]
+            if reports[-1]["params"]["tokens"].get("yuke_session_id") == "test-session-two":
+                break
+            time.sleep(0.05)
+        else:
+            raise AssertionError("could not restore a session before exit")
+        subprocess.run([TMUX, "-L", tmux_socket, "send-keys", "-t", "test", "C-q"], check=True)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if any(r["method"] == "pane.release_agent" for r in requests):
+                break
+            time.sleep(0.05)
+        else:
+            raise AssertionError(f"exit did not release the Herdr agent: {requests}")
+        metadata = [r for r in requests if r["method"] == "pane.report_metadata"]
+        assert metadata[-1]["params"]["tokens"] == {"summary": "", "yuke_session_id": ""}, "exit left a stale session mapping"
+
     finally:
         if "tmux_socket" in locals():
             subprocess.run([TMUX, "-L", tmux_socket, "kill-server"], check=False,
@@ -126,5 +173,8 @@ with tempfile.TemporaryDirectory(prefix="yuke-herdr-") as directory:
         stopped.set()
         thread.join(timeout=1)
         server.close()
+        with tempfile.NamedTemporaryFile(prefix="yuke-herdr-", suffix=".txt", mode="w", delete=False) as artifact:
+            artifact.write("\n".join(captures) + "\n=== socket requests ===\n" + json.dumps(requests, indent=2))
+            print("Saved Herdr report transcript:", artifact.name)
 
 print("Herdr state check passed")

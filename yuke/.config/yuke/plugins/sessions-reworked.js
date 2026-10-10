@@ -1,5 +1,6 @@
 //! Replace the built-in session finder with a scoped two-panel session browser.
 import { client, env, exec, fs } from "yuke";
+import { focusHerdrSession, herdrSessionPanes } from "./herdr.js";
 import { Transcript } from "yuke:chat";
 import { currentEntry, currentPane, sessions, showSession } from "yuke:session";
 import { Picker, Text, Window, clip, text } from "yuke:ui";
@@ -216,12 +217,14 @@ function historyTranscript(messages) {
 }
 
 class SessionBrowser {
-  /** @param {InjectContext} ctx @param {Wire.SessionListItem[]} items @param {Map<string, Wire.SessionActivity>} live @param {Map<string, "closed" | "here" | "elsewhere">} ownership @param {string | null} workspace @param {string | null} currentId @param {"workspace" | "all"} initialScope */
-  constructor(ctx, items, live, ownership, workspace, currentId, initialScope) {
+  /** @param {InjectContext} ctx @param {Wire.SessionListItem[]} items @param {Map<string, Wire.SessionActivity>} live @param {Map<string, "closed" | "here" | "elsewhere">} ownership @param {Map<string, string>} herdrPanes @param {string | null} workspace @param {string | null} currentId @param {"workspace" | "all"} initialScope */
+  constructor(ctx, items, live, ownership, herdrPanes, workspace, currentId, initialScope) {
     this.ctx = ctx;
     this.items = items;
     this.live = live;
     this.ownership = ownership;
+    this.herdrPanes = herdrPanes;
+    this.jumping = false;
     this.workspace = workspace;
     this.currentId = currentId;
     this.scope = workspace && initialScope === "workspace" ? "workspace" : "all";
@@ -251,7 +254,12 @@ class SessionBrowser {
       },
       format: (item) => this.formatItem(item),
       validate: (item) => {
+        if (this.jumping) return false;
         if (this.ownershipOf(item) !== "elsewhere") return true;
+        if (this.herdrPanes.has(item.session.id)) {
+          void this.jumpToSession(item);
+          return false;
+        }
         ctx.interaction.notify("That session is open in another Yuke and cannot be resumed here.", "warn");
         return false;
       },
@@ -297,7 +305,7 @@ class SessionBrowser {
   /** @returns {string} */
   footer() {
     const scope = this.workspace ? (this.scope === "workspace" ? "tab all" : "tab current") + " · " : "";
-    return scope + "ctrl+n/p sessions · ctrl+d/u preview · ↵ resume · esc close";
+    return scope + "ctrl+n/p sessions · ctrl+d/u preview · ↵ resume/jump · esc close";
   }
 
   /** @param {Wire.SessionListItem} item @returns {"closed" | "here" | "elsewhere"} */
@@ -317,7 +325,7 @@ class SessionBrowser {
   stateLabel(item) {
     if (item.session.id === this.currentId) return "current";
     const ownership = this.ownershipOf(item);
-    if (ownership === "elsewhere") return "open elsewhere";
+    if (ownership === "elsewhere") return this.herdrPanes.has(item.session.id) ? "open elsewhere · jump to Herdr" : "open elsewhere";
     const activity = this.activityOf(item);
     if (activity.state.type !== "idle") return activityLabel(activity);
     return ownership === "here" ? "open here" : "closed";
@@ -329,13 +337,14 @@ class SessionBrowser {
     const activity = this.activityOf(item);
     const current = session.id === this.currentId;
     const ownership = this.ownershipOf(item);
+    const jumpable = ownership === "elsewhere" && this.herdrPanes.has(session.id);
     const active = ownership !== "elsewhere" && activity.state.type !== "idle";
     const context = this.contexts.get(session.id) || "";
     const generic = hasGenericTitle(session);
     const primary = generic && context ? context : titleOf(session);
-    const badge = current ? "● CURRENT" : ownership === "elsewhere" ? "⊘ ELSEWHERE" : active ? "◆ WORKING" : ownership === "here" ? "● OPEN" : "○ CLOSED";
-    const titleGroup = current ? "SessionCurrent" : ownership === "elsewhere" ? "SessionElsewhere" : active ? "SessionWorking" : "SessionTitle";
-    const titleSelGroup = current ? "SessionCurrentSel" : ownership === "elsewhere" ? "SessionElsewhereSel" : active ? "SessionWorkingSel" : "SessionTitleSel";
+    const badge = current ? "● CURRENT" : jumpable ? "↗ ELSEWHERE" : ownership === "elsewhere" ? "⊘ ELSEWHERE" : active ? "◆ WORKING" : ownership === "here" ? "● OPEN" : "○ CLOSED";
+    const titleGroup = current ? "SessionCurrent" : jumpable ? "SessionHerdr" : ownership === "elsewhere" ? "SessionElsewhere" : active ? "SessionWorking" : "SessionTitle";
+    const titleSelGroup = current ? "SessionCurrentSel" : jumpable ? "SessionHerdrSel" : ownership === "elsewhere" ? "SessionElsewhereSel" : active ? "SessionWorkingSel" : "SessionTitleSel";
     const contextLine = generic && context ? "session · " + titleOf(session) : context ? "↳ " + context : this.contextLoading.has(session.id) ? "↳ loading recent prompt…" : "↳ no user prompt";
     const count = session.message_count + (session.message_count === 1 ? " msg" : " msgs");
     const model = modelLabel(session.model || "no model");
@@ -346,6 +355,20 @@ class SessionBrowser {
       { text: contextLine, group: "SessionContext", selGroup: "SessionContextSel" },
       { text: location, detail, group: "SessionMeta", selGroup: "SessionMetaSel" },
     ] };
+  }
+
+  /** Keep the finder open on failure, and never try to resume a foreign owner. @param {Wire.SessionListItem} item */
+  async jumpToSession(item) {
+    if (this.jumping || this.closed) return;
+    this.jumping = true;
+    try {
+      await focusHerdrSession(item.session.id, this.ctx.signal);
+      if (!this.closed && this.ctx.alive) this.picker.close();
+    } catch (error) {
+      if (!this.closed && this.ctx.alive) this.ctx.interaction.notify("Cannot jump to session: " + errorText(error), "warn");
+    } finally {
+      this.jumping = false;
+    }
   }
 
   toggleScope() {
@@ -497,6 +520,10 @@ class SessionBrowser {
       return handled;
     }
     const handled = this.picker.onMouse(event);
+    if (handled && event.event === "press" && event.button === "left") {
+      const selected = this.picker.list.selected();
+      if (selected && this.ownershipOf(selected) === "elsewhere" && this.herdrPanes.has(selected.session.id)) this.picker.accept();
+    }
     if (handled) this.ctx.tui.root.invalidatePaint();
     return handled;
   }
@@ -507,8 +534,8 @@ class SessionBrowser {
   tick() { this.ctx.tui.root.invalidatePaint(); }
 }
 
-/** @param {InjectContext} ctx @param {Wire.SessionListItem[]} items @param {Map<string, "closed" | "here" | "elsewhere">} ownership @param {string | null} workspace @param {string | null} currentId @param {"workspace" | "all"} initialScope */
-function showBrowser(ctx, items, ownership, workspace, currentId, initialScope) {
+/** @param {InjectContext} ctx @param {Wire.SessionListItem[]} items @param {Map<string, "closed" | "here" | "elsewhere">} ownership @param {Map<string, string>} herdrPanes @param {string | null} workspace @param {string | null} currentId @param {"workspace" | "all"} initialScope */
+function showBrowser(ctx, items, ownership, herdrPanes, workspace, currentId, initialScope) {
   if (items.length === 0) {
     ctx.interaction.notify("No sessions yet.", "info");
     return;
@@ -521,7 +548,7 @@ function showBrowser(ctx, items, ownership, workspace, currentId, initialScope) 
     const session = sessions[i];
     if (session.sessionId && session.activity) live.set(session.sessionId, session.activity);
   }
-  const browser = new SessionBrowser(ctx, items, live, ownership, workspace, currentId, initialScope);
+  const browser = new SessionBrowser(ctx, items, live, ownership, herdrPanes, workspace, currentId, initialScope);
   const win = new Window({
     title: () => {
       const shown = browser.picker.list.items.length;
@@ -559,6 +586,8 @@ export const sessionsReworked = /** @type {Plugin} */ ({
         SessionCurrentSel: { link: "UIItemSel", fg: "accent", bold: true },
         SessionWorking: { link: "UIItem", fg: "warn", bold: true },
         SessionWorkingSel: { link: "UIItemSel", fg: "warn", bold: true },
+        SessionHerdr: { link: "UIItem", fg: "cyan", bold: true },
+        SessionHerdrSel: { link: "UIItemSel", fg: "cyan", bold: true },
         SessionElsewhere: { link: "UIItem", fg: "danger", bold: true },
         SessionElsewhereSel: { link: "UIItemSel", fg: "danger", bold: true },
         SessionContext: { link: "UIItem", fg: "fg" },
@@ -581,10 +610,14 @@ export const sessionsReworked = /** @type {Plugin} */ ({
         try {
           const items = await listSessions();
           const ownership = await sessionOwnership(items);
+          const herdrPanes = await herdrSessionPanes(c.signal).catch((error) => {
+            c.print("Cannot inspect Herdr session panes", error);
+            return new Map();
+          });
           if (!workspace && currentId) workspace = items.find((item) => item.session.id === currentId)?.session.root || null;
           if (!workspace) workspace = await launchWorkspace();
           const initialScope = requested === "all" || !workspace ? "all" : "workspace";
-          if (c.alive) showBrowser(c, items, ownership, workspace, currentId, initialScope);
+          if (c.alive) showBrowser(c, items, ownership, herdrPanes, workspace, currentId, initialScope);
         } catch (error) {
           if (c.alive) c.interaction.notify("Cannot list sessions: " + errorText(error), "error");
         } finally {

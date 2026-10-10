@@ -49,7 +49,9 @@ pub fn choose_command(
     key: &str,
 ) -> NavigatorCommand {
     let pane_id = pane_id.into();
-    if process_name.is_some_and(is_vim_process) {
+    // Yuke owns these keys for its panels, prompt history, and Ctrl+J newline.
+    // Capturing them as Herdr movement silently eats them in a single-pane tab.
+    if process_name.is_some_and(|name| is_vim_process(name) || name == "yuke") {
         NavigatorCommand::SendKeys {
             pane_id,
             key: key.to_string(),
@@ -154,6 +156,35 @@ mod tests {
                 key: "alt+h".into()
             },
             choose_command("pane-1", Some("nvim"), "left", "alt+h")
+        );
+    }
+
+    #[test]
+    fn preserves_yuke_control_keys_in_all_directions() {
+        for (direction, key) in [
+            ("left", "ctrl+h"),
+            ("down", "ctrl+j"),
+            ("up", "ctrl+k"),
+            ("right", "ctrl+l"),
+        ] {
+            assert_eq!(
+                NavigatorCommand::SendKeys {
+                    pane_id: "pane-yuke".into(),
+                    key: key.into(),
+                },
+                choose_command("pane-yuke", Some("yuke"), direction, key),
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_process_still_uses_herdr_navigation() {
+        assert_eq!(
+            NavigatorCommand::Focus {
+                pane_id: "pane-shell".into(),
+                direction: "down".into(),
+            },
+            choose_command("pane-shell", None, "down", "ctrl+j"),
         );
     }
 

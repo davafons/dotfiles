@@ -10,13 +10,17 @@ import socket
 
 
 STATUS_ICONS = {
-    "blocked": "×",
-    "working": "◐",
-    "done": "✓",
+    "blocked": "●",
+    "working": "●",
+    "done": "●",
     "idle": "○",
     "unknown": "·",
 }
-TAB_MARKER = re.compile(r"^(?:[×◐✓○·]|🤖)\[(?:[1-9]\d*(?:,[1-9]\d*)*)\]\s+")
+# Restore names from grouped badges and both earlier label formats.
+NUMBERS = r"(?:[1-9]\d*(?:,[1-9]\d*)*)"
+SHORTCUTS = rf"\[{NUMBERS}\]"
+ICON = r"(?:[●×◐✓○·]|🤖)"
+TAB_MARKER = re.compile(rf"^(?:\[{NUMBERS}\s+{ICON}\]|{SHORTCUTS}\s+{ICON}|{ICON}{SHORTCUTS})\s+")
 
 
 def load_tab_labels(path):
@@ -65,7 +69,7 @@ def sync():
                                 ("pane", snapshot["agents"])):
             for index, resource in enumerate(resources, 1):
                 resource_id = resource[kind + "_id"]
-                number = str(index)
+                number = "0" if index == 10 else str(index)
                 previous = resource.get("tokens", {}).get("shortcut_number")
                 if previous != number:
                     request(kind + ".report_metadata", {
@@ -74,7 +78,7 @@ def sync():
                         "tokens": {"shortcut_number": number},
                     })
                 if kind == "pane":
-                    agent_numbers_by_tab.setdefault(resource["tab_id"], []).append(number)
+                    agent_numbers_by_tab.setdefault(resource["tab_id"], []).append(str(index))
 
         labels_path = state_dir / "tab-labels.json"
         managed_labels = load_tab_labels(labels_path)
@@ -98,7 +102,7 @@ def sync():
             numbers = agent_numbers_by_tab.get(tab_id, [])
             if numbers:
                 icon = STATUS_ICONS.get(tab.get("agent_status"), STATUS_ICONS["unknown"])
-                rendered = f"{icon}[{','.join(numbers)}] {base}"
+                rendered = f"[{','.join(numbers)} {icon}] {base}"
                 if current != rendered:
                     request("tab.rename", {"tab_id": tab_id, "label": rendered})
                 managed_labels[tab_id] = {"base": base, "rendered": rendered}

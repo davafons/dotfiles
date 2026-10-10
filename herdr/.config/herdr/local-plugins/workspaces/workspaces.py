@@ -91,7 +91,7 @@ def status(cwd):
             state += " · CONFLICT"
         if bookmarks:
             state += " · " + ", ".join(bookmarks)
-        return {"checkout": clean(f"jj / {name}"), "revision": clean(change),
+        return {"checkout": clean(name), "revision": clean(change),
                 "change_description": clean(description or "(no description)"), "vcs_status": clean(state)}
 
     # Never enter this path for a jj checkout, including linked jj workspaces.
@@ -117,7 +117,7 @@ def status(cwd):
     state = f"{count} file{'s' if count != 1 else ''}" if count else "clean"
     if conflict:
         state += " · CONFLICT"
-    return {"checkout": clean(f"git / {root.name}"), "revision": clean(branch),
+    return {"checkout": clean(root.name), "revision": clean(branch),
             "change_description": None, "vcs_status": state}
 
 

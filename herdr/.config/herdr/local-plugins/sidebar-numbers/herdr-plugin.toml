@@ -14,6 +14,84 @@ title = "Refresh sidebar numbers"
 contexts = ["global"]
 command = ["python3", "sync.py"]
 
+[[actions]]
+id = "agent-10"
+title = "Jump to agent 10"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "10"]
+
+[[actions]]
+id = "agent-11"
+title = "Jump to agent 11"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "11"]
+
+[[actions]]
+id = "agent-12"
+title = "Jump to agent 12"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "12"]
+
+[[actions]]
+id = "agent-13"
+title = "Jump to agent 13"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "13"]
+
+[[actions]]
+id = "agent-14"
+title = "Jump to agent 14"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "14"]
+
+[[actions]]
+id = "agent-15"
+title = "Jump to agent 15"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "15"]
+
+[[actions]]
+id = "agent-16"
+title = "Jump to agent 16"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "16"]
+
+[[actions]]
+id = "agent-17"
+title = "Jump to agent 17"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "17"]
+
+[[actions]]
+id = "agent-18"
+title = "Jump to agent 18"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "18"]
+
+[[actions]]
+id = "agent-19"
+title = "Jump to agent 19"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "19"]
+
+[[actions]]
+id = "agent-20"
+title = "Jump to agent 20"
+contexts = ["global"]
+command = ["python3", "focus.py", "agent", "20"]
+
+[[actions]]
+id = "workspace-10"
+title = "Jump to workspace 10"
+contexts = ["global"]
+command = ["python3", "focus.py", "workspace", "10"]
+
+[[actions]]
+id = "tab-10"
+title = "Jump to tab 10"
+contexts = ["pane"]
+command = ["python3", "focus.py", "tab", "10"]
+
 [[events]]
 on = "workspace.created"
 command = ["python3", "sync.py"]

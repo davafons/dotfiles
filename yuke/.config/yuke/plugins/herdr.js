@@ -1,7 +1,7 @@
 // Report this yuke pane as idle, working, or blocked to a local Herdr daemon.
 // Herdr sets HERDR_ENV=1, HERDR_SOCKET_PATH, and HERDR_PANE_ID for the process.
-import { client, env, net, plugins, utf8 } from "yuke";
-import { currentEntry } from "yuke:session";
+import { client, env, net, utf8 } from "yuke";
+import { currentEntry, currentPane } from "yuke:session";
 /** @import { Plugin } from "yuke" */
 
 const source = "custom:yuke";
@@ -9,6 +9,66 @@ const agent = "yuke";
 const timeoutMs = 250;
 const frameLimit = 4096;
 const maxAttempts = 3;
+
+const sessionToken = "yuke_session_id";
+/** @typedef {{ pane_id: string, agent?: string, tokens?: Record<string, string> }} HerdrPane */
+
+/** One bounded socket request. Each call owns its socket, including concurrent reports. */
+/** @param {string} method @param {Record<string, unknown>} params @param {import("yuke").CancellationSignal} signal */
+async function navigationRequest(method, params, signal) {
+  const path = env.get("HERDR_SOCKET_PATH");
+  if (!path) throw new Error("No Herdr socket is configured.");
+  const id = "yuke:" + method;
+  const options = { timeoutMs: 1000, signal };
+  const socket = await net.connect({ path, ...options });
+  const deadline = setTimeout(() => socket.close(), options.timeoutMs);
+  const frame = new Uint8Array(1024 * 1024);
+  try {
+    await socket.write(utf8.encode(JSON.stringify({ id, method, params }) + "\n"), options);
+    let used = 0;
+    while (true) {
+      const chunk = await socket.read({ ...options, maxBytes: 65536 });
+      if (chunk === null) throw new Error("Incomplete Herdr response.");
+      for (let at = 0; at < chunk.length; at++) {
+        const byte = chunk[at];
+        if (byte === 10) {
+          /** @type {{ id: string, error?: { message: string }, result?: { type: string, panes?: HerdrPane[] } }} */
+          const response = JSON.parse(utf8.decode(frame.subarray(0, used)));
+          if (response?.id !== id) throw new Error("Invalid Herdr response.");
+          if (response.error) throw new Error(response.error.message);
+          if (!response.result) throw new Error("Missing Herdr result.");
+          return response.result;
+        }
+        if (used === frame.length) throw new Error("Herdr response exceeds the byte limit.");
+        frame[used++] = /** @type {number} */ (byte);
+      }
+    }
+  } finally {
+    clearTimeout(deadline);
+    socket.close();
+  }
+}
+
+/** Find session-to-pane mappings on this Herdr server. Outside Herdr the map is empty; socket failures throw. @param {import("yuke").CancellationSignal} signal @returns {Promise<Map<string, string>>} */
+export async function herdrSessionPanes(signal) {
+  const panes = new Map();
+  if (env.get("HERDR_ENV") !== "1" || !env.get("HERDR_SOCKET_PATH")) return panes;
+  const result = await navigationRequest("pane.list", {}, signal);
+  if (result.type !== "pane_list" || !Array.isArray(result.panes)) throw new Error("Invalid Herdr pane list.");
+  for (const pane of result.panes) {
+    const sessionId = pane.tokens?.[sessionToken];
+    if (pane.agent === agent && sessionId && typeof pane.pane_id === "string") panes.set(sessionId, pane.pane_id);
+  }
+  return panes;
+}
+
+/** Focus the pane that still owns this session. Re-resolve moved or switched panes; missing owners and socket failures throw. @param {string} sessionId @param {import("yuke").CancellationSignal} signal */
+export async function focusHerdrSession(sessionId, signal) {
+  const pane = (await herdrSessionPanes(signal)).get(sessionId);
+  if (!pane) throw new Error("That session no longer has a reported Herdr pane.");
+  const result = await navigationRequest("pane.focus", { pane_id: pane }, signal);
+  if (result.type !== "ok") throw new Error("Invalid Herdr focus response.");
+}
 
 /**
  * Map Yuke's current chat state to one of the states accepted by Herdr.
@@ -73,6 +133,8 @@ export function herdr() {
         let acknowledgedState = "";
         let desiredSummary = "";
         let acknowledgedSummary = "";
+        let desiredSession = "";
+        let acknowledgedSession = "";
         // Reports are serialized, and cleanup waits for the active report, so one frame is sufficient.
         const frame = new Uint8Array(frameLimit);
         /** @type {Promise<void> | undefined} */
@@ -126,10 +188,11 @@ export function herdr() {
         }
 
         function schedule() {
-          const settled = desiredState === acknowledgedState && desiredSummary === acknowledgedSummary;
+          const settled = desiredState === acknowledgedState && desiredSummary === acknowledgedSummary && desiredSession === acknowledgedSession;
           if (!ctx.alive || active || retry || settled || attempts === maxAttempts) return;
           const state = desiredState;
           const summary = desiredSummary;
+          const sessionId = desiredSession;
           /** @type {unknown} */
           let failure;
           attempts++;
@@ -138,15 +201,16 @@ export function herdr() {
               await request("pane.report_agent", { state }, false);
               acknowledgedState = state;
             }
-            if (summary !== acknowledgedSummary) {
-              await request("pane.report_metadata", { tokens: { summary } }, false);
+            if (summary !== acknowledgedSummary || sessionId !== acknowledgedSession) {
+              await request("pane.report_metadata", { tokens: { summary, [sessionToken]: sessionId } }, false);
               acknowledgedSummary = summary;
+              acknowledgedSession = sessionId;
             }
           })().catch((error) => { failure = error; }).then(() => {
             active = undefined;
-            const settled = desiredState === acknowledgedState && desiredSummary === acknowledgedSummary;
+            const settled = desiredState === acknowledgedState && desiredSummary === acknowledgedSummary && desiredSession === acknowledgedSession;
             if (!ctx.alive || settled) return;
-            if (desiredState !== state || desiredSummary !== summary) schedule();
+            if (desiredState !== state || desiredSummary !== summary || desiredSession !== sessionId) schedule();
             else if (attempts < maxAttempts) retry = setTimeout(() => { retry = 0; schedule(); }, timeoutMs);
             else ctx.print("Herdr report failed", failure);
           });
@@ -158,9 +222,11 @@ export function herdr() {
           const state = herdrAgentState(ctx.interaction.pending, client.isBusy(), outline);
           const firstUser = outline?.messages.find((message) => message.type === "user");
           const summary = entry && firstUser ? herdrPromptSummary(client.sessionParts(entry.session.id, firstUser.id)) : "";
-          if (state !== desiredState || summary !== desiredSummary) {
+          const sessionId = currentPane()?.session.sessionId || "";
+          if (state !== desiredState || summary !== desiredSummary || sessionId !== desiredSession) {
             desiredState = state;
             desiredSummary = summary;
+            desiredSession = sessionId;
             attempts = 0;
             clearTimeout(retry);
             retry = 0;
@@ -174,7 +240,7 @@ export function herdr() {
           socket?.close();
           await active;
           // Metadata tokens belong to their reporter, so clear the summary before releasing the agent label.
-          try { await request("pane.report_metadata", { tokens: { summary: "" } }, true); } catch {}
+          try { await request("pane.report_metadata", { tokens: { summary: "", [sessionToken]: "" } }, true); } catch {}
           // Herdr documents release_agent as the exit report; it clears only the label that this source and agent hold.
           try { await request("pane.release_agent", {}, true); } catch {}
         });

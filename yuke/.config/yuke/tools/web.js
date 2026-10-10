@@ -1,4 +1,4 @@
-import { fetch, env } from "yuke";
+import { fetch, env, fs } from "yuke";
 /** @import { CancellationSignal, Plugin } from "yuke" */
 
 const API = "https://api.monid.ai";
@@ -27,11 +27,22 @@ async function sleep(ms, signal) {
   if (signal?.aborted) throw new Error("aborted");
 }
 
+async function apiKey() {
+  const override = env.get("MONID_API_KEY")?.trim();
+  if (override) return override;
+
+  const config = env.get("XDG_CONFIG_HOME") || (env.get("HOME") || "~") + "/.config";
+  const path = config + "/" + (env.get("YUKE_APPNAME") || "yuke") + "/monid.key";
+  if (!await fs.stat(path)) throw new Error(`Set MONID_API_KEY or save your key in ${path} (mode 0600)`);
+  const key = (await fs.readFile(path)).trim();
+  if (!key) throw new Error(`Monid key file is empty: ${path}`);
+  return key;
+}
+
 // Monid answers untyped JSON, so the caller checks each field it reads.
 /** @param {string} url @param {CancellationSignal} signal @param {unknown} [payload] @returns {Promise<any>} */
 async function request(url, signal, payload) {
-  const key = env.get("MONID_API_KEY");
-  if (!key) throw new Error("MONID_API_KEY is not set");
+  const key = await apiKey();
 
   const response = await fetch(url, {
     method: payload === undefined ? "GET" : "POST",

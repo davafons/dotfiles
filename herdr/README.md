@@ -9,27 +9,47 @@ Press `Ctrl+a`, release it, then press the action key.
 | Action key | Action |
 | --- | --- |
 | `Ctrl+p` / `Ctrl+n` | Previous / next agent across workspaces |
-| `Ctrl+1` through `Ctrl+9` | Jump to agent 1 through 9 |
+| `Ctrl+1` through `Ctrl+9`, then `Ctrl+0` | Jump to agent 1 through 10 |
 | `w` | Open workspace navigation |
-| `Shift+1` through `Shift+9` | Jump to workspace 1 through 9 |
+| `Shift+1` through `Shift+9`, then `Shift+0` | Jump to workspace 1 through 10 |
 | `Shift+p` / `Shift+n` | Previous / next workspace |
 | `Shift+c` | Create a workspace |
 | `t` | Open the fuzzy navigator |
+| `r` | Open checkout review beside this pane; from review, return to its source |
+| `Shift+z` | Resize mode (moved from `r` to make room for review) |
 | `g` | Create a jj workspace or Git worktree from `main` |
 | `Shift+g` | Pick an existing jj workspace or Git worktree |
 | `Shift+u` | Refresh checkout sidebar status |
 | `h` / `j` / `k` / `l` | Focus the pane to the left / down / up / right |
 | `p` / `n` | Previous / next tab |
-| `1` through `9` | Jump to tab 1 through 9 |
+| `1` through `9`, then `0` | Jump to tab 1 through 10 |
 | `Shift+Tab` / `Tab` | Previous / next pane |
 | `,` | Rename the current pane |
 | `[` | Enter copy mode |
 | `?` | Show the active keybindings |
 
-Direct `Ctrl+p` and `Ctrl+n` pass through to the application.
+The tenth workspace and agent sidebar entry shows `0`, matching its shortcut.
+Tab badges retain the ordinal `10` for compatibility with the local status-color
+patch. The local `sidebar-numbers` plugin supplies the three `0` bindings because
+Herdr's built-in indexed bindings only accept `1..9`.
+
+Direct `Ctrl+h`, `Ctrl+j`, `Ctrl+k`, `Ctrl+l`, `Ctrl+p`, and `Ctrl+n` pass through
+to the application. Use `Ctrl+a`, then `h/j/k/l`, for Herdr pane navigation.
+The old global Ctrl+j action swallowed the key even when no pane existed below,
+preventing Yuke from receiving its newline/history/panel shortcuts. Direct
+intercepts are now removed. The local navigator also recognizes Yuke and forwards
+these keys if an already-loaded client or manual action still invokes it.
+
 New tabs open immediately with generated names. Tabs containing detected agents
-show the same state symbol as the agent sidebar plus their global shortcut
-number, for example `◐[3] 2`; terminal-only tabs keep their ordinary name.
+group their global shortcut number and default status dot in one badge before
+the tab name, for example `[3 ●] 2`. Multiple agents use `[2,3 ●] tab-name` with
+the tab's combined status. Terminal-only tabs keep their ordinary name. Brackets
+are muted gray, numbers retain the normal foreground, and the local Herdr client
+patch colors only the dot using the sidebar status palette: working yellow,
+blocked red, done teal, idle green, and unknown muted gray. Titles retain their
+normal foreground and active-tab background. Coloring requires the patched
+client binary; detach and reattach after installing it, without stopping the
+server or agents. A normal `herdr update` can replace this local binary patch.
 
 Copy mode uses Vim movement keys. Press `v` to start a selection.
 Press `y` to copy it. Press `/` to search. Press `q` to leave.
@@ -62,14 +82,16 @@ the checkout is preserved and can be opened again with `Shift+g`.
 The fuzzy picker marks the invoking pane's checkout with `*`, shows checkout
 names and full paths, and reuses an already-open jj pane instead of duplicating
 it. Type to filter, Enter to open, or Escape to cancel. Ctrl-C cancels creation.
-Workspaces and agent entries show their actual checkout rather than inferring it
-from a manually assigned Herdr label. A workspace follows its active tab's
-selected pane; each agent follows its own pane. Workspace rows show:
-
-- jj workspace name, short change ID, description, saved changed-file count,
-  bookmarks, and `CONFLICT` when present.
-- Git checkout directory, branch (or detached HEAD), current changed-file count,
-  and conflicts, including linked Git worktrees.
+Workspace/machine rows show only their shortcut number and label, with no
+checkout, description, or status indicator. Agent entries show their own pane's
+actual checkout rather than inferring it from a manually assigned Herdr label.
+The bare checkout name sits beside the project on the same header line, for
+example `shirabe · default`, with no `jj /` or `git /` prefix or separate checkout
+row. The default status dot and purple change ID/branch share that header too;
+Herdr ellipsizes long labels to fit. Project labels are blue and checkout names
+cyan. File counts and clean/empty status are not displayed. The second row shows
+Codex terminal titles or Yuke session summaries in the same explicit dark gray,
+without stacking terminal faint. Workspace/machine rows remain labels only.
 
 Status refreshes on focus, pane, worktree, and agent-state events. On macOS, a
 per-session launchd job also refreshes every 15 seconds, picking up changes in
@@ -123,8 +145,75 @@ and metadata, actual create and fzf picker popups in a private PTY-backed test
 session, native Git worktree creation/opening with dirty checkout metadata, and
 successful periodic launchd refreshes. No desktop window was opened or activated.
 
+Navigation/color regression checks:
+
+```sh
+cargo test --manifest-path "$HOME/.config/herdr/local-plugins/nvim-navigation/Cargo.toml"
+python3 "$HOME/.config/herdr/local-plugins/nvim-navigation/tests/check-herdr-navigation.py"
+# Also verify top-tab dot colors and number-first spacing with the patched client:
+HERDR_TEST_TAB_STATUS_COLORS=1 python3 "$HOME/.config/herdr/local-plugins/nvim-navigation/tests/check-herdr-navigation.py"
+```
+
+The second check needs `tmux`, a C compiler, and the linked local plugins. It
+creates a named Herdr test session and detached tmux terminal, runs a raw-input
+fixture named `yuke` (no model access), and proves legacy/enhanced Ctrl+j and
+Ctrl+h/k/l delivery even with a neighboring Herdr pane. It also checks prefixed
+pane movement, the navigator's Yuke passthrough, inline checkout truncation, and
+rendered blue/cyan/purple/red ANSI styles. Eight Rust tests pass; the live check
+saves a text artifact and removes its test session and timer on exit.
+
 After a config edit, run `herdr config check`, then `herdr server reload-config`.
 If an attached client retains its old keys, press `Ctrl+a`, then `Shift+r` to
 reload its local config.
+
+## Neovim checkout review
+
+The local `david.review` plugin opens a persistent Neovim split beside the
+invoking pane, using that pane's actual checkout. Wide panes split right;
+narrow ones split down. CodeDiff starts inline below 100 editor columns,
+otherwise side by side; `t` changes the layout inside the diff.
+
+Press `Ctrl+a`, then `r`, from an agent pane to open review. Press it from
+the review pane to return. `,ab` or `:HerdrReviewReturn` also returns to the
+source pane. Closing the CodeDiff tab with `q` returns automatically. The
+editor remains alive, retaining buffers, unsaved edits and queued annotations;
+opening review again focuses that editor and reopens its diff if needed.
+Each source pane/checkout has its own review editor.
+
+jj checkouts compare the working tree against `@-`; Git-only checkouts compare
+against `HEAD`. The jj query snapshots current work normally when review is
+requested. CodeDiff currently needs `.git` in the checkout; non-colocated jj
+workspaces are refused. This is a checkout review and includes other agents'
+or manual edits in the same checkout. Checkpoints and agent-only attribution
+are deferred.
+
+The Neovim adapter is `config.herdr_review` in the personal nvim package. It
+targets questions and queued comments at the invoking agent. Use `gf` to open
+the real file, `,aa` to annotate, `,ap` to preview and `,aS` to submit. Leaving
+review does not send anything. `,at` explicitly chooses another comment target;
+it also accepts a replacement session in the same source pane. If that agent
+has gone or its reported session changed, sending is refused and comments are retained.
+Transcript-based edit marks still depend on upstream agent support.
+
+On a new machine after Stow has linked the package:
+
+```sh
+herdr plugin link "$HOME/.config/herdr/local-plugins/review"
+herdr config check
+herdr server reload-config
+```
+
+The action is also available as
+`herdr plugin action invoke toggle --plugin david.review` inside Herdr.
+In a review editor, `:HerdrReviewOpen` reopens its current-change view.
+Run its real integration check without touching live panes or sending prompts:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/review/tests/check-review.py"
+```
+
+The check uses a private Herdr session, a detached tmux terminal and a temporary
+jj repository. It tests rendering, pane reuse, returning with unsaved edits,
+distinct source panes and annotation routing through a capture executable.
 
 See the [keyboard guide](https://herdr.dev/docs/keyboard/) for the built-in keys.

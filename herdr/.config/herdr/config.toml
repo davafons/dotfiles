@@ -14,6 +14,7 @@ previous_agent = "prefix+ctrl+p"
 next_agent = "prefix+ctrl+n"
 focus_agent = "prefix+ctrl+1..9"
 switch_tab = "prefix+1..9"
+resize_mode = "prefix+shift+z"
 # Route checkout creation through jj detection instead of the Git-only default.
 new_worktree = ""
 
@@ -35,6 +36,86 @@ type = "plugin_action"
 command = "david.workspaces.refresh"
 description = "refresh active checkout status"
 
+# Herdr's indexed bindings stop at 9; explicit plugin actions supply item 10.
+[[keys.command]]
+key = "prefix+ctrl+0"
+type = "plugin_action"
+command = "sidebar-numbers.agent-10"
+description = "jump to agent 10"
+
+[[keys.command]]
+key = ["prefix+shift+0", "prefix+)"]
+type = "plugin_action"
+command = "sidebar-numbers.workspace-10"
+description = "jump to workspace 10"
+
+[[keys.command]]
+key = "prefix+0"
+type = "plugin_action"
+command = "sidebar-numbers.tab-10"
+description = "jump to tab 10"
+
+# Second agent bank: Alt+1..9 = 11..19, Alt+0 = 20.
+[[keys.command]]
+key = "prefix+alt+1"
+type = "plugin_action"
+command = "sidebar-numbers.agent-11"
+description = "jump to agent 11"
+
+[[keys.command]]
+key = "prefix+alt+2"
+type = "plugin_action"
+command = "sidebar-numbers.agent-12"
+description = "jump to agent 12"
+
+[[keys.command]]
+key = "prefix+alt+3"
+type = "plugin_action"
+command = "sidebar-numbers.agent-13"
+description = "jump to agent 13"
+
+[[keys.command]]
+key = "prefix+alt+4"
+type = "plugin_action"
+command = "sidebar-numbers.agent-14"
+description = "jump to agent 14"
+
+[[keys.command]]
+key = "prefix+alt+5"
+type = "plugin_action"
+command = "sidebar-numbers.agent-15"
+description = "jump to agent 15"
+
+[[keys.command]]
+key = "prefix+alt+6"
+type = "plugin_action"
+command = "sidebar-numbers.agent-16"
+description = "jump to agent 16"
+
+[[keys.command]]
+key = "prefix+alt+7"
+type = "plugin_action"
+command = "sidebar-numbers.agent-17"
+description = "jump to agent 17"
+
+[[keys.command]]
+key = "prefix+alt+8"
+type = "plugin_action"
+command = "sidebar-numbers.agent-18"
+description = "jump to agent 18"
+
+[[keys.command]]
+key = "prefix+alt+9"
+type = "plugin_action"
+command = "sidebar-numbers.agent-19"
+description = "jump to agent 19"
+
+[[keys.command]]
+key = "prefix+alt+0"
+type = "plugin_action"
+command = "sidebar-numbers.agent-20"
+description = "jump to agent 20"
+
 [[keys.command]]
 key = "prefix+t"
 type = "plugin_action"
@@ -42,28 +123,10 @@ command = "herdr-navigator.open"
 description = "find a workspace, agent, or project"
 
 [[keys.command]]
-key = "ctrl+h"
+key = "prefix+r"
 type = "plugin_action"
-command = "david.nvim-navigation.left"
-description = "navigate left through Neovim and Herdr"
-
-[[keys.command]]
-key = "ctrl+j"
-type = "plugin_action"
-command = "david.nvim-navigation.down"
-description = "navigate down through Neovim and Herdr"
-
-[[keys.command]]
-key = "ctrl+k"
-type = "plugin_action"
-command = "david.nvim-navigation.up"
-description = "navigate up through Neovim and Herdr"
-
-[[keys.command]]
-key = "ctrl+l"
-type = "plugin_action"
-command = "david.nvim-navigation.right"
-description = "navigate right through Neovim and Herdr"
+command = "david.review.toggle"
+description = "review checkout changes / return to source agent"
 
 [theme]
 name = "terminal"
@@ -80,11 +143,16 @@ surface1 = "#0d303a"
 sidebar_width = 36
 prompt_new_tab_name = false
 agent_panel_sort = "spaces"
-status_indicators = "symbols"
+status_indicators = "dots"
 
 [ui.sidebar.spaces]
-# The active tab/pane determines checkout context, not the workspace label.
-rows = [["$shortcut_number", "state_icon", "workspace"], ["$checkout"], ["$revision", "$vcs_status"], ["$change_description"]]
+# Checkout context belongs to each agent, not the workspace/machine label.
+rows = [["$shortcut_number", { token = "workspace", fg = "#58a3ff", bold = true }]]
 
 [ui.sidebar.agents]
-rows = [["$shortcut_number", "state_icon", "workspace"], ["$checkout", "$revision"], ["terminal_title_stripped", "$summary"]]
+# Dot, project, checkout, and revision share the header; Herdr ellipsizes long names.
+# Codex titles and Yuke summaries use the same explicit dark-gray foreground.
+rows = [
+  ["$shortcut_number", "state_icon", { token = "workspace", fg = "#58a3ff", bold = true }, { token = "$checkout", fg = "#44b8a8", bold = false }, { token = "$revision", fg = "#b49ee8" }],
+  [{ token = "terminal_title_stripped", fg = "#586e75", bold = false, dim = false }, { token = "$summary", fg = "#586e75", bold = false, dim = false }],
+]

@@ -3,6 +3,8 @@
 import fcntl
 import json
 import pathlib
+import socket
+import threading
 import shutil
 import subprocess
 import tempfile
@@ -20,7 +22,7 @@ transcript = []
 
 def tmux(*args, check=True):
     return subprocess.run(
-        [TMUX, *args], check=check, text=True,
+        [TMUX, "-L", session, *args], check=check, text=True,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
 
@@ -94,7 +96,10 @@ client.request = async (method, params) => {
   }
   return { session_id: params.session_id, messages: params.session_id === newest.session.id ? messages.slice(0, 1) : messages, configs: [], has_more: false };
 };
-client.sessionOpen = () => true;
+client.sessionOpen = (id) => {
+  if (id === foreign.session.id) throw new Error("must never open a foreign session locally");
+  return true;
+};
 client.sessionClose = () => {};
 client.sessionActivity = (id) => id === newest.session.id ? newest.activity : older.activity;
 client.sessionOutline = () => ({ messages: [], active: null });
@@ -102,17 +107,66 @@ client.sessionCheckContext = async () => newest;
 plugins.use(sessionsReworked);
 plugins.use({ name: "session-browser-test", apply(ctx) {
   ctx.inject(["tui"], c => {
+    c.tui.style.setPalette({ cyan: 80 });
     c.tui.status.add({ side: "left", render: () => "SESSION TEST READY" });
   });
 }});
 '''
 
 lock_file = None
+server = None
+stopped = threading.Event()
+reported_panes = []
+focus_requests = []
+reject_focus = False
+
+
+def serve():
+    while not stopped.is_set():
+        try:
+            connection, _ = server.accept()
+        except socket.timeout:
+            continue
+        with connection:
+            connection.settimeout(2)
+            data = b""
+            while not data.endswith(b"\n"):
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            if not data:
+                continue
+            request = json.loads(data)
+            response = {"id": request["id"]}
+            if request["method"] == "pane.list":
+                response["result"] = {"type": "pane_list", "panes": list(reported_panes)}
+            elif request["method"] == "pane.focus":
+                focus_requests.append(request["params"]["pane_id"])
+                if reject_focus:
+                    response["error"] = {"code": "not_found", "message": "test pane vanished"}
+                else:
+                    response["result"] = {"type": "ok"}
+            else:
+                raise AssertionError("unexpected Herdr method: " + request["method"])
+            payload = (json.dumps(response) + "\n").encode()
+            # Split frames to exercise partial socket reads.
+            connection.sendall(payload[:9])
+            connection.sendall(payload[9:])
+
+
 try:
     with tempfile.TemporaryDirectory(prefix="yuke-sessions-") as directory:
         root = pathlib.Path(directory)
         profile = root / "config" / "yuke"
         profile.mkdir(parents=True)
+        socket_path = root / "herdr.sock"
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(socket_path))
+        server.listen()
+        server.settimeout(0.05)
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
         workspace = root / "workspace"
         workspace.mkdir()
         workspace = workspace.resolve()
@@ -130,6 +184,8 @@ try:
             f"export XDG_STATE_HOME={json.dumps(str(root / 'state'))}\n"
             f"export XDG_CACHE_HOME={json.dumps(str(root / 'cache'))}\n"
             "export TERM=xterm-256color\n"
+            "export HERDR_ENV=1\n"
+            f"export HERDR_SOCKET_PATH={json.dumps(str(socket_path))}\n"
             f"cd {json.dumps(str(workspace))}\n"
             f"exec {json.dumps(YUKE)}\n"
         )
@@ -188,8 +244,49 @@ try:
         tmux("send-keys", "-t", target, "-l", "/sessions all")
         tmux("send-keys", "-t", target, "Enter")
         wait_screen(target, "sessions all command", lambda text: "Sessions · all workspaces · 3" in text and "ready for review." in text)
+
+        tmux("send-keys", "-t", target, "Escape")
+        reported_panes[:] = [{"pane_id": "wTest:p1", "agent": "yuke", "tokens": {"yuke_session_id": "session-active-elsewhere"}}]
+        tmux("send-keys", "-t", target, "C-f")
+        wait_screen(target, "jumpable Herdr owner", lambda text: "↗ ELSEWHERE" in text and "jump to Herdr" in text)
+        ansi = tmux("capture-pane", "-t", target, "-p", "-e").stdout
+        foreign_row = next(line for line in ansi.splitlines() if "↗ ELSEWHERE" in line)
+        assert "38;5;80" in foreign_row, f"jumpable session was not cyan: {foreign_row!r}"
+        tmux("send-keys", "-t", target, "C-n")
+        reject_focus = True
+        tmux("send-keys", "-t", target, "Enter")
+        wait_screen(target, "focus error keeps finder open", lambda text: "test pane vanished" in text and "Sessions ·" in text)
+        assert focus_requests == ["wTest:p1"], focus_requests
+        reject_focus = False
+        # A cached row must not focus the old pane after a move.
+        reported_panes[0]["pane_id"] = "wOther:p2"
+        tmux("send-keys", "-t", target, "Enter")
+        wait_screen(target, "Enter jumps to live pane", lambda text: "Sessions ·" not in text)
+        assert focus_requests == ["wTest:p1", "wOther:p2"], focus_requests
+
+        tmux("send-keys", "-t", target, "C-f")
+        wait_screen(target, "mouse jump finder", lambda text: "↗ ELSEWHERE" in text)
+        visible = tmux("capture-pane", "-t", target, "-p").stdout.splitlines()
+        row = next(i for i, line in enumerate(visible) if "↗ ELSEWHERE" in line)
+        col = visible[row].index("↗ ELSEWHERE") + 2
+        tmux("send-keys", "-t", target, "-l", f"\x1b[<0;{col};{row + 1}M\x1b[<0;{col};{row + 1}m")
+        wait_screen(target, "single click jumps to Herdr", lambda text: "Sessions ·" not in text)
+        assert focus_requests[-1] == "wOther:p2" and len(focus_requests) == 3, focus_requests
+
+        tmux("send-keys", "-t", target, "C-f")
+        wait_screen(target, "stale owner finder", lambda text: "↗ ELSEWHERE" in text)
+        tmux("send-keys", "-t", target, "C-n")
+        reported_panes.clear()
+        tmux("send-keys", "-t", target, "Enter")
+        wait_screen(target, "stale owner stays protected", lambda text: "no longer has a" in text and "reported Herdr pane." in text and "Sessions ·" in text)
+        assert len(focus_requests) == 3, "stale mapping focused a different session"
+
 finally:
-    tmux("kill-session", "-t", session, check=False)
+    tmux("kill-server", check=False)
+    stopped.set()
+    if server is not None:
+        thread.join(timeout=2)
+        server.close()
     if lock_file is not None:
         lock_file.close()
     with tempfile.NamedTemporaryFile(prefix="yuke-sessions-", suffix=".txt", mode="w", delete=False) as artifact:

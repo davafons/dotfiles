@@ -1,0 +1,18 @@
+id = "david.review"
+name = "Neovim Change Review"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Open checkout changes in CodeDiff and return to the source agent."
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "toggle"
+title = "Review checkout changes / return to agent"
+contexts = ["pane"]
+command = ["python3", "review.py", "toggle"]
+
+[[panes]]
+id = "review"
+title = "Checkout review"
+placement = "split"
+command = ["python3", "review.py", "ui"]

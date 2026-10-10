@@ -29,9 +29,11 @@ brew "zoxide"
 
 cask "docker"
 cask "nikitabobko/tap/aerospace"
+cask "font-caskaydia-mono-nerd-font"
+cask "font-iosevka-nerd-font"
+cask "font-jetbrains-mono-nerd-font"
 cask "font-sauce-code-pro-nerd-font"
 cask "marta"
-cask "obsidian"
 
 tap "FelixKratz/formulae"
 brew "sketchybar"

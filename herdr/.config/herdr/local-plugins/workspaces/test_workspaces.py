@@ -63,7 +63,7 @@ class Checkouts(unittest.TestCase):
             return original(argv, cwd)
         with patch.object(ws, "run", side_effect=guard):
             tokens = ws.status(root)
-        self.assertEqual(tokens["checkout"], "jj / default")
+        self.assertEqual(tokens["checkout"], "default")
         self.assertEqual(tokens["vcs_status"], "empty")
         self.assertEqual(ws.jj(root, "op", "log", "--no-graph", "-T", 'id ++ "\\n"'), before)
         ws.run(["jj", "describe", "-m", "Recorded change"], root)
@@ -84,7 +84,7 @@ class Checkouts(unittest.TestCase):
             self.fail(method)
         with patch.object(ws, "request", side_effect=api):
             ws.create_jj(root, "auth-fix", path, focus=False)
-        self.assertEqual(ws.status(path)["checkout"], "jj / auth-fix")
+        self.assertEqual(ws.status(path)["checkout"], "auth-fix")
         self.assertEqual(ws.default_destination(path, "next"), ws.default_destination(root, "next"))
         self.assertEqual(ws.jj(path, "log", "-r", "@-", "--no-graph", "-T", "commit_id"), ws.jj(root, "log", "-r", "main", "--no-graph", "-T", "commit_id"))
         self.assertIn({"name": "auth-fix", "path": str(path)}, ws.jj_checkouts(root))
@@ -142,7 +142,7 @@ class Checkouts(unittest.TestCase):
         (path / "file.txt").write_text("modified\n")
         (path / "space name.txt").write_text("new\n")
         tokens = ws.status(path)
-        self.assertEqual(tokens["checkout"], "git / git-feature")
+        self.assertEqual(tokens["checkout"], "git-feature")
         self.assertEqual(tokens["revision"], "auth-fix")
         self.assertEqual(tokens["vcs_status"], "2 files")
         self.git(path, "restore", "file.txt")

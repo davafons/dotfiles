@@ -8,13 +8,30 @@ tmux/.config/tmux/plugins/
 
 # Local environment variables (sensitive)
 shell/.bashrc.d/*.local.sh
-git-GTXP9KXYTQ/.gitconfig.local
-jj-GTXP9KXYTQ/.config/jj/conf.d/*.toml
+**/.gitconfig.local
+jj-work/.config/jj/conf.d/*.toml
 jj/.config/jj/repos/
-
-obsidian/
 
 # Local build output and editor logs
 herdr/.config/herdr/local-plugins/*/target/
 nvim/nvim.log
 nvim/.ruby-lsp/
+
+# Local credentials and provider state
+**/.env
+**/.env.*
+!**/.env.example
+**/*.key
+**/config.local.yaml
+**/config.local.toml
+yuke/.config/yuke/providers.json
+gh/.config/gh/hosts.yml
+**/.ssh/id_*
+
+# Generated caches, temporary files, and local databases
+**/__pycache__/
+*.py[cod]
+*.tmp
+*.db
+*.sqlite
+*.sqlite3

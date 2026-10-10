@@ -1,6 +1,6 @@
 command = /bin/bash -l
 
-font-family = SauceCodePro Nerd Font Mono
+font-family = Iosevka Nerd Font Mono
 font-size = 14
 
 # https://github.com/jan-warchol/selenized

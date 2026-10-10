@@ -35,6 +35,20 @@ Use `/reload` after a plugin code change. Restart only after changing the stable
 - `Ctrl+N` and `Ctrl+P` move through the filtered sessions. Enter resumes the selected session.
 - `Ctrl+D` and `Ctrl+U` scroll the preview. The mouse can scroll or expand its tool blocks.
 
+### Background clarification inbox (`yuke-clarify`)
+
+- The agent's `ask_question` tool queues a question without opening a popup or waiting for an answer.
+- Pending questions for the focused chat appear as `3 questions · ⇧←` in the left status bar.
+- `Shift+Left` opens the inbox from composer insert/normal mode or transcript focus. `/questions` is the fallback.
+- Choose an option with arrows, `j`/`k`, or `Ctrl+N`/`Ctrl+P`; Enter submits. `Other…` opens a separate custom-answer editor. `Ctrl+B` returns to choices.
+- In the answer editor, `Shift+Enter` and `Ctrl+J` insert a newline.
+- `Tab`/`Shift+Tab` move between questions and retain unfinished answer drafts. `PageUp`/`PageDown` scroll long question/context text.
+- Escape or `Ctrl+C` closes the inbox and leaves questions pending. `Ctrl+D`, then Enter, explicitly declines a question; Escape cancels the decline.
+- Answers go directly to the originating session, without modifying the chat composer, its caret, attachments, or Vim mode.
+- Questions and answer drafts persist across restart and profile reload. Transactional claims prevent concurrent duplicate submissions.
+- A send interrupted by a process crash is marked in progress/uncertain, not automatically retried.
+- See [`../../CLARIFY.md`](../../CLARIFY.md) for the model contract, storage, and focused checks.
+
 ### Panel and region navigation
 
 - `Tab` toggles between the prompt bar and message history in the active panel.

@@ -102,10 +102,10 @@ doctor: check-stow check-profile
 
 check:
 	@shellcheck "$(DOTFILES_DIR)/bin/bin/playwright-cli" "$(DOTFILES_DIR)/bin/bin/playwright-brave-launcher" "$(DOTFILES_DIR)/bin/bin/agent-skills" "$(DOTFILES_DIR)/bin/bin/codex-mcp-grafana"
-	@python3 -m unittest -v bin/tests/test_playwright_focus.py
+	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py
 	@validator="$(HOME)/.codex/skills/.system/skill-creator/scripts/quick_validate.py"; \
 	if [ -f "$$validator" ]; then \
-		for skill in browser calendar mail notes plan tasks; do python3 "$$validator" "$(DOTFILES_DIR)/agents/.agents/skills/$$skill"; done; \
+		for skill in browser calendar mail notes plan tasks how why teach recall create-verification-skill dav-mode blast-radius comment-sicko no-comments reflect tdd unslop figure-it-out; do python3 "$$validator" "$(DOTFILES_DIR)/agents/.agents/skills/$$skill" || exit; done; \
 	fi
 
 skills-sync:

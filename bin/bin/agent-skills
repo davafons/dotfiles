@@ -5,7 +5,11 @@ set -euo pipefail
 
 command_name="${1:-status}"
 providers=(hey fizzy wariwari)
-facades=(browser calendar mail notes plan tasks)
+davstack_skills=(
+  how why teach recall create-verification-skill
+  dav-mode blast-radius comment-sicko no-comments reflect tdd unslop figure-it-out
+)
+facades=(browser calendar mail notes plan tasks "${davstack_skills[@]}")
 real_home="${HOME}"
 skill_root="${real_home}/.agents/skills"
 script_path="$(realpath "${BASH_SOURCE[0]}")"
@@ -28,13 +32,13 @@ status() {
 link_facade() {
   local facade="$1" source destination item relative expected
   source="${dotfiles_root}/agents/.agents/skills/${facade}"
-  destination="${skill_root}/${facade}"
+  destination="${2:-${skill_root}/${facade}}"
 
   [[ -f "${source}/SKILL.md" ]] || {
     echo "agent-skills: missing facade source: ${source}/SKILL.md" >&2
     return 1
   }
-  mkdir -p "$skill_root"
+  mkdir -p "$(dirname "$destination")"
 
   if [[ -L "$destination" ]]; then
     if [[ "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
@@ -65,12 +69,32 @@ link_facade() {
   fi
 
   ln -s "$source" "$destination"
-  echo "agent-skills: linked facade $facade"
+  echo "agent-skills: linked $destination"
+}
+
+link_comment_agent() {
+  local source="${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
+  local destination="${real_home}/.claude/agents/comment-sicko.md"
+  [[ -f "$source" ]] || { echo "agent-skills: missing agent source: $source" >&2; return 1; }
+  if [[ -L "$destination" && "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
+    return
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    echo "agent-skills: refusing to replace unmanaged agent: $destination" >&2
+    return 1
+  fi
+  mkdir -p "$(dirname "$destination")"
+  ln -s "$source" "$destination"
+  echo "agent-skills: linked $destination"
 }
 
 link_facades() {
   local facade
   for facade in "${facades[@]}"; do link_facade "$facade"; done
+  for facade in "${davstack_skills[@]}"; do
+    link_facade "$facade" "${real_home}/.claude/skills/${facade}"
+  done
+  link_comment_agent
 }
 
 sync_provider() (
@@ -126,6 +150,23 @@ check() {
       failed=1
     fi
   done
+  for facade in "${davstack_skills[@]}"; do
+    skill="${real_home}/.claude/skills/${facade}"
+    expected="${dotfiles_root}/agents/.agents/skills/${facade}"
+    if [[ ! -L "$skill" ]]; then
+      echo "agent-skills: missing Claude skill link: $skill (run agent-skills link)" >&2
+      failed=1
+    elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
+      echo "agent-skills: Claude skill points to the wrong source: $skill" >&2
+      failed=1
+    fi
+  done
+  skill="${real_home}/.claude/agents/comment-sicko.md"
+  expected="${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
+  if [[ ! -L "$skill" ]] || [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
+    echo "agent-skills: missing or incorrect Claude agent link: $skill (run agent-skills link)" >&2
+    failed=1
+  fi
   for provider in "${providers[@]}"; do
     skill="${skill_root}/${provider}/SKILL.md"
     legacy="${real_home}/.codex/skills/${provider}/SKILL.md"
