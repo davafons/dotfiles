@@ -123,6 +123,10 @@ def pin_tabs(preferred_pane=None, prefer_focused=False):
                 continue
             if editor["workspace_id"] != record["workspace_id"]:
                 continue
+            if editor.get("tokens", {}).get("pane_kind") != "editor":
+                request("tab.rename", {"tab_id": editor["tab_id"], "label": "Code"})
+                request("pane.report_metadata", {"pane_id": editor["pane_id"], "source": "plugin:" + PLUGIN,
+                                                "tokens": {"pane_kind": "editor"}})
             if editor["pane_id"] == preferred_pane:
                 record = update(path, pin_priority=priority)
             owned[editor["tab_id"]] = record.get("pin_priority", 0)
@@ -213,7 +217,7 @@ def ensure(source):
             editor = opened["plugin_pane"]["pane"]
             record.update(editor_pane=editor["pane_id"], editor_terminal=editor["terminal_id"])
             write_record(path, record)
-            request("tab.rename", {"tab_id": editor["tab_id"], "label": "Code · " + root.name})
+            request("tab.rename", {"tab_id": editor["tab_id"], "label": "Code"})
         record["source_pane"] = source["pane_id"]
         write_record(path, record)
     pin_tabs(preferred_pane=record["editor_pane"])

@@ -27,6 +27,8 @@
     "./plugins/phase-timers",
     "./plugins/step-timers",
     "./plugins/web",
-    "./plugins/agent-tools"
+    "./plugins/agent-tools",
+    "./plugins/loop",
+    "./plugins/peek"
   ]
 }

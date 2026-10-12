@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { intervalSeconds, SessionLoops } from "./loop-core.js";
+import { intervalSeconds, SessionLoops } from "../.config/yuke/plugins/loop/core.js";
 
 async function settle() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 

@@ -176,6 +176,13 @@ class Checkouts(unittest.TestCase):
         self.assertEqual(ws.active_pane(snapshot, workspace)["pane_id"], "w1:p1")
         self.assertEqual(ws.pane_cwd({"cwd": "/initial", "foreground_cwd": "/active"}), "/active")
 
+    def test_editor_panel_does_not_supply_workspace_checkout(self):
+        snapshot = self.snapshot(self.base)
+        workspace = snapshot["workspaces"][0]
+        snapshot["panes"][0]["tokens"] = {"pane_kind": "editor"}
+        snapshot["panes"].append({"pane_id": "w1:p2", "workspace_id": "w1", "tab_id": "w1:t2", "cwd": "/work/yuke"})
+        self.assertEqual(ws.active_pane(snapshot, workspace)["pane_id"], "w1:p2")
+
     def test_sync_caches_repo_status_and_clears_non_repo(self):
         snapshot = self.snapshot(self.base)
         snapshot["panes"].append(dict(snapshot["panes"][0], pane_id="w1:p2"))

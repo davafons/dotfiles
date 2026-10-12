@@ -1,6 +1,6 @@
 # Personal Yuke profile
 
-The canonical profile is `.config/yuke/config.json`. It lists 28 plugin folders with `plugin.json` manifests and default `apply(ctx)` entries. Yuke loads them at startup and through native `/reload`.
+The canonical profile is `.config/yuke/config.json`. It lists 30 plugin folders with `plugin.json` manifests and default `apply(ctx)` entries. Yuke loads them at startup and through native `/reload`.
 
 The installed migration build is `0.0.1-dev+e43023f2c5a7.b20261012130844`. It includes upstream `main` at `f9303882` and the retained personal APIs. The binary, library, and bundled profile match the verified release. A source checkout can have a later revision after documentation or history changes.
 
@@ -39,6 +39,8 @@ The profile guard copies the canonical source into private homes. It checks exac
 
 The old `index.js`, `profile.js`, factory plugins, and custom reload loader are no longer part of the canonical profile. The one-time migration command is retired. The cutover started a fresh session database. It did not import old chats. The operator approved deletion of the retired database, profile, and library after installed verification.
 
-[Pre-manifest tests and guides](tests/pre-manifest/README.md) remain as reference material for later ports. They are not the current verification suite. The unfinished [loop plugin](experimental/loop/README.md) is preserved outside the enabled profile. It does not schedule turns.
+[Pre-manifest tests and guides](tests/pre-manifest/README.md) remain as reference material for later ports. They are not the current verification suite. The [loop plugin](LOOP.md) now uses manifests and native terminal-turn outcomes. The [Peek observer](.config/yuke/plugins/peek/README.md) makes separate tool-free model requests. Both entries are in the source configuration. The earlier installed 28-entry copy remains unchanged until a verified native build and these profile entries are installed.
 
-Broader dialog and service checks, full imported Vim-suite reruns, and performance investigations remain deferred. The earlier allocation differences remain unexplained. The startup and input guards do not prove every external integration or paid-provider route.
+The current candidate passes the full imported Vim invariant, search, and transcript checks. Editing parity matches real Vim in 581 cases. Transcript parity matches 48 cases. The 30-entry source profile passes types, startup, input, reload, disposal, and headless checks in both motion modes. See [Dashboard reuse](DASHBOARD.md) and [Work activity](WORK.md) for their checks.
+
+Broader dialog and service checks and performance investigations remain open. The earlier allocation differences remain unexplained. The startup and input guards do not prove every external integration or paid-provider route. These candidate checks do not install or activate the source profile.

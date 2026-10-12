@@ -198,6 +198,15 @@ export default function (ctx) {
     else syncKeys();
   });
   ctx.on("composer-vim:mode", syncKeys);
+  ctx.on("ui.started", () => {
+    actions.length = 0;
+    for (let i = 0; i < ACTIONS.length; i++) {
+      const action = /** @type {Action} */ (ACTIONS[i]);
+      if (tui.command.available(action.command)) actions.push(action);
+    }
+    panes.forEach(saved => { saved.dashboard.width = -1; });
+    tui.root.invalidate();
+  });
   const leaves = tui.root.root_node?.leaves() || [];
   for (let i = 0; i < leaves.length; i++) {
     const shape = leaves[i]?.shape;

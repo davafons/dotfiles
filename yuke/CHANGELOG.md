@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Port `/loop` to manifests and current engine drains. Read root turn outcomes explicitly so failure and cancellation pause schedules. Cache status counts. Add a native loopback guard for delivery, stop, and reload cleanup.
+- Add the optional `/peek` profile entry for frozen read-only progress snapshots and observer-only cancellation.
+- Show observed native or Herdr activity on `/work` task cards. Follow the latest linked checkpoint without changing the saved task stage. Poll only while the dialog is open. Animate cached marker text.
+- Refresh dashboard action availability after plugin startup so Search and Work appear on the first screen. Document manifest reuse, command dependencies, and reload ownership in `DASHBOARD.md`.
+
 - Promote the verified 28-plugin manifest profile to `.config/yuke`. Use native reload and pinned Vim. Remove the old factory loader and one-time switch scripts. Keep pre-manifest tests and guides as references outside deployment. Preserve the unfinished loop source as disabled experimental code. Document the fresh-store cutover and the approved retired-data cleanup.
 
 - Added `/status` with a compact, account-first card. Solid Unicode bars show remaining allowances in green, amber, or red; cyan shows free context space. Press `d` for build, session, authentication, token breakdown, and cost details. Codex login reports timed allowances, reset times, plan, and credits. OpenRouter reports its key spending cap and free-model requests. Missing quotas stay unknown; credits and context space are not remaining account tokens. The main card omits missing-5h notices and credit explanations. Footer hints have color and omit `j/k`; expanded details use distinct colors for models, authentication, tokens, and unpriced costs. Blank rows separate the allowance, credits, context, and diagnostic groups. The lazy view fits its content, preserves drafts, and cancels its reader on close. Reads make no model call. See `STATUS.md`.

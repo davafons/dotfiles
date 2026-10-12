@@ -389,3 +389,7 @@ jj repository. It tests rendering, pane reuse, returning with unsaved edits,
 distinct source panes and annotation routing through a capture executable.
 
 See the [keyboard guide](https://herdr.dev/docs/keyboard/) for the built-in keys.
+
+## Code panel identity
+
+Pinned editor tabs use the label `Code`. The plugin reports `pane_kind=editor` only for panes whose saved terminal and workspace ownership still match. The workspace metadata plugin ignores editor panels when it selects a checkout. The native workspace-identity patch also derives automatic project labels from regular tabs before editor tabs. It preserves custom workspace names and does not remove ordinary tabs. The native patch needs a verified newer Herdr build; no native installation occurs through editing these dotfiles.

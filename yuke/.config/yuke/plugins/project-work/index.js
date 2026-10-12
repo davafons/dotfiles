@@ -3,6 +3,7 @@ import { client, env, exec, fs } from "yuke";
 import { currentEntry, currentPane, currentSession, showSession } from "yuke:session";
 import { ui, Window } from "yuke:ui";
 import { WorkDashboard } from "./project-work-view.js";
+import { readActivity } from "./activity.js";
 import { readGitHub } from "./project-work-github.js";
 import { focusHerdrSession, herdrSessionPanes } from "../herdr/index.js";
 /** @import { CancellationSignal } from "yuke" */
@@ -295,9 +296,11 @@ const c = { ctx: parent, tui: tuiBorrow };
         let githubSignal = c.ctx.signal;
         /** @type {Set<ReturnType<typeof readGitHub>>} */
         const githubReads = new Set();
+        /** @type {Set<ReturnType<typeof readActivity>>} */
+        const activityReads = new Set();
         const githubOwner = c.ctx.resources("project-work-github-dialog");
         githubSignal = githubOwner.signal;
-        githubOwner.own(() => { view.close(); return Promise.allSettled(Array.from(githubReads)).then(() => {}); });
+        githubOwner.own(() => { view.close(); return Promise.allSettled([...githubReads, ...activityReads]).then(() => {}); });
         /** @param {Record<string, unknown>} args */
         function fetchGitHub(args) {
           const operation = readGitHub(githubHelper, source.root, args, githubSignal);
@@ -305,6 +308,11 @@ const c = { ctx: parent, tui: tuiBorrow };
           return operation.finally(() => githubReads.delete(operation));
         }
         const view = new WorkDashboard(c, {
+          activityRead(ids) {
+            const operation = readActivity(ids, githubSignal);
+            activityReads.add(operation);
+            return operation.finally(() => activityReads.delete(operation));
+          },
           githubRead: async (args) => fetchGitHub(args),
           githubDetail: async (args) => {
             const reply = await fetchGitHub(args);
@@ -364,6 +372,9 @@ const c = { ctx: parent, tui: tuiBorrow };
         });
         const win = new Window({ border: "none", width: (max) => max, height: (max) => max,
           outsidePress: "ignore", content: view, footer: () => view.footer });
+        const pollActivity = setInterval(() => { void view.refreshActivity(); }, 1000);
+        const animateActivity = setInterval(() => { view.animate(); }, 200);
+        githubOwner.own(() => { clearInterval(pollActivity); clearInterval(animateActivity); });
         try {
           await new Promise((resolve) => {
             view.close = c.tui.overlay(win, () => { view.closed = true; resolve(undefined); });

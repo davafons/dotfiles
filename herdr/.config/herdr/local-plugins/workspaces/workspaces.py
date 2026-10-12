@@ -126,12 +126,18 @@ def git_has_head(root):
 
 
 def active_pane(snapshot, workspace):
-    """Use the active tab's selected pane even when this workspace is unfocused."""
+    """Use an active regular pane; an editor panel does not define checkout metadata."""
+    selected = None
     for layout in snapshot["layouts"]:
         if layout["tab_id"] == workspace["active_tab_id"]:
-            pane_id = layout.get("focused_pane_id")
-            return next((pane for pane in snapshot["panes"] if pane["pane_id"] == pane_id), None)
-    return next((pane for pane in snapshot["panes"] if pane["tab_id"] == workspace["active_tab_id"]), None)
+            selected = next((pane for pane in snapshot["panes"] if pane["pane_id"] == layout.get("focused_pane_id")), None)
+            break
+    if selected is None:
+        selected = next((pane for pane in snapshot["panes"] if pane["tab_id"] == workspace["active_tab_id"]), None)
+    if selected and selected.get("tokens", {}).get("pane_kind") != "editor":
+        return selected
+    return next((pane for pane in snapshot["panes"] if pane["workspace_id"] == workspace["workspace_id"]
+                 and pane.get("tokens", {}).get("pane_kind") != "editor"), None)
 
 
 def pane_cwd(pane):

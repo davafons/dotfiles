@@ -36,6 +36,16 @@ class CodeTests(unittest.TestCase):
             def request(method, params=None):
                 if method == "session.snapshot":
                     return {"snapshot": {"tabs": list(tabs), "panes": panes, "focused_pane_id": focused[0]}}
+                if method == "tab.rename":
+                    tab = next(item for item in tabs if item["tab_id"] == params["tab_id"])
+                    tab["label"] = params["label"]
+                    return {"type": "ok"}
+                if method == "pane.report_metadata":
+                    self.assertEqual(params["source"], "plugin:david.code")
+                    self.assertEqual(params["tokens"], {"pane_kind": "editor"})
+                    owned = next(item for item in panes if item["pane_id"] == params["pane_id"])
+                    owned.setdefault("tokens", {}).update(params["tokens"])
+                    return {"type": "ok"}
                 self.assertEqual(method, "tab.move", "Pinning must not focus panes or send input")
                 tab = next(item for item in tabs if item["tab_id"] == params["tab_id"])
                 indices = [i for i, item in enumerate(tabs) if item["workspace_id"] == tab["workspace_id"]]
@@ -52,6 +62,8 @@ class CodeTests(unittest.TestCase):
                 code.pin_tabs()
                 self.assertEqual([item["tab_id"] for item in tabs], ["b", "a", "n1", "n2", "fake", "c", "n3"])
                 self.assertEqual(focused[0], "pn1")
+                self.assertEqual([item["pane_id"] for item in panes if item.get("tokens", {}).get("pane_kind") == "editor"], ["pa", "pb", "pc"])
+                self.assertTrue(all(item["label"] == "Code" for item in tabs if item["tab_id"] in {"a", "b", "c"}))
                 count = len(moves)
                 code.pin_tabs()
                 self.assertEqual(len(moves), count, "Already-pinned tabs must not generate more move events")

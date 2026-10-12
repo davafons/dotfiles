@@ -4,11 +4,12 @@ import { clip, fill, keys, measure, text, Window } from "yuke:ui";
 import { wrapRows } from "yuke:chat";
 
 /** @import { Rect } from "yuke:ui" */
+/** @import { Observation } from "./activity.js" */
 /** @import { GitHubItem, GitHubPage, GitHubDetail } from "./project-work-github.js" */
 /** @typedef {{ id: string, title: string, status: string, notes: string, session: string, root: string, updated: number, version: number, github_url: string }} Task */
 /** @typedef {{ session: string, task_id: string, summary: string, next_step: string, verification: string, root: string, updated: number, stale: number }} Checkpoint */
 /** @typedef {{ project: string, name: string, root: string, context: { goal: string, notes: string, version: number }, tasks: Task[], counts: number[], offsets: number[], query: string, include_done: boolean, checkpoints: Checkpoint[] }} BoardSnapshot */
-/** @typedef {{ read: (offsets: number[], query: string, done: boolean) => Promise<BoardSnapshot>, detail: (id: string) => Promise<{task: Task, checkpoint: Checkpoint | null}>, githubRead: (args: Record<string, unknown>) => Promise<GitHubPage>, githubDetail: (args: Record<string, unknown>) => Promise<GitHubDetail>, action: (name: string, task: Task | null, checkpoint: Checkpoint | null) => Promise<"close" | void> }} Actions */
+/** @typedef {{ activityRead?: (ids: string[]) => Promise<Map<string, Observation>>, read: (offsets: number[], query: string, done: boolean) => Promise<BoardSnapshot>, detail: (id: string) => Promise<{task: Task, checkpoint: Checkpoint | null}>, githubRead: (args: Record<string, unknown>) => Promise<GitHubPage>, githubDetail: (args: Record<string, unknown>) => Promise<GitHubDetail>, action: (name: string, task: Task | null, checkpoint: Checkpoint | null) => Promise<"close" | void> }} Actions */
 /** @typedef {{x: number, y: number, value: string, group: string}} Span */
 /** @typedef {{x: number, y: number, w: number, h: number, group: string}} Block */
 /** @typedef {{x: number, y: number, w: number, h: number, kind: string, column: number, index: number, action: string}} Hit */
@@ -20,6 +21,7 @@ const GROUPS = ["WorkNow", "WorkLater", "WorkBlocked", "WorkReview", "WorkDone"]
 const SELECTED = ["WorkSelectedNow", "WorkSelectedLater", "WorkSelectedBlocked", "WorkSelectedReview", "WorkSelectedDone"];
 const TABS = ["Board", "Context", "Checkpoints", "GitHub"];
 const ACTIVE_FIRST = [0, 2, 3, 1, 4];
+const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
 
 /** The full-screen work view owns its snapshots, selection, and paint cache. It borrows its plugin context and actions. Null data means loading; failed actions show an error without changing the composer. */
 export class WorkDashboard {
@@ -71,6 +73,48 @@ export class WorkDashboard {
     this.blocks = [];
     /** @type {Hit[]} */
     this.hits = [];
+    /** @type {Map<string, Observation>} */
+    this.activity = new Map();
+    this.activityPending = false;
+    this.frame = 0;
+    /** @type {{spanBorrow: Span, framesOwn: string[]}[]} */
+    this.animatedSpans = [];
+  }
+
+  /** Resolve the latest known task checkpoint without changing its recorded owner. @param {Task} task @returns {string} */
+  linkedSession(task) {
+    if (this.detail?.task.id === task.id && this.detail.checkpoint?.session) return this.detail.checkpoint.session;
+    const checkpoints = this.data?.checkpoints || [];
+    for (let i = 0; i < checkpoints.length; i++) if (checkpoints[i].task_id === task.id) return checkpoints[i].session;
+    return task.session;
+  }
+
+  /** Read a bounded live snapshot outside drawing. Closed or replaced boards reject late results. */
+  async refreshActivity() {
+    const data = this.data;
+    if (this.closed || this.activityPending || !data || !this.actions.activityRead) return;
+    this.activityPending = true;
+    try {
+      const ids = data.tasks.map(task => this.linkedSession(task));
+      const observed = await this.actions.activityRead(ids);
+      if (this.closed || this.data !== data) return;
+      let changed = observed.size !== this.activity.size;
+      observed.forEach((value, id) => { const previous = this.activity.get(id); if (!previous || previous.label !== value.label || previous.running !== value.running) changed = true; });
+      if (changed) { this.activity = observed; this.rebuild(); }
+    } catch {
+      if (!this.closed && this.data === data && this.activity.size) { this.activity.clear(); this.rebuild(); }
+    } finally { this.activityPending = false; }
+  }
+
+  /** Advance prebuilt marker text. This mutates no task and allocates no rows or strings. */
+  animate() {
+    if (this.closed || !this.animatedSpans.length) return;
+    this.frame = (this.frame + 1) & 7;
+    for (let i = 0; i < this.animatedSpans.length; i++) {
+      const held = this.animatedSpans[i];
+      held.spanBorrow.value = held.framesOwn[this.frame] || "";
+    }
+    this.ctx.tui.root.invalidatePaint();
   }
 
   /** @returns {Task | null} */
@@ -160,6 +204,7 @@ export class WorkDashboard {
       this.detailScroll = 0;
       this.detail = null;
       this.loadDetail();
+      void this.refreshActivity();
     } catch (error) {
       if (!this.closed && generation === this.generation) this.error = String(error);
     } finally {
@@ -339,6 +384,7 @@ export class WorkDashboard {
     this.spans = [];
     this.blocks = [];
     this.hits = [];
+    this.animatedSpans.length = 0;
     const width = this.rect.w;
     const height = this.rect.h;
     if (!width || !height) return;
@@ -433,7 +479,13 @@ export class WorkDashboard {
         this.blocks.push({ x, y, w, h, group });
         this.put(x, y, (selected ? "> " : "  ") + task.title, w, selected ? group : "WorkText");
         if (h > 1) this.put(x, y + 1, "  " + (task.notes.replace(/\s+/gu, " ") || "No notes yet"), w, selected ? group : "WorkDim");
-        if (h > 2) this.put(x, y + 2, "  " + task.id.slice(0, 10), w, selected ? group : GROUPS[column]);
+        if (h > 2) {
+          const state = this.activity.get(this.linkedSession(task));
+          const label = (state?.label || (task.session ? "unavailable" : "no linked session")) + " · " + task.id.slice(0, 10);
+          const before = this.spans.length;
+          this.put(x, y + 2, "  " + (state?.running ? FRAMES[this.frame] : "·") + " " + label, w, selected ? group : GROUPS[column]);
+          if (state?.running && this.spans.length > before) this.animatedSpans.push({ spanBorrow: this.spans[this.spans.length - 1], framesOwn: FRAMES.map(frame => clip("  " + frame + " " + label, Math.min(w, this.rect.w - x))) });
+        }
         this.hits.push({ x, y, w, h, kind: "card", column, index, action: "" });
       }
       const shown = Math.min(count, data.offsets[column] + tasks.length);
@@ -445,6 +497,7 @@ export class WorkDashboard {
     const task = this.detail?.task || this.selectedTask();
     if (task) {
       this.paragraph(rows, task.status.toUpperCase() + " · SELECTED TASK", task.title, detailRect.w, GROUPS[STATUS.indexOf(task.status)]);
+      this.paragraph(rows, "SESSION ACTIVITY", this.activity.get(this.linkedSession(task))?.label || "Unavailable. Task status remains separate.", detailRect.w, "WorkLater");
       this.paragraph(rows, "NOTES", task.notes, detailRect.w, "WorkText");
       if (task.github_url) this.paragraph(rows, "GITHUB · OUTER LOOP", task.github_url, detailRect.w, "WorkLater");
       if (this.detail) this.checkpointRows(rows, this.detail.checkpoint, detailRect.w);

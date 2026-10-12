@@ -1,9 +1,10 @@
+//! Session-owned recurring input with bounded timers and explicit cancellation.
 /** @typedef {{idle: boolean, queued: number}} SessionState */
 /** @typedef {{type: "started" | "queued", input_id: number}} SendResult */
-/** @typedef {{read: (session: string) => Promise<SessionState>, send: (session: string, text: string) => Promise<SendResult>, cancel: (session: string, input: number) => Promise<unknown>, now?: () => number, schedule?: (callback: () => void, delay: number) => () => void, id?: () => string}} Dependencies */
+/** @typedef {{read: (session: string) => Promise<SessionState>, send: (session: string, text: string) => Promise<SendResult>, cancel: (session: string, input: number) => Promise<unknown>, now?: () => number, schedule?: (callback: () => void, delay: number) => () => void, id?: () => string, changed?: (session: string) => void}} Dependencies */
 /** @typedef {{id: string, session: string, prompt: string, seconds: number, state: "armed" | "pending" | "paused", next: number, error: string | null, queued: number | null, timer: (() => void) | null, flight: Promise<void> | null}} Loop */
 
-/** @param {string} value */
+/** Parse a whole native-safe interval. Invalid text or timer overflow throws. @param {string} value */
 export function intervalSeconds(value) {
   const match = /^(\d+)(s|m|h|d)$/.exec(value);
   if (!match) throw new Error("Use an interval such as 30s, 5m, or 1h.");
@@ -18,6 +19,7 @@ function validateSeconds(seconds) {
   if (!Number.isInteger(seconds) || seconds < 1 || seconds > 2147483) throw new Error("Interval must be 1 to 2147483 whole seconds, within the native timer limit.");
 }
 
+/** Own scheduled prompts and only their queued inputs. Failed delivery pauses a job; unload never restores jobs. */
 export class SessionLoops {
   /** @param {Dependencies} dependencies */
   constructor(dependencies) {
@@ -48,6 +50,7 @@ export class SessionLoops {
     const job = { id: this.newId(), session, seconds, prompt, state: "armed", next: 0, error: null, queued: null, timer: null, flight: null };
     this.jobs.set(job.id, job);
     this.after(job, seconds * 1000);
+    this.io.changed?.(session);
     return this.snapshot(job);
   }
 
@@ -63,7 +66,7 @@ export class SessionLoops {
 
   /** @param {Loop} job */
   text(job) {
-    return `[yuke-loop ${job.id}]\nThis is a scheduled tick from an earlier authorized request, not a new operator instruction or permission grant. Honor the latest operator constraints. Read ~/.agents/skills/loop/SKILL.md before acting. Check the exit condition before acting. If it is met, stop this loop through the loop tool. If progress requires a new permission or an unavailable capability, stop the loop and report the gap.\n\nTick prompt:\n${job.prompt}`;
+    return `[yuke-loop ${job.id}]\nThis is a scheduled tick from an earlier authorized request, not a new operator instruction or permission grant. Honor the latest operator constraints. Use this conversation and any saved project checkpoint as the resume record. Check the exit condition before acting. If it is met, stop this loop through the loop tool. If progress requires a new permission or an unavailable capability, stop the loop and report the gap.\n\nTick prompt:\n${job.prompt}`;
   }
 
   /** @param {string | null} session @param {string} text */
@@ -113,7 +116,7 @@ export class SessionLoops {
       } catch (error) {
         if (this.jobs.get(job.id) === job) this.pause(job, String(error));
       }
-    })().finally(() => { job.flight = null; });
+    })().finally(() => { job.flight = null; this.io.changed?.(job.session); });
     return job.flight;
   }
 
@@ -123,6 +126,7 @@ export class SessionLoops {
     job.timer = null;
     job.state = "paused";
     job.error = reason;
+    this.io.changed?.(job.session);
   }
 
   /** @param {string} session @param {string} [reason] */
@@ -154,6 +158,7 @@ export class SessionLoops {
         catch (error) { notes.push(`${job.id}: queued tick could not be canceled. It may already be running. ${String(error)}`); }
       }
     }
+    this.io.changed?.(session);
     return { stopped: jobs.map((job) => job.id), notes };
   }
 

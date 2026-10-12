@@ -1,0 +1,4 @@
+{
+  "name": "peek",
+  "extensions": { "sh.yuke": { "entry": "./index.js", "uses": ["tui"] } }
+}

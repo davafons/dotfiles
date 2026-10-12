@@ -207,8 +207,12 @@ class Store:
                     FROM passages WHERE session_id = ? AND message_id = ? AND part_id = ?
                     AND passages MATCH ?""", (item["session_id"], item["message_id"], item["part_id"], match)).fetchone()
                 if passage:
-                    matches = list(dict.fromkeys(clean(word) for word in re.findall("\x01(.*?)\x02", passage[0], re.DOTALL)))
-                    return {"text": clean(passage[0]), "matches": matches, "note": "Matching passage" if len(body) > 4000 else ""}
+                    excerpt = passage[0]
+                    if len(excerpt) > 4000:
+                        start = max(0, excerpt.find("\x01") - 1200)
+                        excerpt = excerpt[start:start + 4000]
+                    matches = list(dict.fromkeys(clean(word) for word in re.findall("\x01([^\x02]*)(?:\x02|$)", excerpt, re.DOTALL)))
+                    return {"text": clean(excerpt), "matches": matches, "note": "Matching passage" if len(body) > 4000 else ""}
             return {"text": body[:4000], "matches": [], "note": "Matching passage" if len(body) > 4000 else ""}
         if item["kind"] == "session":
             rows = self.db.execute("SELECT role, body FROM passages WHERE session_id = ? ORDER BY CAST(message_id AS INTEGER) DESC, CAST(part_id AS INTEGER) DESC LIMIT 4", (item["session_id"],)).fetchall()

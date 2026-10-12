@@ -12,7 +12,7 @@ const frameLimit = 4096;
 const maxAttempts = 3;
 
 const sessionToken = "yuke_session_id";
-/** @typedef {{ pane_id: string, agent?: string, tokens?: Record<string, string> }} HerdrPane */
+/** @typedef {{ pane_id: string, agent?: string, agent_status?: string, tokens?: Record<string, string> }} HerdrPane */
 
 /** One bounded socket request. Each call owns its socket, including concurrent reports. */
 /** @param {string} method @param {Record<string, unknown>} params @param {import("yuke").CancellationSignal} signal */
@@ -61,6 +61,21 @@ export async function herdrSessionPanes(signal) {
     if (pane.agent === agent && sessionId && typeof pane.pane_id === "string") panes.set(sessionId, pane.pane_id);
   }
   return panes;
+}
+
+/** Read reported Yuke session states without focusing panes. The caller owns the map. Outside Herdr it is empty; socket or schema failures throw. @param {import("yuke").CancellationSignal} signal @returns {Promise<Map<string, string>>} */
+export async function herdrSessionStates(signal) {
+  const states = new Map();
+  if (env.get("HERDR_ENV") !== "1" || !env.get("HERDR_SOCKET_PATH")) return states;
+  const result = await navigationRequest("pane.list", {}, signal);
+  if (result.type !== "pane_list" || !Array.isArray(result.panes)) throw Error("Invalid Herdr pane list.");
+  for (let i = 0; i < result.panes.length; i++) {
+    const pane = result.panes[i], id = pane.tokens?.[sessionToken];
+    if (pane.agent !== agent || typeof id !== "string" || !id) continue;
+    const state = pane.agent_status;
+    states.set(id, typeof state === "string" && ["working", "idle", "blocked", "done"].includes(state) ? state : "unavailable");
+  }
+  return states;
 }
 
 /** Focus the pane that still owns this session. Re-resolve moved or switched panes; missing owners and socket failures throw. @param {string} sessionId @param {import("yuke").CancellationSignal} signal */
