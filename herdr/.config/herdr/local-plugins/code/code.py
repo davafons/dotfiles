@@ -106,18 +106,15 @@ def pane(pane_id):
         raise
 
 
-def pin_tabs(preferred_pane=None, prefer_focused=False):
+def pin_tabs():
     with locked(state_dir() / "tab-order.json"):
         saved = list(records())
         if not saved:
             return
         snapshot = request("session.snapshot")["snapshot"]
         panes = {item["pane_id"]: item for item in snapshot["panes"]}
-        if prefer_focused:
-            preferred_pane = snapshot["focused_pane_id"]
-        owned = {}
-        priority = max(record.get("pin_priority", 0) for _, record in saved) + 1
-        for path, record in saved:
+        owned = set()
+        for _, record in saved:
             editor = panes.get(record.get("editor_pane"))
             if not editor or editor.get("terminal_id") != record.get("editor_terminal"):
                 continue
@@ -127,17 +124,17 @@ def pin_tabs(preferred_pane=None, prefer_focused=False):
                 request("tab.rename", {"tab_id": editor["tab_id"], "label": "Code"})
                 request("pane.report_metadata", {"pane_id": editor["pane_id"], "source": "plugin:" + PLUGIN,
                                                 "tokens": {"pane_kind": "editor"}})
-            if editor["pane_id"] == preferred_pane:
-                record = update(path, pin_priority=priority)
-            owned[editor["tab_id"]] = record.get("pin_priority", 0)
+            owned.add(editor["tab_id"])
         workspaces = {}
         for tab in snapshot["tabs"]:
             workspaces.setdefault(tab["workspace_id"], []).append(tab["tab_id"])
         for current in workspaces.values():
-            code_tabs = sorted((tab for tab in current if tab in owned), key=lambda tab: -owned[tab])
-            for index, tab_id in enumerate(code_tabs):
-                if current.index(tab_id) != index:
-                    moved = request("tab.move", {"tab_id": tab_id, "insert_index": index})
+            code_tabs = [tab for tab in current if tab in owned]
+            for offset, tab_id in enumerate(reversed(code_tabs)):
+                index = len(current) - offset - 1
+                position = current.index(tab_id)
+                if position != index:
+                    moved = request("tab.move", {"tab_id": tab_id, "insert_index": index + (position < index)})
                     current = [tab["tab_id"] for tab in moved["tabs"]]
 
 
@@ -220,7 +217,7 @@ def ensure(source):
             request("tab.rename", {"tab_id": editor["tab_id"], "label": "Code"})
         record["source_pane"] = source["pane_id"]
         write_record(path, record)
-    pin_tabs(preferred_pane=record["editor_pane"])
+    pin_tabs()
     wait(lambda: ready(record, path), "the checkout editor; see " + str(path.with_suffix(".log")))
     remote(record, "require('herdr-code').refresh_context(); return true")
     return path, record
@@ -236,7 +233,7 @@ def return_to_source(path):
 
 def show_tab(path, changes=False):
     record = update(path, view="tab")
-    pin_tabs(preferred_pane=record["editor_pane"])
+    pin_tabs()
     request("pane.focus", {"pane_id": record["editor_pane"]})
     if changes:
         wait(lambda: remote(record, "return #vim.api.nvim_list_uis()") == "1", "the Code view to attach")
@@ -292,7 +289,7 @@ def sync():
     for path, record in records():
         if record.get("editor_pane") == focused and record["view"] == "hidden":
             update(path, expected_generation=record.get("view_generation", 0), view="tab")
-    pin_tabs(prefer_focused=True)
+    pin_tabs()
 
 
 def stop_child(child):
@@ -399,7 +396,7 @@ def main():
     elif command == "sync":
         sync()
     elif command in ("pin", "pin-current"):
-        pin_tabs(prefer_focused=command == "pin-current")
+        pin_tabs()
     else:
         path = Path(os.environ["HERDR_CODE_CONTEXT_PATH"])
         if command == "host":

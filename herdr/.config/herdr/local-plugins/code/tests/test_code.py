@@ -28,7 +28,7 @@ class CodeTests(unittest.TestCase):
                 path = Path(temporary) / ("code-" + tab + ".json")
                 code.write_record(path, {"editor_pane": "p" + tab, "editor_terminal": terminal,
                                          "workspace_id": workspace, "pin_priority": priority,
-                                         "view_generation": 4, "target": {"pane_id": "agent"}})
+                                         "view": "tab", "view_generation": 4, "target": {"pane_id": "agent"}})
                 paths.append(path)
             focused = ["pn1"]
             moves = []
@@ -50,8 +50,9 @@ class CodeTests(unittest.TestCase):
                 tab = next(item for item in tabs if item["tab_id"] == params["tab_id"])
                 indices = [i for i, item in enumerate(tabs) if item["workspace_id"] == tab["workspace_id"]]
                 group = [tabs[i] for i in indices]
+                position = group.index(tab)
                 group.remove(tab)
-                group.insert(params["insert_index"], tab)
+                group.insert(params["insert_index"] - (position < params["insert_index"]), tab)
                 for i, item in zip(indices, group):
                     tabs[i] = item
                 moves.append(dict(params))
@@ -60,19 +61,24 @@ class CodeTests(unittest.TestCase):
             with patch.object(code, "request", side_effect=request), \
                     patch.object(code, "records", side_effect=lambda: [(p, json.loads(p.read_text())) for p in paths]):
                 code.pin_tabs()
-                self.assertEqual([item["tab_id"] for item in tabs], ["b", "a", "n1", "n2", "fake", "c", "n3"])
+                self.assertEqual([item["tab_id"] for item in tabs], ["n1", "n2", "fake", "a", "b", "n3", "c"])
                 self.assertEqual(focused[0], "pn1")
                 self.assertEqual([item["pane_id"] for item in panes if item.get("tokens", {}).get("pane_kind") == "editor"], ["pa", "pb", "pc"])
                 self.assertTrue(all(item["label"] == "Code" for item in tabs if item["tab_id"] in {"a", "b", "c"}))
                 count = len(moves)
                 code.pin_tabs()
                 self.assertEqual(len(moves), count, "Already-pinned tabs must not generate more move events")
-                code.pin_tabs(preferred_pane="pa")
-                self.assertEqual([item["tab_id"] for item in tabs[:2]], ["a", "b"])
-                focused[0] = "pb"
-                code.pin_tabs(prefer_focused=True)
-                self.assertEqual([item["tab_id"] for item in tabs[:2]], ["b", "a"])
-                self.assertEqual([item["tab_id"] for item in tabs[2:]], ["n1", "n2", "fake", "c", "n3"])
+                focused[0] = "pa"
+                code.sync()
+                self.assertEqual([item["tab_id"] for item in tabs], ["n1", "n2", "fake", "a", "b", "n3", "c"])
+                self.assertEqual(len(moves), count, "Selecting Code must not reorder its group")
+                tabs.insert(5, {"tab_id": "new", "workspace_id": "w1", "label": "new"})
+                code.pin_tabs()
+                self.assertEqual([item["tab_id"] for item in tabs], ["n1", "n2", "fake", "new", "a", "b", "n3", "c"])
+                self.assertEqual(focused[0], "pa")
+                count = len(moves)
+                code.pin_tabs()
+                self.assertEqual(len(moves), count, "Restored Code tabs must not trigger move loops")
             for path in paths:
                 record = json.loads(path.read_text())
                 self.assertEqual(record["view_generation"], 4)

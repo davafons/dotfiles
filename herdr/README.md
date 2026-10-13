@@ -204,7 +204,7 @@ reload its local config.
 ## Workspace Code tab and overlay
 
 Press `Ctrl+a`, then `e`, from a pane in a checkout. The local `david.code`
-plugin opens a `Code · <checkout>` tab inside the current Herdr workspace.
+plugin opens a `Code` tab inside the current Herdr workspace.
 Press the same shortcut from Code to return to the pane you came from. Opening
 from another agent in the same checkout reuses the editor and updates the return
 destination, not the message recipient. Each worktree gets its own editor,
@@ -213,10 +213,10 @@ path, Herdr workspace ID and Herdr session socket; another workspace or session
 gets a separate editor even for the same checkout. Workspace labels are not used
 to infer paths.
 
-Code tabs stay in the leftmost group of the top tab bar. Opening or selecting a
-worktree's Code tab brings it first; other Code tabs follow in recent-use order.
-Moving an ordinary tab ahead of that group, or dragging a Code tab away, restores
-the pinned group without changing pane focus or the ordinary tabs' relative order.
+Code tabs stay in the last group of the top tab bar. Opening or selecting an
+editor does not reorder that group. When you create or move a tab, plugin events
+restore the Code group at the end. The plugin preserves pane focus and the
+ordinary tabs' relative order.
 An ordinary tab named Code is not pinned. To restore existing tabs after linking
 an update, invoke `herdr plugin action invoke david.code.pin`.
 
@@ -224,9 +224,10 @@ The Code host pane, quick overlay and Neovim all start in the invoking pane's
 canonical checkout root, including when invoked from a nested directory. The
 launcher resolves its script from the plugin directory, not from the checkout.
 No Herdr core modification or workspace-name override is needed. Herdr keeps its
-normal first-tab naming: a single-checkout workspace retains its checkout name;
-with several checkouts, its automatic name can follow the leftmost Code tab's
-checkout. Explicit workspace names remain unchanged.
+normal first-tab naming. With ordinary tabs present, the first ordinary tab
+supplies the workspace's automatic name and project directory. Selecting Code
+does not change that identity. Explicit workspace names remain unchanged. If only
+Code tabs remain, Herdr uses its normal first-tab fallback.
 
 `Ctrl+a`, then `Shift+e`, opens that editor in a large terminal overlay above the
 source pane. The tab and overlay share buffers, cursor positions, undo history,
@@ -320,14 +321,17 @@ Verification uses only private sessions and detached terminals:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/code/tests/test_code.py"
+PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/code/tests/check-code-order.py"
 PYTHONDONTWRITEBYTECODE=1 python3 "$HOME/.config/herdr/local-plugins/code/tests/check-code.py"
 ```
 
-The live check requires Neovim, Herdr, tmux, jj and the linked plugin. It uses the
-installed Herdr by default; set `HERDR_CODE_TEST_BIN` to an absolute binary path
+The order check uses a disposable home, private plugin copy, and stock Herdr.
+It checks Code-last hooks without starting Neovim or using the real plugin registry.
+The full editor check requires Neovim, Herdr, tmux, jj and the linked plugin.
+It uses the installed Herdr by default; set `HERDR_CODE_TEST_BIN` to an absolute binary path
 to test another build. It checks initial pinning, event-driven re-pinning,
 multi-worktree ordering, checkout directories for the host and Neovim, automatic
-checkout names and ordinary Code-named tabs. It also exercises
+workspace names from ordinary tabs and ordinary Code-named tabs. It also exercises
 file-tree selection, files/changes toggling, tagging and sending through actual
 shortcuts, ten tab/overlay cycles, insert-mode edits, cursor preservation,
 resizing, external file reload, and worktree isolation. Delivery uses a capture
@@ -392,4 +396,9 @@ See the [keyboard guide](https://herdr.dev/docs/keyboard/) for the built-in keys
 
 ## Code panel identity
 
-Pinned editor tabs use the label `Code`. The plugin reports `pane_kind=editor` only for panes whose saved terminal and workspace ownership still match. The workspace metadata plugin ignores editor panels when it selects a checkout. The native workspace-identity patch also derives automatic project labels from regular tabs before editor tabs. It preserves custom workspace names and does not remove ordinary tabs. The native patch needs a verified newer Herdr build; no native installation occurs through editing these dotfiles.
+Owned editor tabs use the label `Code`. The plugin reports `pane_kind=editor`
+only when saved terminal and workspace ownership still match. The workspace
+metadata plugin ignores those editor panes when it selects a checkout. Code tabs
+stay after ordinary tabs through the stock `tab.move` API. Herdr therefore keeps
+the first ordinary tab as the source of its automatic workspace identity.
+No Herdr source patch or custom build is required.

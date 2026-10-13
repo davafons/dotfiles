@@ -156,18 +156,18 @@ try:
         wait(lambda: lua(record, "#vim.api.nvim_list_uis()") == "1", "single Code UI")
         assert len(snapshot()["panes"]) == 2
         tab = next(tab for tab in snapshot()["tabs"] if tab["tab_id"] != source["tab_id"])
-        assert tab["label"] == "Code · checkout with spaces", tab
-        assert api("tab.list", {"workspace_id": source["workspace_id"]})["tabs"][0]["tab_id"] == tab["tab_id"], "Code was not placed leftmost"
-        evidence["initial_code_tab_is_leftmost"] = True
+        assert tab["label"] == "Code", tab
+        assert api("tab.list", {"workspace_id": source["workspace_id"]})["tabs"][-1]["tab_id"] == tab["tab_id"], "Code was not placed last"
+        evidence["initial_code_tab_is_last"] = True
         assert_checkout(record, root)
         evidence["code_host_and_neovim_use_checkout_not_plugin_directory"] = True
         assert api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == workspace_label, "Pinned Code replaced the workspace name with its plugin directory"
         evidence["pinned_code_preserves_automatic_workspace_name"] = True
         focus_before = snapshot()["focused_pane_id"]
-        api("tab.move", {"tab_id": tab["tab_id"], "insert_index": 2})
-        wait(lambda: tab_ids(source["workspace_id"])[0] == tab["tab_id"], "Code re-pins after moving it to the end")
+        api("tab.move", {"tab_id": tab["tab_id"], "insert_index": 0})
+        wait(lambda: tab_ids(source["workspace_id"])[-1] == tab["tab_id"], "Code re-pins after moving it to the start")
         assert snapshot()["focused_pane_id"] == focus_before
-        wait(lambda: "Code · checkout with spaces" in text().splitlines()[0], "leftmost Code tab rendered in top bar")
+        wait(lambda: "Code" in text().splitlines()[0], "Code tab rendered in top bar")
         evidence["pinned_topbar_render"] = text()
         evidence["moved_code_re_pins_without_changing_focus"] = True
         evidence["actual_ctrl_a_e_opens_code_tab"] = True
@@ -511,34 +511,33 @@ try:
         evidence["worktrees_keep_buffers_comments_and_recipients_separate"] = True
         root_tab = api("pane.get", {"pane_id": record["editor_pane"]})["pane"]["tab_id"]
         linked_tab = api("pane.get", {"pane_id": linked_record["editor_pane"]})["pane"]["tab_id"]
-        wait(lambda: tab_ids(source["workspace_id"])[:2] == [linked_tab, root_tab], "both worktree Code tabs grouped left, latest first")
+        wait(lambda: tab_ids(source["workspace_id"])[-2:] == [root_tab, linked_tab], "both worktree Code tabs grouped last")
         assert_checkout(record, root)
         assert_checkout(linked_record, linked)
-        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == linked.name, "workspace name follows leftmost Code checkout, never plugin directory")
+        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == workspace_label, "Code selection must not replace the first regular checkout name")
         evidence["multiple_worktree_code_tabs_use_their_own_checkout_directories"] = True
         spoof = api("tab.create", {"workspace_id": source["workspace_id"], "cwd": str(root),
-                                   "label": "Code · ordinary tab", "focus": False})["root_pane"]
-        normal_tabs = [item for item in tab_ids(source["workspace_id"]) if item not in (root_tab, linked_tab)]
+                                   "label": "Code", "focus": False})["root_pane"]
         api("pane.focus", {"pane_id": other["pane_id"]})
         moved = api("tab.move", {"tab_id": other["tab_id"], "insert_index": 0})["tabs"]
         intended_normals = [item["tab_id"] for item in moved if item["tab_id"] not in (root_tab, linked_tab)]
-        wait(lambda: tab_ids(source["workspace_id"]) == [linked_tab, root_tab, *intended_normals], "ordinary tab cannot displace Code block")
+        wait(lambda: tab_ids(source["workspace_id"]) == [*intended_normals, root_tab, linked_tab], "Code block follows ordinary tabs")
         assert snapshot()["focused_pane_id"] == other["pane_id"]
-        api("tab.move", {"tab_id": root_tab, "insert_index": len(normal_tabs) + 2})
-        wait(lambda: tab_ids(source["workspace_id"]) == [linked_tab, root_tab, *intended_normals], "dragged older Code restores its pinned slot")
+        api("tab.move", {"tab_id": root_tab, "insert_index": 0})
+        wait(lambda: tab_ids(source["workspace_id"]) == [*intended_normals, root_tab, linked_tab], "dragged Code restores the last group")
         assert snapshot()["focused_pane_id"] == other["pane_id"]
         assert spoof["tab_id"] in intended_normals, "A matching Code label was treated as plugin-owned"
         api("tab.focus", {"tab_id": root_tab})
-        wait(lambda: tab_ids(source["workspace_id"]) == [root_tab, linked_tab, *intended_normals], "selecting existing worktree Code brings it leftmost")
+        wait(lambda: tab_ids(source["workspace_id"]) == [*intended_normals, root_tab, linked_tab], "selecting Code preserves its group order")
         assert snapshot()["focused_pane_id"] == record["editor_pane"]
-        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == root.name, "selecting original Code restores checkout name")
+        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == "src", "workspace name follows the first regular tab, not Code")
         assert_checkout(record, root)
         invoke(linked_source)
-        wait(lambda: tab_ids(source["workspace_id"]) == [linked_tab, root_tab, *intended_normals], "reopening another worktree Code brings it leftmost")
+        wait(lambda: tab_ids(source["workspace_id"]) == [*intended_normals, root_tab, linked_tab], "reopening Code preserves its group order")
         wait(lambda: snapshot()["focused_pane_id"] == linked_record["editor_pane"], "selected worktree editor focused")
         assert editor_record(linked_source, linked)["editor_pane"] == linked_record["editor_pane"]
         assert_checkout(linked_record, linked)
-        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == linked.name, "reopening linked Code keeps its checkout name")
+        wait(lambda: api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == "src", "reopening Code preserves the first regular tab name")
         invoke(linked_source, "overlay")
         wait(lambda: "Code · Ctrl+a e returns" in text(), "linked checkout overlay")
         wait(lambda: lua(linked_record, "#vim.api.nvim_list_uis()") == "1", "linked overlay attached")
@@ -556,8 +555,8 @@ try:
         assert editor_record(other, root)["target"]["pane_id"] == other["pane_id"]
         assert editor_record(linked_source, linked)["target"] is None
         independent_tab = api("pane.get", {"pane_id": independent["editor_pane"]})["pane"]["tab_id"]
-        assert tab_ids(different["workspace_id"])[0] == independent_tab
-        evidence["worktree_code_tabs_pin_left_and_preserve_other_tab_order_and_state"] = True
+        assert tab_ids(different["workspace_id"])[-1] == independent_tab
+        evidence["worktree_code_tabs_pin_last_and_preserve_other_tab_order_and_state"] = True
         evidence["ordinary_code_named_tab_is_not_pinned"] = True
         evidence["multi_worktree_pinned_topbar_render"] = text()
         lua(linked_record, "_G.linked_messages={}; vim.notify=function(message) table.insert(_G.linked_messages,message) end; require('herdr-code').changes(); return true")
