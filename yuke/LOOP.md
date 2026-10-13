@@ -11,6 +11,8 @@ Start a saved conversation before arming a loop. Use an explicit interval and an
 /loop stop <id>
 ```
 
+Each tick includes the permission and exit-condition rules. It uses the current conversation and any saved project checkpoint as its resume record. It does not require a separate loop skill file.
+
 The first tick waits one full interval. A busy session or unsent draft postpones delivery. Missed ticks coalesce rather than form a queue. Each tick goes to the session that armed it. Switching panes does not move the schedule.
 
 The model tool accepts `action` as `arm`, `list`, or `stop`. Arm also needs integer `seconds` and nonempty `prompt`. Stop accepts an optional `id`. Tool calls act only on their calling session. The operator must explicitly authorize scheduled turns before the agent arms a schedule. Arming grants no new write, delegation, push, deployment, or desktop permission.
@@ -26,4 +28,4 @@ bun test yuke/tests/loop-core.test.ts
 python3 -B yuke/tests/check-loop.py --binary /absolute/path/to/verified/yuke
 ```
 
-The native guard uses private directories, a detached terminal, and a loopback provider. It proves headless tool availability, scheduled delivery, cancellation pause, explicit stop, rearm, and cleanup through actual native reload. It does not arm a schedule in your normal profile or use real credentials.
+The native guard uses private directories, a detached terminal, and a loopback provider. It checks headless tool availability, scheduled delivery, failed and canceled turn pauses, explicit stop, rearm, and cleanup through actual native reload. It does not arm a schedule in your normal profile or use real credentials.

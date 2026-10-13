@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+- Start Herdr reporting after the interactive UI is ready. Restore missing Yuke sidebar agents at startup and after native reload. Add a private-server regression for reporting, approvals, reload, quit, and parent-pane safety.
+
 - Port `/loop` to manifests and current engine drains. Read root turn outcomes explicitly so failure and cancellation pause schedules. Cache status counts. Add a native loopback guard for delivery, stop, and reload cleanup.
 - Add the optional `/peek` profile entry for frozen read-only progress snapshots and observer-only cancellation.
 - Show observed native or Herdr activity on `/work` task cards. Follow the latest linked checkpoint without changing the saved task stage. Poll only while the dialog is open. Animate cached marker text.
 - Refresh dashboard action availability after plugin startup so Search and Work appear on the first screen. Document manifest reuse, command dependencies, and reload ownership in `DASHBOARD.md`.
+- Bound matching chat previews by characters as well as FTS tokens. Keep a match visible after a long token. Port work, alias, clarification, and search storage guards to the canonical manifest profile.
 
 - Promote the verified 28-plugin manifest profile to `.config/yuke`. Use native reload and pinned Vim. Remove the old factory loader and one-time switch scripts. Keep pre-manifest tests and guides as references outside deployment. Preserve the unfinished loop source as disabled experimental code. Document the fresh-store cutover and the approved retired-data cleanup.
 

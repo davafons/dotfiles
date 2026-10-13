@@ -20,6 +20,20 @@ The empty-draft dashboard starts in normal mode. Its letters are `r` for session
 
 The profile keeps direct panel navigation, Ctrl+C handling, prompt history, path completion, model aliases, the Solarized theme, context and usage views, project work, clarification, sudo, web tools, Herdr, timers, and child-agent tools. Native MCP discovery remains enabled. Child tools preserve the configured `general` and `dav-agent` roles.
 
+## Herdr agent reporting
+
+The Herdr plugin starts reporting after `ui.started`, when the interactive frontend is ready. It reports again after native `/reload` and releases the pane on quit. `yuke check` and nested agents do not report over the parent pane.
+
+After installing a plugin edit, wait for the active run to finish, save any typed draft, and run `/reload` in each Yuke session. Herdr does not need a server restart.
+
+Run the regression against a private Herdr server and detached Yuke terminals:
+
+```sh
+python3 -B yuke/tests/check-herdr.py
+```
+
+The check uses temporary homes and stores. It does not copy provider credentials, make model calls, or touch live sessions.
+
 ## Verify the current profile
 
 Run the complete profile guard from this repository:
@@ -32,6 +46,17 @@ make check
 ```
 
 The profile guard copies the canonical source into private homes. It checks exact types, startup, root input dispatch, native reload, two disposal generations, and headless startup in logical and display modes. It captures terminal output without a visible window. It does not forward OSC 52 or copy provider credentials. It makes no model call.
+
+Current storage guards use disposable databases and files:
+
+```sh
+python3 -B yuke/tests/check-project-work-store.py
+python3 -B yuke/tests/check-model-alias-store.py
+python3 -B yuke/tests/check-yuke-clarify-store.py
+python3 -B yuke/tests/check-search-store.py
+```
+
+These checks cover linked-checkout identity, concurrent version checks, private file modes, invalid-file preservation, clarification claims, index replacement, file boundaries, and bounded matching previews. They do not modify the active store.
 
 `yuke check` runs plugin code and opens a store. Do not use the active profile for an isolated check. The installed guide at `~/.local/lib/yuke/docs/profile.md` gives the isolation recipe.
 
