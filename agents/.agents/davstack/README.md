@@ -2,8 +2,9 @@
 
 Davstack selects pstack development workflows and adapts them to David's tools.
 Changes beyond runtime and authority adaptations require individual review.
-The installed set includes migrated Shirabe workflows whose upstream fidelity
-is still under review.
+The installed set includes migrated Shirabe workflows. The
+[upstream follow-up](UPSTREAM-FOLLOWUP.md) records restored `how` and `reflect`
+methods, native discovery evidence, and the remaining model-dependent gates.
 
 Development sources live in `agents/.agents/davstack/skills/` in dotfiles.
 Personal sources live in `agents/.agents/personal/skills/`. Each skill is directly
@@ -20,13 +21,18 @@ the dotfiles project context and the linked review task in `/work`.
 
 | Skill | Purpose | Main dependency |
 | --- | --- | --- |
-| `dav-mode` | Working mode, task routing, shared working rules | Its 14 playbooks and shared-rules reference |
+| `dav-mode` | Working mode, task routing, shared working rules | Its 21 playbooks, runtime adapters, and native helpers |
 | `blast-radius` | Find what a change breaks beyond the diff; prove its safety facts | Real code and the project's checks |
 | `comment-sicko` | Report-only comment review, precise cuts, confusing code, missing guards | In-scope source files |
 | `no-comments` | Verify the review, apply accepted cuts, fix unclear code | `comment-sicko` and the project's checks |
-| `reflect` | Mine durable lessons and propose the strongest encoding | Session evidence; approval before applying |
+| `reflect` | Judgment, tooling, and divergent review; Accepted / Rejected / Backlog synthesis | Session evidence, reviewer templates, and approval before skill edits |
 | `tdd` | Watch a focused regression fail before fixing it, then pass | A practical executable test or repro |
-| `unslop` | Cut AI tells; write in one Diátaxis mode | Its writing reference |
+| `benchmark-checklist` | Vet performance measurements against seven evidence questions | Real measurements and supported platform diagnostics |
+| `show-me-your-work` | Keep an append-only decision trail and audit it before handoff | Its logger, current-session evidence, and independent review when authorized |
+| `unslop` | Cut AI tells from writing | Its pattern catalog |
+| `technical-writing` | Apply Diátaxis, sentence, instruction, and syntax rules | `unslop` |
+| `deslop` | Remove AI code patterns from the scoped diff | Project conventions and checks |
+| `loop` | Schedule authorized recurring agent turns | An available native scheduler |
 | `figure-it-out` | Design and execute an auditable workflow for large or unmatched work | A falsifiable goal and the project's checkpoint format |
 | `how` | Explain entry points, flow, boundaries, file map, and gotchas | Its explorer/explainer references |
 | `why` | Investigate historical reasons, confidence, contradictions, and gaps | Available history, PRs, and read-only evidence tools |
@@ -34,7 +40,7 @@ the dotfiles project context and the linked review task in `/work`.
 | `recall` | Reconstruct current state, threads, problems, and next move | Authorised in-scope history and `why` |
 | `create-verification-skill` | Generate a project-local driving and verification skill with retained proof | A runnable app and safe control harness |
 
-Playbooks are references, not 14 additional registered skills. Their ordered
+The 21 playbooks are references, not additional registered skills. Their ordered
 methods now come from the selected upstream copies, not the abbreviated Shirabe
 versions. The [playbook runtime](skills/dav-mode/references/playbook-runtime.md)
 records their source revision and the tool, permission, and dependency adaptations.
@@ -70,14 +76,22 @@ agents/.agents/
 │       ├── dav-mode/
 │       │   ├── SKILL.md
 │       │   ├── LICENSE
+│       │   ├── agents/{claude.md,codex.toml,yuke.js}
+│       │   ├── scripts/{check-plan.mjs,patch-id.mjs,orch/,watch-pr/}
 │       │   ├── references/{working-rules.md,playbook-runtime.md}
 │       │   └── playbooks/
+│       │       ├── autonomous-run.md
+│       │       ├── autopilot-full.md
+│       │       ├── autopilot-stack.md
+│       │       ├── babysit.md
 │       │       ├── bug-fix.md
 │       │       ├── eval.md
 │       │       ├── feature.md
 │       │       ├── hillclimb.md
 │       │       ├── investigation.md
 │       │       ├── multi-phase-plan.md
+│       │       ├── opening-a-pr.md
+│       │       ├── orchestrate.md
 │       │       ├── pause-safely.md
 │       │       ├── perf-issue.md
 │       │       ├── prototype.md
@@ -85,13 +99,19 @@ agents/.agents/
 │       │       ├── runtime-forensics.md
 │       │       ├── session-pickup.md
 │       │       ├── shipping.md
+│       │       ├── trace-forensics.md
 │       │       └── visual-parity.md
 │       ├── blast-radius/SKILL.md
 │       ├── comment-sicko/{SKILL.md,agents/claude.md,agents/codex.toml}
 │       ├── no-comments/SKILL.md
-│       ├── reflect/SKILL.md
+│       ├── reflect/{SKILL.md,LICENSE,references/}
 │       ├── tdd/SKILL.md
-│       ├── unslop/{SKILL.md,references/writing.md}
+│       ├── unslop/{SKILL.md,LICENSE}
+│       ├── technical-writing/{SKILL.md,LICENSE}
+│       ├── deslop/{SKILL.md,LICENSE}
+│       ├── loop/SKILL.md
+│       ├── benchmark-checklist/{SKILL.md,LICENSE}
+│       ├── show-me-your-work/{SKILL.md,LICENSE,references/,scripts/log.sh}
 │       ├── figure-it-out/SKILL.md
 │       ├── how/{SKILL.md,LICENSE,references/}
 │       ├── why/{SKILL.md,LICENSE,references/}
@@ -123,10 +143,11 @@ bin/bin/agent-skills check
 make check
 ```
 
-The installer explicitly lists all 13 davstack names. It links their complete
+The installer explicitly lists all 18 davstack names. It links their complete
 directories into `~/.agents/skills/` for Yuke/Codex and `~/.claude/skills/` for
-Claude Code. It also links the Comment Sicko adapters into
-`~/.claude/agents/comment-sicko.md` and `~/.codex/agents/comment-sicko.toml`.
+Claude Code. It also links the `comment-sicko` and `dav-agent` adapters into
+`~/.claude/agents/` and `~/.codex/agents/`. The adapters inherit configured models.
+The Yuke profile registers its own `dav-agent` adapter from the canonical source.
 It refuses to replace unmanaged skills or agents. Providers remain outside
 dotfiles and keep their existing ownership.
 The installer also links the six personal skills into `~/.agents/skills/`.
@@ -147,6 +168,11 @@ or start a new chat after installation, then:
 /skill:reflect
 /skill:tdd
 /skill:unslop this draft
+/skill:technical-writing this document
+/skill:deslop
+/skill:benchmark-checklist
+/skill:show-me-your-work
+/skill:loop
 /skill:figure-it-out
 /skill:how does the importer work?
 /skill:why did we choose this format?
@@ -156,23 +182,60 @@ or start a new chat after installation, then:
 ```
 
 Claude uses the matching global skill names; Codex can select/request the skills
-by name. This does not add custom Yuke slash aliases or change its profile.
+by name. Skill links do not install Yuke plugins. The separate profile's `session-loop`
+plugin supplies `/loop` and the `loop` model tool.
 To use the specialist in Claude or Codex, explicitly request delegation to
 `comment-sicko` with the files or diff to review. Its caller verifies the report
 and applies accepted changes. Both adapters read the canonical skill rather
 than duplicate its review rules.
 
-Installation tests do not prove interactive discovery or model behavior in
-Claude or Codex.
+Installation tests do not prove interactive discovery or model behavior.
+The optional `python3 -B bin/tests/check_agent_discovery.py` driver checks actual
+Claude directory discovery and offline Codex startup. It leaves Codex catalog
+discovery and active-agent execution explicitly unverified.
+
+## Runtime boundaries and helpers
+
+The [playbook runtime](skills/dav-mode/references/playbook-runtime.md#native-helpers)
+lists the plan validator, stable patch fingerprint, GitHub PR watcher, and program
+store commands. The store reads jj topology, not PR base refs, for its frontier.
+It does not start agents or schedule turns.
+
+`benchmark-checklist` retains upstream's seven measurement questions and uses
+supported macOS diagnostics. `show-me-your-work` retains the upstream TSV format,
+logger, transcript audit, and independent-review gate. Its default state directory
+stays outside jj snapshots. `trace-forensics` diagnoses an existing capture, while
+`runtime-forensics` captures and probes a live process. Neither requires a cloud
+worker. This Mac can run CLI, API, isolated terminal, browser, and authorized
+computer-use verification. Native desktop activation and system-wide input still
+need permission for the run. A model-free run excludes additional model calls,
+not local computer access.
+
+The [loop skill](skills/loop/SKILL.md) describes the scheduler contract. Yuke's
+profile supplies a session-bound timer. Quit or profile reload stops it.
+Restart requires explicit rearming. There is no daemon or saved schedule, and
+installation starts no recurring work. Claude and Codex have no scheduler adapter
+in this installation. An unavailable native scheduler leaves that gate open.
+
+The source inventory is reproducible from the dotfiles root:
+
+```sh
+find agents/.agents/davstack/skills -mindepth 1 -maxdepth 1 -type d | sort
+find agents/.agents/davstack/skills/dav-mode/playbooks -name '*.md' | sort
+```
 
 ## Shirabe migration
 
 The original migration brought eight definitions from `docs/agents/`, 16
 playbooks, the Comment Sicko agent, and the portable writing standard here.
-The current set keeps 14 playbooks after removing the local-only `encode` and
-`write` routes. The initial naming cleanup gave seven playbooks their upstream
+The initial cleanup kept 14 playbooks after removing the local-only `encode`
+and `write` routes. The initial naming cleanup gave seven playbooks their upstream
 counterpart filenames without changing methods. A subsequent restoration replaced
 all 14 methods with upstream copies and adapted their runtime references.
+The approved expansion added Autonomous run, Autopilot-full, Autopilot-stack,
+Orchestrate, Babysit, and Opening a PR from the same pinned source. The current
+set has 21 playbooks after the subsequent Trace forensics addition, with the
+full upstream mode principles and methods retained.
 The mode's original metadata still records its Shirabe lineage; the playbook
 runtime records the separate upstream source and license.
 
@@ -211,7 +274,9 @@ Portability changes are explicit:
 The five investigation/verification skills were selected from
 [cursor/plugins pstack](https://github.com/cursor/plugins/tree/d73344bee8cf22e53b9d5f4cf5749d38ba38c174/pstack)
 at `d73344bee8cf22e53b9d5f4cf5749d38ba38c174`, with their MIT licenses and
-upstream attribution. Their references retain upstream wording. Each skill has
+upstream attribution. `how` and the formerly migrated `reflect` now follow
+`1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, including their full supporting
+templates. The follow-up report records the runtime adaptations. Each skill has
 an explicit Runtime adaptation covering actual tools/models, user authority,
 read-only evidence, jj, privacy, and desktop safety.
 

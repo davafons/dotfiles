@@ -24,9 +24,8 @@ review. With authorised delegation, use the available child API and configured
 models, not Cursor's Task fields or defaults; follow its start-and-wait lifecycle.
 Pass complete briefs and the shared-desktop rules.
 
-Check for `.jj/` first. In colocated repositories use `jj` for history and diffs;
-translate the Git examples in the reference files rather than running them
-unchanged. Do not assume a repository has history, a GitHub remote, PRs, or an
+Use jj for history and `jj diff --git` for patches. Confirm `jj root` succeeds
+before repository investigation. Do not assume a repository has history, a GitHub remote, PRs, or an
 authenticated `gh`; describe missing evidence instead of inventing it.
 
 Investigate the motivation and intent behind code.
@@ -96,7 +95,7 @@ Map each available MCP to one evidence category:
 6. Error / exception tracking
 7. Product analytics warehouse
 
-Source control uses `jj` (or Git in Git-only repositories), with `gh` when a GitHub remote and authentication are available. For the other six, classify using the MCP name, server instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
+Source control uses `jj`, with `gh` when a GitHub remote and authentication are available. For the other six, classify using the MCP name, server instructions, tool names, and resource descriptors. If an MCP could fit more than one category, choose the one matching its primary evidence. Record ambiguous cases in the coverage map.
 
 Aim for a complete **coverage map**, not a minimal one. Document the null, don't skip the search.
 

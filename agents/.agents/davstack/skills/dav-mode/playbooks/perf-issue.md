@@ -4,7 +4,7 @@ Read [Playbook runtime](../references/playbook-runtime.md) before executing thes
 
 **You own the measurement story. Plan, review, verify the numbers.** Tie every fix to a measurement, don't read source instead of measuring.
 
-1. Capture a baseline trace through the project's matching verification/control workflow. Vet the baseline, and each later number, with the [benchmark-checklist protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/benchmark-checklist/SKILL.md).
+1. Capture a baseline trace through the project's matching verification/control workflow. Vet the baseline, and each later number, with the [benchmark-checklist skill](../../benchmark-checklist/SKILL.md).
 2. `how` to ground hypotheses. Don't claim a perf ceiling without running it first.
    Try the performance mantras in order, cheapest first:
    1. Don't do it. Stop work whose result nothing uses rather than cheapening it.

@@ -1,4 +1,4 @@
-# Code Archaeology (git + in-repo)
+# Code archaeology
 
 ## What this source contains
 
@@ -15,38 +15,28 @@ The most trustworthy source, tied directly to the code, and the most complete. E
 
 ## How to search it
 
-Expand the seed commit list:
+Use jj for repository history. Confirm `jj root` succeeds, then expand the
+seed revision list with native history and Git-format patches:
 
 ```bash
-# Full history of the file through renames
-git log --follow --oneline -- <file>
-
-# Pickaxe: commits that added or removed this exact text
-git log -S '<exact_string_from_code>' -- <file>
-
-# Or for patterns:
-git log -G '<regex>' -- <file>
-
-# Who wrote each line and when
-git blame -L <start>,<end> <file>
-
-# The full diff of a specific commit
-git show <hash>
-
-# Commits between two points affecting this file
-git log <old>..<new> -p -- <file>
+jj log --no-graph --limit 20 <file>
+jj log --no-graph --patch --git <file>
+jj file annotate <file>
+jj show --git <revision>
+jj log --no-graph -r '<old>..<new>' --patch --git <file>
 ```
 
-For each substantive commit, pull the PR context:
+Search the patches for the exact string or regex from the target. Keep the
+revision IDs with each match and inspect the full patch before attributing a
+change. For renamed files, inspect the rename diff and repeat the path-scoped
+history search at the old path. `jj log` has no `--follow`, `-S`, or `-G` flag.
+Use `jj file annotate <file>` and select the target line range from its output.
+
+For each substantive revision, read its description and pull the PR context.
 
 ```bash
-# Find the PR number from the merge commit or branch
-git log -1 --format=%B <hash>
-
-# Full PR context: body, review comments, linked issues
+jj log --no-graph -r <revision> -T description
 gh pr view <number> --json title,body,author,createdAt,mergedAt,labels,closingIssuesReferences,comments,reviews,files
-
-# The --json reviews and comments fields are where the real signal is
 ```
 
 Look for out-of-band docs:

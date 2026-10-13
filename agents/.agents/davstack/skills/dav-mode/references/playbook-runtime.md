@@ -6,7 +6,7 @@ not its purpose. A missing capability is a reported gap, not a passing result.
 
 ## Source
 
-The 14 selected playbooks are adapted from
+The 21 selected playbooks are adapted from
 [cursor/plugins pstack at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`](https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/poteto-mode/playbooks).
 The upstream [MIT license](../LICENSE) accompanies them. Source URLs identify
 upstream; they do not require its editor or install its other workflows.
@@ -30,8 +30,8 @@ results. The parent owns the workflow, not merely the delegates' summaries.
 
 ## Workflow dependencies
 
-Links to upstream `architect`, `arena`, `swarm`, `interrogate`,
-`benchmark-checklist`, `show-me-your-work`, and `principle-*` files are protocol
+Links to upstream `architect`, `arena`, `swarm`, `interrogate`, and
+`principle-*` files are protocol
 references, not installed skills. Read the relevant source when its method is
 required. Apply that method through available tools and the shared rules.
 Do not invent an invocation, silently install a dependency, or claim that reading
@@ -42,31 +42,45 @@ blinded judging, lane coverage, measurement vetting, and decision evidence.
 Report unavailable automation or independent roles. Keep required gates open
 when they cannot be satisfied; do not weaken them to match the available tools.
 
+The [benchmark-checklist](../../benchmark-checklist/SKILL.md) and
+[show-me-your-work](../../show-me-your-work/SKILL.md) skills are installed locally.
+The latter owns the decision-log format and its executable logger. Its independent
+cross-model review remains a separate permission and capability gate.
+
 For document writing, use [the installed writing reference](../../technical-writing/SKILL.md)
 and [unslop](../../unslop/SKILL.md). Follow the project's plan and evidence locations.
-Upstream execution protocols linked by a plan are not locally installed playbooks.
-Name a supported execution workflow and its gaps before asking to start it.
+The installed execution playbooks include [Autonomous run](../playbooks/autonomous-run.md),
+[Autopilot-full](../playbooks/autopilot-full.md), [Autopilot-stack](../playbooks/autopilot-stack.md),
+[Orchestrate](../playbooks/orchestrate.md), and [Babysit](../playbooks/babysit.md).
+Name the supported execution workflow and its gaps before asking to start it.
 
 ## Control surfaces and loops
 
-Use the project's verification/control skill or a proven CLI, API, or browser
-workflow for the matching surface. Do not substitute a unit test for the original
+Use the project's verification/control skill or a proven CLI, API, browser, or
+computer-use workflow for the matching surface. This local computer is available
+for testing; a cloud worker is not required. Local execution and model-backed
+execution are separate choices. A model-free verification run means no additional
+model calls, not that computer-use tools are unavailable. Do not substitute a unit test for the original
 live reproduction. Apply desktop permissions before instrumentation or GUI work.
 A live hotfix also needs applicable authority; diagnosis does not authorize
 production mutation.
 
-Use only an available, authorized scheduler for recurring ticks. A foreground
-iteration is not a persistent background schedule. If no scheduler can survive
-the session, report that gap and do not claim the cadence is armed. Save a
-checkpoint at the safe boundary instead.
+Use the installed [loop skill](../../loop/SKILL.md) and an available, authorized
+native scheduler for recurring agent turns. The Yuke adapter is session-bound.
+Quit or profile reload stops its timers, and restarting requires explicit
+rearming. It has no daemon or saved schedule. A foreground iteration is not a
+scheduled agent turn. If no native scheduler is available, report the gap and
+leave the cadence unarmed. Save a checkpoint at the safe boundary.
 
 Read only the named session's history through an authorized current-harness API
 or export. Never assume another editor's transcript paths or search unrelated chats.
 
 ## Version control and durable state
 
-Check for `.jj/` before version-control commands. In colocated repositories use
-`jj`; use Git only where no `.jj/` exists. Follow project branch and push rules.
+These workflows target jj repositories. Confirm `jj root` succeeds before
+version-control commands. Use jj for history, workspaces, bookmarks, rebases,
+and pushes. If jj is unavailable, report that runtime gap rather than switching
+to Git. Follow project branch and push rules.
 A shared working copy must not be described, split, or rebased as if all its
 changes belonged to this task.
 
@@ -78,18 +92,34 @@ plumbing may fingerprint that diff when a shipping verdict requires it.
 Keep ordered, verifiable changes with native describe/new/split/rebase operations
 when they belong to the task. Do not stage with Git in a jj repository.
 Pausing a jj working copy does not require a WIP commit; preserve its change and
-save the project's checkpoint. Use a scoped WIP commit in a Git-only repository
-when needed. Never bundle another worker's edits to pause.
+save the project's checkpoint. Never bundle another worker's edits to pause.
 
 ## PR handoff
 
-The upstream [Opening a PR protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/poteto-mode/playbooks/opening-a-pr.md)
-is not an installed local playbook. Use the project's approved PR workflow and
-actual forge tools. Review its required preparation before a PR-facing handoff.
-Opening, commenting, pushing, merging, and deploying require the applicable user
-authorization. A verification request does not grant it.
+Use the installed [Opening a PR](../playbooks/opening-a-pr.md) playbook and the
+project's approved PR workflow with actual forge tools. Opening, commenting,
+pushing, merging, and deploying require the applicable user authorization.
+A verification request does not grant it.
 
 If PR creation is not authorized, return the verified change, evidence, and
 remaining handoff instead of opening one. Do not weaken shipping's independent
 verdict, exact-patch, or bottom-up stack requirements. Missing verdicts or forge
 capabilities stop the affected landing step.
+
+## Native helpers
+
+The helpers ship with `dav-mode`. Run them from the target repository or the
+program's chosen state directory, not from the installed skill directory.
+
+| Helper | Command | Boundary |
+| --- | --- | --- |
+| Plan validator | `node ~/.agents/skills/dav-mode/scripts/check-plan.mjs <plan.md>` | Checks the plan skeleton and reports diagnostics. It does not verify its evidence. |
+| Patch fingerprint | `node ~/.agents/skills/dav-mode/scripts/patch-id.mjs <base> <head>` | Requires jj. Prints a stable patch ID or `empty`. |
+| PR watcher | `~/.agents/skills/dav-mode/scripts/watch-pr/watch-pr --pr <pr> --status-only` | GitHub only. Reads through authenticated `gh`. Without `--status-only`, polls until a terminal verdict. |
+| Program store | `bun ~/.agents/skills/dav-mode/scripts/orch/orch.ts --help` | Stores unit, inbox, ledger, and status facts. Its frontier reads jj topology and GitHub PR identity, state, and head SHA. |
+
+Node runs the plan and patch helpers. Bun runs the watcher and program store.
+The Bun entry points install their locked dependencies on first use or a lockfile
+change. The watcher and frontier require authenticated `gh` for GitHub reads.
+The program store neither spawns agents nor schedules turns. A helper's output
+does not grant authority or satisfy an independent-verdict gate.

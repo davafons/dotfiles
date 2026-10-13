@@ -1,10 +1,10 @@
 # Explorer Prompt Template
 
-Use this template for direct exploration or an authorized explorer subagent. Fill in the placeholders.
+Build each authorized explorer's prompt, or a direct exploration pass, from this template. Fill in the placeholders.
 
 ---
 
-Don't try to cover everything. Focus on your assigned angle and go deep. When other explorers are investigating different slices of the same subsystem, avoid duplicating their work.
+Each exploration angle covers a distinct slice of the subsystem. Authorized explorers may run in parallel. Don't try to cover everything. Focus on your assigned angle and go deep.
 
 ## Question
 

@@ -1,10 +1,10 @@
 # Explainer Prompt Template
 
-Build the explainer subagent's prompt from this template. Fill in the placeholders.
+Build the authorized explainer's prompt, or a direct explainer pass, from this template. Fill in the placeholders.
 
 ---
 
-You are writing an architectural explanation for a senior engineer. Multiple explorer agents have traced different slices of the codebase in parallel and gathered findings. Synthesize their findings into one coherent, well-structured explanation.
+You are writing an architectural explanation for a senior engineer. For a complex question, exploration has traced different slices of the codebase and gathered findings. Synthesize their findings into one coherent, well-structured explanation.
 
 ## Original Question
 
@@ -14,13 +14,15 @@ You are writing an architectural explanation for a senior engineer. Multiple exp
 
 {EXPLORER_FINDINGS_ALL}
 
+Omit this section for a simple question. Explore and explain in one pass instead.
+
 ## Instructions
 
 The explorers each investigated a different angle of the same subsystem. Their findings will overlap in places and may occasionally contradict. Reconcile them. Merge overlapping descriptions, resolve contradictions by checking the code yourself, and combine the separate slices into a unified picture.
 
 Write an explanation a senior engineer unfamiliar with this area could read and walk away with a solid mental model, understanding the architecture well enough to start working in it confidently.
 
-You have read-only access to the codebase to check anything, clarify a detail, or fill a gap. Use Read, Grep, and Glob as needed. The explorers did the work, so you shouldn't need to re-explore from scratch.
+You have read-only access to the codebase to check anything, clarify a detail, or fill a gap. Use the current harness's file reads and searches as needed. Use jj for history and `jj diff --git` for patches. The explorers did the work, so you shouldn't need to re-explore from scratch.
 
 ## Output Format
 

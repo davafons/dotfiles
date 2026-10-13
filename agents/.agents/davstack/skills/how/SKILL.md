@@ -1,45 +1,57 @@
 ---
 name: how
 description: "Use for \"how does X work\", code walkthroughs before changing something, and placement / ownership / layering questions (\"where should this live\", \"which package owns this\", \"is this the right layer\"). Explains subsystem architecture, runtime flow, onboarding mental models. Use why for motivation."
+disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/d73344bee8cf22e53b9d5f4cf5749d38ba38c174/pstack/skills/how
-  revision: d73344bee8cf22e53b9d5f4cf5749d38ba38c174
+  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/how
+  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
 ---
 
 # How
 
-Explain how a subsystem works from its code. Give a senior engineer enough of
-an architectural model to work on it, not an annotated source listing.
+Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
 ## Runtime adaptation
 
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-Keep the investigation read-only, including external tools and services.
-Use the file reads and CLI searches available in the current harness.
+Read the [shared working rules](../dav-mode/references/working-rules.md) and
+[playbook runtime](../dav-mode/references/playbook-runtime.md).
+Keep all investigation read-only. Use jj for repository history and
+`jj diff --git` for patches.
 
-Investigate and explain directly, serially, unless the user explicitly requests
-delegation or parallel work. Do not claim independent review for your own work.
-When delegation is authorized, use the harness's child API and configured models.
-Follow its start-and-wait lifecycle. Pass scoped briefs and the shared working rules.
+Use the current harness's child API and configured explorer and explainer roles
+when delegation is explicitly authorized. Inherit configured defaults when a
+role is unavailable. Do not assume Cursor Task fields, a `pstack-models.mdc`
+file, per-call model selection, or a read-only sandbox. Follow the native child
+lifecycle and pass scoped read-only briefs with the shared-desktop restrictions.
 
-Use the reference templates as exploration and writing checklists.
-Adapt their tool names and references to other agents to the actual execution.
+Without delegation permission, perform the same explorer angles and explainer
+pass directly, in sequence. Do not claim independent exploration or synthesis.
+For the simple path, omit the explorer-findings section and use only the
+explainer template. For the complex path, preserve each angle's findings and
+pass every finding into synthesis.
 
-## Workflow
+## 1. Assess complexity
 
-1. **Scope the question.** If ambiguous, state your interpretation and explore.
-   For a narrow question, investigate in one pass. For a broad subsystem,
-   divide it into distinct exploration angles without duplicating work.
-2. **Trace the code.** Follow the
-   [explorer checklist](references/explorer-prompt.md).
-   Find the entry point, follow data through calls, and identify abstractions
-   and boundaries. Record exact files and symbols, surprises, and gaps.
-3. **Build the explanation.** Use the
-   [explainer checklist](references/explainer-prompt.md).
-   Combine the findings and resolve contradictions against the code.
-   Do not restart the investigation unless a gap requires it.
-4. **Present what the code supports.** Explain the flow with concrete file and
-   symbol references. State what you could not trace. Use the applicable output
-   sections: Overview, Key Concepts, How It Works, Where Things Live, Gotchas.
-   Drop sections that do not help answer the question.
+If the scope is ambiguous, state your interpretation and explore. The user can redirect.
+
+- **Simple** (a single module, a small utility, a narrow question such as "how does function X work"): no explorers. Run one explainer that explores and explains in one pass, built from `references/explainer-prompt.md` without the explorer-findings section. Go to step 4.
+- **Complex** (a subsystem spanning multiple files or services, a cross-cutting feature, a full architectural overview): go to step 2.
+
+When in doubt, take the simple path.
+
+## 2. Explore (complex only)
+
+Decompose the question into 2 to 4 angles, each a distinct slice of the subsystem. When delegation is authorized, spawn all explorers in a single message, each with `references/explorer-prompt.md` and its angle filled in.
+
+## 3. Synthesize (complex only)
+
+Once all exploration is complete, run one explainer with `references/explainer-prompt.md` and every explorer's findings filled in.
+
+## 4. Present
+
+Present the explainer's output. Light edits for clarity or context from the conversation are fine. Do not substantially rewrite it.
+
+## Output format
+
+The explanation uses the sections defined in `references/explainer-prompt.md`, dropping any that do not apply: Overview, Key Concepts, How It Works, Where Things Live, Gotchas.
