@@ -20,6 +20,18 @@ The empty-draft dashboard starts in normal mode. Its letters are `r` for session
 
 The profile keeps direct panel navigation, Ctrl+C handling, prompt history, path completion, model aliases, the Solarized theme, context and usage views, project work, clarification, sudo, web tools, Herdr, timers, and child-agent tools. Native MCP discovery remains enabled. Child tools preserve the configured `general` and `dav-agent` roles.
 
+## Build label
+
+The bottom bar and `/status` Build row omit the build timestamp and shorten the
+source revision to eight characters. `yuke --version` and RPC keep the full
+embedded build identity. The UI reads the running engine, not another executable
+on `PATH`.
+
+```sh
+node yuke/tests/check-version-label.mjs
+python3 -B yuke/tests/check-build-status.py --binary "$HOME/.local/bin/yuke"
+```
+
 ## Herdr agent reporting
 
 The Herdr plugin starts reporting after `ui.started`, when the interactive frontend is ready. It reports again after native `/reload` and releases the pane on quit. `yuke check` and nested agents do not report over the parent pane.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Shorten the bottom build label and `/status` Build row to an eight-character revision without the build timestamp. Keep the full embedded version in `yuke --version`, RPC, and request metadata.
+
 - Start Herdr reporting after the interactive UI is ready. Restore missing Yuke sidebar agents at startup and after native reload. Add a private-server regression for reporting, approvals, reload, quit, and parent-pane safety.
 
 - Port `/loop` to manifests and current engine drains. Read root turn outcomes explicitly so failure and cancellation pause schedules. Cache status counts. Add a native loopback guard for delivery, stop, and reload cleanup.

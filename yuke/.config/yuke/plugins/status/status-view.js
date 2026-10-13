@@ -3,6 +3,7 @@
 import { client, env, exec, fs } from "yuke";
 import { currentPane } from "yuke:session";
 import { Window, clip, keys, measure, text } from "yuke:ui";
+import { versionLabel } from "../build-status/version-label.js";
 /** @import { Context } from "yuke" */
 /** @typedef {{ label: string, remainingPercent: number, windowSeconds: number, resetsAt: number | null }} QuotaWindow */
 /** @typedef {{ provider: string, asOf: string, state: string, error: string, plan: string, windows: QuotaWindow[], creditBalance: number | null, unlimitedCredits: boolean, keyRemaining: number | null, requestsRemaining: number | null, notes: string[] }} Quota */
@@ -70,7 +71,7 @@ class StatusView {
     this.selector = item?.session.model || this.selector;
     this.model = catalog.type === "full" ? catalog.models.find(model => model.selector === this.selector) || null : null;
     this.provider = catalog.type === "full" ? catalog.providers.find(provider => provider.id === this.model?.provider) || null : null;
-    this.version = init.engine.version;
+    this.version = versionLabel(init.engine.version);
     this.directory = directory;
     this.rebuild();
     if (!this.provider) return;
