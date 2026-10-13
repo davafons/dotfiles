@@ -49,6 +49,27 @@ class PublishHygiene(unittest.TestCase):
             self.assertEqual(result.stdout.splitlines(), ignored)
 
     @unittest.skipUnless(shutil.which("stow"), "GNU Stow is required")
+    def test_neovim_stow_installs_config_without_submodule(self):
+        config = ROOT / "nvim/.config/nvim"
+        self.assertFalse((config / ".git").exists())
+        self.assertFalse((ROOT / ".gitmodules").exists())
+        with tempfile.TemporaryDirectory(prefix="dotfiles-nvim-stow-tests-") as home:
+            subprocess.run(
+                ["stow", "--no-folding", "-d", str(ROOT), "-t", home, "nvim"],
+                capture_output=True, text=True, check=True,
+            )
+            installed = Path(home) / ".config/nvim"
+            for name in ("init.lua", "lazy-lock.json", "lua/config/markdown_preview.lua",
+                         "lua/plugins/colorscheme.lua"):
+                link = installed / name
+                self.assertTrue(link.is_symlink(), name)
+                self.assertEqual(link.resolve(), config / name)
+                self.assertEqual(link.read_bytes(), (config / name).read_bytes())
+            self.assertFalse((installed / ".git").exists())
+            self.assertFalse((Path(home) / "nvim.log").exists())
+            self.assertFalse((Path(home) / ".ruby-lsp").exists())
+
+    @unittest.skipUnless(shutil.which("stow"), "GNU Stow is required")
     def test_yuke_stow_plan_does_not_link_documentation_into_home(self):
         with tempfile.TemporaryDirectory(prefix="dotfiles-stow-tests-") as home:
             result = subprocess.run(

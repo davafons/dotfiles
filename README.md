@@ -10,7 +10,7 @@ directory. Package variants such as `git-work` are selected by the profile;
 there is no hostname-based package replacement.
 
 ```sh
-$ git clone --recurse-submodules https://github.com/davafons/dotfiles
+$ git clone https://github.com/davafons/dotfiles
 $ cd dotfiles
 $ jj git init --colocate
 $ make list-profiles
@@ -18,8 +18,9 @@ $ make plan PROFILE=mb
 $ make install PROFILE=mb
 ```
 
-The initial Git clone initializes the pinned Neovim submodule. After
-initializing the colocated repository, use `jj` for version-control operations.
+Neovim is tracked directly in `nvim/.config/nvim`; no submodule setup is needed.
+Its [configuration guide](nvim/.config/nvim/README.md) covers shortcuts and checks.
+After initializing the colocated repository, use `jj` for version-control operations.
 
 `make` defaults `PROFILE` to the current hostname for compatibility. Specify
 `PROFILE` explicitly on a new machine.
