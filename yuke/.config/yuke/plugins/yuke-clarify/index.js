@@ -124,6 +124,11 @@ export default function(parent) {
     const database = (env.get("XDG_STATE_HOME") || home + "/.local/state") + "/" + app + "/clarify/questions.sqlite3";
     /** @type {Entry[]} */
     let entries = [];
+    /** @type {Set<string>} */
+    let pendingSessions = new Set();
+    parent.provide("yuke-clarify", {
+      pending: (/** @type {string} */ sessionId) => pendingSessions.has(sessionId),
+    });
     let unavailable = false;
     let repaint = () => {};
     let tail = Promise.resolve();
@@ -142,8 +147,16 @@ export default function(parent) {
 
     async function refresh() {
       try {
-        entries = await store("list");
+        const nextEntries = /** @type {Entry[]} */ (await store("list"));
+        if (!parent.alive) return;
+        const nextSessions = new Set();
+        for (let i = 0; i < nextEntries.length; i++) nextSessions.add(nextEntries[i].session);
+        let changed = nextSessions.size !== pendingSessions.size;
+        if (!changed) nextSessions.forEach((sessionId) => { if (!pendingSessions.has(sessionId)) changed = true; });
+        entries = nextEntries;
+        pendingSessions = nextSessions;
         unavailable = false;
+        if (changed) events.emit("yuke-clarify:changed");
       } catch (error) {
         if (!unavailable && parent.alive) parent.interaction.notify("Questions unavailable: " + String(error), "error");
         unavailable = true;

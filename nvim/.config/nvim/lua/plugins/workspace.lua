@@ -95,16 +95,36 @@ return {
     commit = "49d2cf7ced872db74083a144ded1f94fe224d09a",
     lazy = false,
     dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
-    opts = {
-      preview = {
-        filetypes = { "markdown" },
-        modes = { "n", "no", "c", "i" },
-        hybrid_modes = { "n", "i" },
-        linewise_hybrid_mode = true,
-        icon_provider = "devicons",
-        map_gx = false,
-      },
-    },
+    opts = function()
+      local headings = { shift_width = 0 }
+      for level = 1, 6 do
+        headings["heading_" .. level] = { style = "icon", icon = "", sign = "" }
+      end
+      for level = 1, 2 do
+        headings["setext_" .. level] = { icon = "", sign = "", border = " " }
+      end
+      return {
+        preview = {
+          filetypes = { "markdown" },
+          modes = { "n", "no", "c", "i" },
+          hybrid_modes = { "n", "i" },
+          linewise_hybrid_mode = true,
+          icon_provider = "devicons",
+          map_gx = false,
+        },
+        markdown = {
+          headings = headings,
+          list_items = {
+            marker_minus = { text = "•" },
+            marker_plus = { text = "•" },
+            marker_star = { text = "•" },
+          },
+        },
+        markdown_inline = {
+          inline_codes = { padding_left = "", padding_right = "" },
+        },
+      }
+    end,
     keys = {
       {
         "<leader>mp",

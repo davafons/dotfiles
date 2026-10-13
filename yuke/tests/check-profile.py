@@ -20,7 +20,7 @@ PROBE = r'''
 //! Check the actual staged dispatcher, mode service, and owned reload cleanup.
 import { env, fs } from "yuke";
 import { ChatView } from "yuke:chat";
-import { quit, ui } from "yuke:ui";
+import { quit, ui, Window, Picker } from "yuke:ui";
 /** Load an isolated test consumer. No TUI skips it. An invariant failure enters the captured log. @param {import("yuke").Context} ctx */
 export default async function(ctx) {
   const tuiBorrow = ctx.get("tui"), vimBorrow = ctx.get("composer-vim");
@@ -41,7 +41,7 @@ export default async function(ctx) {
     function check(actual, expected, label) { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw Error(label + ": " + JSON.stringify(actual) + " != " + JSON.stringify(expected)); }
     /** @param {string} char @param {number} [mods] @param {Parameters<import("yuke:ui").Tui["keymap"]["onKey"]>[0]["code"]} [code] */
     function key(char, mods = 0, code = "char") { root.onEvent({ type: "key", code, char, shifted: "", baseLayout: "", text: mods ? "" : char, mods, event: "press" }); }
-    check(vim.mode(c), "normal", "dashboard starts normal");
+    vim.setMode(c, "normal");
     if (generation) {
       check(c.text, "", "reload loses the draft");
       check(root.overlays.length, 0, "reload closes overlays");
@@ -82,6 +82,35 @@ export default async function(ctx) {
     key("", 0, "enter"); check(c.text, "./folder/nested.txt", "completion Enter does not submit");
     c.input.setText("./folder/"); vim.setMode(c, "normal");
     await new Promise(done => setTimeout(done, 30)); check(root.overlays.some(layer => layer.name === "paths"), false, "mode change rejects stale directory results");
+    if (env.get("MIGRATION_CD") === "1") {
+      vim.setMode(c, "insert");
+      /** @returns {import("yuke:ui").Picker<{name: string, isDirectory: boolean}> | null} */
+      function pathMenu() {
+        const window = root.overlays.find(layer => layer.name === "paths");
+        return window instanceof Window && window.content instanceof Picker ? window.content : null;
+      }
+      /** @param {string} value */
+      async function directories(value) {
+        c.text = value;
+        for (let i = 0; i < 80 && !pathMenu(); i++) await new Promise(done => setTimeout(done, 5));
+        const menu = pathMenu();
+        if (!menu) throw Error("directory completion did not open for " + value);
+        check(menu.source.every(entry => entry.isDirectory), true, "cd lists only directories");
+        return menu;
+      }
+      check((await directories("/cd ")).source.some(entry => entry.name === "cd folder"), true, "empty cd lists directories");
+      key("", 0, "tab");
+      check(c.text, '/cd "./cd folder/"', "Tab quotes the directory and does not submit");
+      await directories("/cd cd"); key("", 0, "enter");
+      check(c.text, '/cd "./cd folder/"', "Enter completes a directory and does not submit");
+      check((await directories("/cd ../")).source.some(entry => entry.name === "work"), true, "parent directory completion");
+      check((await directories("/cd ~/")).source.some(entry => entry.name === "home-target"), true, "home directory completion");
+      check((await directories("/cd /")).source.length > 0, true, "filesystem root completion");
+      await directories("/cd 'cd"); key("", 0, "tab");
+      check(c.text, "/cd './cd folder/'", "completion closes an existing quote");
+      c.text = "./folder/"; vim.setMode(c, "normal");
+      ctx.print("MIGRATION_CD_COMPLETION_PASS");
+    }
     const modal = ui.pick({ title: "Modal priority", items: ["modal"], filter: false }); tui.overlay(modal.win);
     key("k", 4); check(c.text, "./folder/", "modal blocks history"); root.popOverlay(modal.win);
     c.input.setText("clear me"); key("c", 4); check(c.text, "", "Ctrl+C clears"); check(vim.mode(c), "normal", "Ctrl+C selects normal");
@@ -144,6 +173,8 @@ def main():
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--types-dir", required=True, type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--cd", action="store_true", help="Check /cd directory-completion integration")
+    parser.add_argument("--type-exclude", action="append", default=[], help="Exclude a known baseline type failure; runtime still loads it")
     parser.add_argument("--profile", type=Path, default=Path(__file__).resolve().parents[1] / ".config/yuke")
     args = parser.parse_args()
     binary = args.binary.resolve()
@@ -151,6 +182,8 @@ def main():
     report = args.output.resolve() if args.output else Path(tempfile.mkdtemp(prefix="yuke-manifest-check-"))
     report.mkdir(parents=True, exist_ok=True)
     print("Artifacts:", report, flush=True)
+    if args.type_exclude:
+        print("Known baseline type exclusions:", args.type_exclude, flush=True)
     for mode in ("logical", "display"):
         root = report / mode
         profile = root / "config/yuke"
@@ -159,6 +192,10 @@ def main():
             (root / name).mkdir()
         (root / "work/folder").mkdir()
         (root / "work/folder/nested.txt").touch()
+        if args.cd:
+            (root / "work/cd folder").mkdir()
+            (root / "work/cd-file.txt").touch()
+            (root / "home/home-target").mkdir()
         (profile / "plugins/vim-mode/settings.json").write_text(json.dumps({"verticalMotion": mode}))
         for name in ("yuke.d.ts", "yuke-modules.d.ts"):
             (profile / name).symlink_to((args.types_dir / name).resolve())
@@ -170,8 +207,10 @@ def main():
         config = json.loads((profile / "config.json").read_text())
         config["plugins"].append("./probe")
         (profile / "config.json").write_text(json.dumps(config))
-        (profile / "jsconfig.json").write_text(json.dumps({"extends": "./yuke.jsconfig.json", "include": ["plugins/**/*.js", "plugins/**/*.d.ts", "probe/*.js", "yuke.d.ts", "yuke-modules.d.ts"], "exclude": ["plugins/**/tests/**"]}))
+        (profile / "jsconfig.json").write_text(json.dumps({"extends": "./yuke.jsconfig.json", "include": ["types.d.ts", "plugins/**/*.js", "plugins/**/*.d.ts", "probe/*.js", "yuke.d.ts", "yuke-modules.d.ts"], "exclude": ["plugins/**/tests/**", *args.type_exclude]}))
         env = {"PATH": os.environ["PATH"], "HOME": str(root / "home"), "XDG_CACHE_HOME": str(root / "cache"), "XDG_CONFIG_HOME": str(root / "config"), "XDG_DATA_HOME": str(root / "data"), "XDG_STATE_HOME": str(root / "state"), "YUKE_APPNAME": "yuke", "TERM": "xterm-256color", "COLORTERM": "truecolor", "MIGRATION_ROWS": mode}
+        if args.cd:
+            env["MIGRATION_CD"] = "1"
         for label, command in (("types", ["tsc", "-p", str(profile / "jsconfig.json")]), ("startup", [str(binary), "check"])):
             run = subprocess.run(command, cwd=root / "work", env=env, capture_output=True, timeout=45)
             (root / (label + ".log")).write_bytes(run.stdout + run.stderr)
@@ -181,6 +220,8 @@ def main():
         logs = "\n".join(path.read_text(errors="replace") for path in (root / "state").rglob("*.log"))
         (root / "terminal.log").write_text(logs)
         assert status == 0 and "MIGRATION_FAIL" not in logs and "[error]" not in logs, f"{mode} TUI failed; read {root / 'terminal.log'} and terminal.raw"
+        if args.cd:
+            assert "MIGRATION_CD_COMPLETION_PASS" in logs, "cd completion guard did not finish"
         assert "MIGRATION_INPUT_PASS" in logs and "MIGRATION_RELOAD_PASS" in logs, f"{mode} guard did not finish"
         assert json.loads((probe / "disposed.json").read_text()) == 2, "both runtime generations must release resources"
         run = subprocess.run([str(binary), "--rpc"], input=b'{"id":"initialize-probe","method":"initialize","params":{}}\n', cwd=root / "work", env=env, capture_output=True, timeout=30)

@@ -6,7 +6,7 @@ not its purpose. A missing capability is a reported gap, not a passing result.
 
 ## Source
 
-The 21 selected playbooks are adapted from
+The 23 selected playbooks are adapted from
 [cursor/plugins pstack at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`](https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/poteto-mode/playbooks).
 The upstream [MIT license](../LICENSE) accompanies them. Source URLs identify
 upstream; they do not require its editor or install its other workflows.
@@ -56,7 +56,11 @@ Name the supported execution workflow and its gaps before asking to start it.
 
 ## Control surfaces and loops
 
-Use the project's verification/control skill or a proven CLI, API, browser, or
+The installed [control-cli](../../control-cli/SKILL.md) owns generic terminal
+driving. [create-verification-skill](../../create-verification-skill/SKILL.md)
+generates project drivers and maps;
+[maintain-verification-skill](../../maintain-verification-skill/SKILL.md) audits
+their source and live coverage. Use the project's verification/control skill or a proven CLI, API, browser, or
 computer-use workflow for the matching surface. This local computer is available
 for testing; a cloud worker is not required. Local execution and model-backed
 execution are separate choices. A model-free verification run means no additional
@@ -113,6 +117,7 @@ program's chosen state directory, not from the installed skill directory.
 
 | Helper | Command | Boundary |
 | --- | --- | --- |
+| Workspace audit | `python3 ~/.agents/skills/dav-mode/scripts/workspace-audit.py -b main <repo-path>` | Read-only captured jj state; optional live tracked-byte comparison; never deletes or certifies safe cleanup. |
 | Plan validator | `node ~/.agents/skills/dav-mode/scripts/check-plan.mjs <plan.md>` | Checks the plan skeleton and reports diagnostics. It does not verify its evidence. |
 | Patch fingerprint | `node ~/.agents/skills/dav-mode/scripts/patch-id.mjs <base> <head>` | Requires jj. Prints a stable patch ID or `empty`. |
 | PR watcher | `~/.agents/skills/dav-mode/scripts/watch-pr/watch-pr --pr <pr> --status-only` | GitHub only. Reads through authenticated `gh`. Without `--status-only`, polls until a terminal verdict. |
@@ -123,3 +128,22 @@ The Bun entry points install their locked dependencies on first use or a lockfil
 change. The watcher and frontier require authenticated `gh` for GitHub reads.
 The program store neither spawns agents nor schedules turns. A helper's output
 does not grant authority or satisfy an independent-verdict gate.
+
+## Skill authoring and cleanup
+
+[Authoring a skill](../playbooks/authoring-a-skill.md) now maps the upstream
+Cursor dependency to the installed [skill-creator](../../skill-creator/SKILL.md).
+The user explicitly approved the complete public Anthropic workflow under
+Apache-2.0, not a claim that Cursor's built-in source was recovered. Its native
+Yuke/macOS helpers provide authorized bounded model trials, private stores,
+sandboxed writes, retained histories and budgets. Full paired/human-review and
+20-query repeated description campaigns remain separate execution gates.
+Verification-skill generation keeps its specialized installed workflow.
+
+[Workspace cleanup](../playbooks/worktree-cleanup.md) uses
+`python3 ~/.agents/skills/dav-mode/scripts/workspace-audit.py -b main --check-live-files <repo-path>`.
+The helper is read-only at a fixed jj operation. It never fetches, snapshots,
+queries unrelated transcripts, or marks a workspace safe. Untracked/ignored
+disk state, PR state, pinned sessions, and unsaved editor state remain separate
+evidence gates. Forgetting a workspace leaves its directory; deleting that
+directory, simulator state, or caches requires explicit approval.

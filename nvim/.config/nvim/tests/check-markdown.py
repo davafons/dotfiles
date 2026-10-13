@@ -53,10 +53,33 @@ assert(vim.fn.maparg(",mp", "n", false, true).desc == "Toggle Markdown rendering
 assert(vim.fn.maparg(",ms", "n", false, true).desc == "Toggle Markdown preview split")
 wait_until(function() return marks(source) > 0 end, "Markdown did not render automatically")
 assert(vim.wo.wrap, "Markdown rendering disabled screen wrapping")
-wait_until(function()
-  local heading = vim.api.nvim_get_hl(0, { name = "MarkviewHeading1", link = false })
-  return heading.fg and heading.bg
-end, "Markview heading colors were not initialized")
+local function assert_theme(accent, strong, yellow, cyan, surface, green)
+  local function highlight(name, foreground, background, bold)
+    local value = vim.api.nvim_get_hl(0, { name = name, link = false })
+    assert(value.fg == foreground, name .. " has the wrong foreground")
+    assert(value.bg == background, name .. " has the wrong background")
+    if bold then assert(value.bold, name .. " is not bold") end
+  end
+  for level = 1, 6 do
+    highlight("MarkviewHeading" .. level, accent, nil, true)
+    highlight("@markup.heading." .. level .. ".markdown", accent, nil, true)
+  end
+  for _, marker in ipairs({ "Minus", "Plus", "Star" }) do
+    highlight("MarkviewListItem" .. marker, accent, nil)
+  end
+  highlight("@markup.list.markdown", accent, nil)
+  highlight("@markup.strong.markdown_inline", strong, nil, true)
+  highlight("MarkviewInlineCode", yellow, nil)
+  highlight("@markup.raw.markdown_inline", yellow, nil)
+  highlight("MarkviewCode", cyan, surface)
+  highlight("MarkviewBlockQuoteDefault", green, nil)
+end
+assert_theme(0x4695f7, 0xcad8d9, 0xdbb32d, 0x41c7b9, 0x0d303a, 0x75b938)
+vim.o.background = "light"
+assert_theme(0x006599, 0x203137, 0x765c00, 0x006f66, 0xeee8d5, 0x3b6b14)
+vim.o.background = "dark"
+vim.cmd.colorscheme("solarized")
+assert_theme(0x4695f7, 0xcad8d9, 0xdbb32d, 0x41c7b9, 0x0d303a, 0x75b938)
 assert(not vim.fn.maparg("gx", "n"):find("Markview", 1, true), "Markview replaced native gx")
 
 press(",mp")
@@ -102,6 +125,37 @@ wait_until(function()
 end, "Preview did not render the unsaved source")
 assert(not vim.wo[preview_window].number and not vim.wo[preview_window].relativenumber)
 assert(not vim.wo[preview_window].list, "Preview contains editor whitespace markers")
+local rendered_headings, rendered_bullets, rendered_code = {}, {}, false
+for name, namespace in pairs(vim.api.nvim_get_namespaces()) do
+  if name:match("^markview/") then
+    for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(preview, namespace, 0, -1, { details = true })) do
+      local details = mark[4]
+      if (details.line_hl_group or ""):match("^MarkviewHeading%d$") then
+        rendered_headings[details.line_hl_group] = true
+        assert(not details.sign_text or details.sign_text == "", "Heading still has a gutter icon")
+        for _, chunk in ipairs(details.virt_text or {}) do
+          assert(chunk[1]:match("^%s*$"), "Heading still has a decorative icon or border")
+        end
+      end
+      for _, chunk in ipairs(details.virt_text or {}) do
+        if (chunk[2] or ""):match("^MarkviewListItem") then
+          assert(chunk[1] == "•", "List marker is not a plain bullet")
+          rendered_bullets[chunk[2]] = true
+        elseif chunk[2] == "MarkviewInlineCode" then
+          assert(chunk[1] == "", "Inline code still has extra padding")
+        end
+      end
+      if details.hl_group == "MarkviewInlineCode" then rendered_code = true end
+    end
+  end
+end
+for level = 1, 6 do
+  assert(rendered_headings["MarkviewHeading" .. level], "Missing rendered heading level " .. level)
+end
+for _, marker in ipairs({ "Minus", "Plus", "Star" }) do
+  assert(rendered_bullets["MarkviewListItem" .. marker], "Missing rendered list marker " .. marker)
+end
+assert(rendered_code, "Inline code was not highlighted by the renderer")
 
 press("GoAnother unsaved line<Esc>")
 wait_until(function()
@@ -125,7 +179,7 @@ vim.bo.filetype = "text"
 assert(vim.fn.maparg(",mp", "n") == "" and vim.fn.maparg(",ms", "n") == "",
   "Markdown shortcuts leaked into a non-Markdown buffer")
 assert(not vim.o.autowrite and not vim.o.autowriteall and vim.o.clipboard == "")
-print("Markdown checks passed: rendering, toggle, colors, wrapping, live split updates, focus, unsaved edits")
+print("Markdown checks passed: rendering, toggle, Yuke colors, plain headings and bullets, inline code, wrapping, live split updates, focus, unsaved edits")
 vim.cmd("qa!")
 '''
 
@@ -135,7 +189,7 @@ with tempfile.TemporaryDirectory(prefix="nvim-markdown-tests-") as temporary:
     config_home.mkdir()
     (config_home / "nvim").symlink_to(CONFIG, target_is_directory=True)
     source = root / "notes.md"
-    original = "# Reading test\n\nSome **bold** and *italic* text.\n\n## Tasks\n\n- [ ] A task\n\n| A | B |\n| --- | --- |\n| One | Two |\n\n```lua\nprint('hello')\n```\n"
+    original = "# Reading test\n\nSome **bold** and *italic* text with `inline code`.\n\n## Tasks\n\n- [ ] A task\n- A bullet\n+ Another bullet\n* Third bullet\n\n### Third heading\n\n#### Fourth heading\n\n##### Fifth heading\n\n###### Sixth heading\n\nSetext heading\n==============\n\nSetext subheading\n-----------------\n\n| A | B |\n| --- | --- |\n| One | Two |\n\n```lua\nprint('hello')\n```\n"
     source.write_text(original)
     probe = root / "probe.lua"
     probe.write_text(PROBE)

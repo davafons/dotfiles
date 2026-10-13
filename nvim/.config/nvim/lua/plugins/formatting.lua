@@ -1,3 +1,25 @@
+local function lint_buffer()
+  if vim.bo.buftype ~= "" then
+    return
+  end
+  local lint = require("lint")
+  local available = {}
+  local filetype = vim.bo.filetype
+  local names = lint.linters_by_ft[filetype] or lint.linters_by_ft[filetype:match("^[^.]+") or ""] or {}
+  for _, name in ipairs(names) do
+    local linter = lint.linters[name]
+    local command = type(linter.cmd) == "function" and linter.cmd() or linter.cmd
+    if vim.fn.executable(command) == 1 then
+      table.insert(available, name)
+    end
+  end
+  if #available > 0 then
+    local filename = vim.api.nvim_buf_get_name(0)
+    local directory = filename ~= "" and vim.fs.dirname(filename) or vim.fn.getcwd()
+    lint.try_lint(available, { cwd = directory, filter = vim.bo.modified and "stdin" or nil })
+  end
+end
+
 return {
   {
     "stevearc/conform.nvim",
@@ -15,8 +37,44 @@ return {
     },
     opts = function()
       local util = require("conform.util")
-      local biome_command = util.from_node_modules("biome")
-      local prettier_command = util.from_node_modules("prettier")
+      local scripts = {
+        javascript = { extension = ".js", parser = "babel" },
+        typescript = { extension = ".ts", parser = "typescript" },
+        javascriptreact = { extension = ".jsx", parser = "babel" },
+        typescriptreact = { extension = ".tsx", parser = "typescript" },
+      }
+      local function script_type(ctx)
+        return vim.fn.fnamemodify(ctx.filename, ":e") == "" and scripts[vim.bo[ctx.buf].filetype] or nil
+      end
+      local function biome_path(ctx)
+        local script = script_type(ctx)
+        return ctx.filename .. (script and script.extension or "")
+      end
+      local function probe_biome(self, ctx, callback)
+        local cwd = self:cwd(ctx)
+        local command = type(self.command) == "function" and self.command(self, ctx) or self.command
+        if not cwd then
+          return nil, "no-root"
+        end
+        if vim.fn.executable(command) ~= 1 then
+          return nil, "missing"
+        end
+        return vim.system({ command, "format", "--stdin-file-path", biome_path(ctx) }, {
+          cwd = cwd,
+          stdin = "",
+          text = true,
+          timeout = 2000,
+        }, callback)
+      end
+      require("config.tool_status").async_conditions.biome = function(self, ctx, callback)
+        local process, reason = probe_biome(self, ctx, function(result)
+          callback(result.code == 0, "unavailable")
+        end)
+        if not process then
+          callback(false, reason)
+        end
+        return process
+      end
       local function web_formatters(buf)
         if vim.fs.root(buf, { "biome.json", "biome.jsonc" }) then
           return { "biome" }
@@ -27,6 +85,8 @@ return {
         default_format_opts = { lsp_format = "never" },
         formatters_by_ft = {
           ruby = { "rubocop" },
+          rust = { "rustfmt" },
+          perl = { "perltidy" },
           eruby = { "herb" },
           lua = { "stylua" },
           sh = { "shfmt" },
@@ -51,28 +111,20 @@ return {
           markdown = { "prettier" },
         },
         formatters = {
-          biome = {
-            require_cwd = true,
-            condition = function(self, ctx)
-              local cwd = self:cwd(ctx)
-              local command = biome_command(self, ctx)
-              if not cwd or command == "biome" then
-                return false
-              end
-              -- Ask Biome itself: config overrides and experimental formats can disable a file.
-              local result = vim
-                .system({ command, "format", "--stdin-file-path", ctx.filename }, {
-                  cwd = cwd,
-                  stdin = "",
-                  text = true,
-                })
-                :wait(2000)
-              return result.code == 0
+          prettier = {
+            prepend_args = function(_, ctx)
+              local script = script_type(ctx)
+              return script and { "--parser", script.parser } or {}
             end,
           },
-          prettier = {
+          biome = {
+            require_cwd = true,
+            args = function(_, ctx)
+              return { "format", "--stdin-file-path", biome_path(ctx) }
+            end,
             condition = function(self, ctx)
-              return prettier_command(self, ctx) ~= "prettier"
+              local process = probe_biome(self, ctx)
+              return process ~= nil and process:wait(2000).code == 0
             end,
           },
           herb = {
@@ -103,41 +155,46 @@ return {
     keys = {
       {
         "<leader>cl",
-        function()
-          require("lint").try_lint()
-        end,
+        lint_buffer,
         desc = "Run file linters",
       },
     },
     config = function()
       local lint = require("lint")
       lint.linters_by_ft = {
-        -- Ruby and JavaScript diagnostics come from their language servers.
+        markdown = { "markdownlint-cli2" },
+        yaml = { "yamllint" },
+        make = { "checkmake" },
         python = { "ruff" },
         sh = { "shellcheck" },
         bash = { "shellcheck" },
         dockerfile = { "hadolint" },
         kotlin = { "ktlint" },
       }
-      vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePost" }, {
+      lint.linters["markdownlint-cli2"].cmd = function()
+        local filename = vim.api.nvim_buf_get_name(0)
+        local directory = filename ~= "" and vim.fs.dirname(filename) or vim.fn.getcwd()
+        for _, modules in ipairs(vim.fs.find("node_modules", { path = directory, upward = true, limit = math.huge })) do
+          local command = vim.fs.joinpath(modules, ".bin/markdownlint-cli2")
+          if vim.fn.executable(command) == 1 then
+            return command
+          end
+        end
+        return "markdownlint-cli2"
+      end
+      lint.linters.shellcheck.args = {
+        "--format",
+        "json1",
+        "--shell",
+        function()
+          return vim.b.is_bash == 1 and "bash" or "sh"
+        end,
+        "-",
+      }
+      vim.api.nvim_create_autocmd({ "BufReadPost", "FileType", "BufWritePost" }, {
         group = vim.api.nvim_create_augroup("PersonalLint", { clear = true }),
         callback = function(ev)
-          if vim.bo[ev.buf].buftype ~= "" then
-            return
-          end
-          vim.api.nvim_buf_call(ev.buf, function()
-            local available = {}
-            for _, name in ipairs(lint.linters_by_ft[vim.bo.filetype] or {}) do
-              local linter = lint.linters[name]
-              local cmd = type(linter.cmd) == "function" and linter.cmd() or linter.cmd
-              if vim.fn.executable(cmd) == 1 then
-                table.insert(available, name)
-              end
-            end
-            if #available > 0 then
-              lint.try_lint(available)
-            end
-          end)
+          vim.api.nvim_buf_call(ev.buf, lint_buffer)
         end,
       })
     end,

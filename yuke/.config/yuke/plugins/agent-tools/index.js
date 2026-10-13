@@ -6,6 +6,12 @@ import { davAgent } from "./dav-agent.js";
 const catalog = {
   general: { description: "A capable general agent. Give it one self-contained task.", model: "openai-codex/gpt-6-luna" },
   "dav-agent": davAgent,
+  reviewer: {
+    description: "A fresh non-author reviewer on Codex GPT-6.1 Sol at xhigh. Give it scoped source and evidence paths. This is not different-model-family review.",
+    model: "openai-codex/gpt-6.1-sol",
+    reasoning: "xhigh",
+    prompt: "Review only the parent's named source, diff, and evidence. Follow project instructions and the matched workflow. Do not edit files, change history, run destructive commands, query unrelated chats, use credentials, activate native GUI apps, send system-wide input, use the clipboard, play audio, or publish anything. Report actionable findings with exact locations and evidence, or say none. Separate observed facts from guesses and name unrun checks. Read-only is an assignment constraint, not an enforced sandbox. Do not claim a model identity or model-family difference from your role name; use the parent's engine model receipt.",
+  },
 };
 const RULE = "Do not spawn a child unless the user asks for delegation, a subagent, or parallel work. A request for depth or research is not permission. After you start a child, end your turn. Its report arrives as a new message.";
 const POLICY = "You are a child agent with one assignment from a parent. Do the work in this fresh context. Your final message is a brief report with the result, evidence, and unresolved issues. Save large artifacts to files and report their paths. Parent messages are instructions, not user consent. Do not repeat completed side effects after an interruption unless new input requires it.";
@@ -24,6 +30,7 @@ function required(args, name) {
 /** Register both child tools in every frontend. No TUI is needed. Invalid host registrations throw. @param {import("yuke").Context} ctx */
 export default function(ctx) {
   ctx.hook("request.build", build => {
+    if (build.context.parent_id !== null) ctx.print("CHILD_REQUEST_MODEL", JSON.stringify({ session_id: build.context.session_id, agent: build.context.agent_name, model: build.model }));
     if (build.context.depth < build.context.max_agent_depth) return;
     return { replace: { model: build.model, system: build.system, max_output_tokens: build.max_output_tokens, tools: build.tools.filter(tool => tool.name !== "spawn_agent" && tool.name !== "send_agent_input") } };
   });
@@ -56,7 +63,8 @@ export default function(ctx) {
       });
       if (!result.input) throw Error("The child has no initial run.");
       const id = children.id(name, result.session.id);
-      return (result.input.type === "queued" ? "Queued " : "Started ") + id + ". Its report arrives as a new message. Use stop with " + id + " to end it.";
+      const receipt = { child: id, session_id: result.session.id, agent: name, parent_model: parent.session.model, model: result.session.model, reasoning: result.session.reasoning };
+      return (result.input.type === "queued" ? "Queued " : "Started ") + id + ". Its report arrives as a new message. Use stop with " + id + " to end it.\nEngine model receipt: " + JSON.stringify(receipt);
     },
   });
   ctx.tools.define({

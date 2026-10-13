@@ -9,8 +9,8 @@ import unittest
 from unittest.mock import patch
 import urllib.error
 
-PROFILE = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("status_data", PROFILE / "plugins/status-data.py")
+PLUGIN = Path(__file__).resolve().parents[2] / ".config/yuke/plugins/status-data.py"
+spec = importlib.util.spec_from_file_location("status_data", PLUGIN)
 data = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(data)
 
@@ -106,6 +106,48 @@ class StatusTests(unittest.TestCase):
         self.save({"id": "openrouter", "auth": {"api_key": {}}})
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": "SECRET"}), patch.object(data, "read_json") as fetch:
             self.assertEqual(data.snapshot("openrouter", self.config)["state"], "error")
+            fetch.assert_not_called()
+
+    def test_xai_weekly_pool_is_remaining_percent_not_a_token_balance(self):
+        self.save({"id": "xai-grok", "auth": {"oauth": {"access_token": "SECRET_TOKEN", "expires_at_ms": 9000000000000}}})
+        payload = {"config": {"creditUsagePercent": 74, "currentPeriod": {
+            "type": "USAGE_PERIOD_TYPE_WEEKLY", "start": "2026-10-10T16:25:20.272285+00:00",
+            "end": "2026-10-17T16:25:20.272285+00:00"}, "onDemandCap": {"val": 0}, "onDemandUsed": {"val": 0},
+            "prepaidBalance": {"val": 0}, "productUsage": [{"product": "GrokBuild", "usagePercent": 74}]}}
+        with patch.object(data, "read_json", return_value=payload) as fetch:
+            result = data.snapshot("xai-grok", self.config)
+        self.assertEqual(result["state"], "reported")
+        self.assertEqual(result["windows"], [{"label": "Weekly limit", "remainingPercent": 26,
+                         "windowSeconds": 604800, "resetsAt": 1792254320}])
+        self.assertIsNone(result["creditBalance"])
+        self.assertIn("not an exact remaining-token balance.", result["notes"][0])
+        self.assertIn("GrokBuild accounts for 74% of reported pool usage.", result["notes"])
+        self.assertNotIn("SECRET", json.dumps(result))
+        url, headers = fetch.call_args.args
+        self.assertEqual(url, "https://cli-chat-proxy.grok.com/v1/billing?format=credits")
+        self.assertEqual(headers["Authorization"], "Bearer SECRET_TOKEN")
+        self.assertEqual(headers["x-xai-token-auth"], "xai-grok-cli")
+
+    def test_xai_missing_or_invalid_percent_does_not_become_a_full_allowance(self):
+        omitted = data.xai_snapshot({"config": {"currentPeriod": {"type": "USAGE_PERIOD_TYPE_WEEKLY",
+            "start": "2026-10-10T00:00:00Z", "end": "2026-10-17T00:00:00Z"}, "onDemandCap": {"val": 0}}})
+        self.assertEqual(omitted["windows"], [])
+        self.assertTrue(any("did not report" in note for note in omitted["notes"]))
+        invalid = data.xai_snapshot({"config": {"creditUsagePercent": 140, "onDemandCap": {"val": 100},
+                                                "onDemandUsed": {"val": 1}}})
+        self.assertEqual(invalid["windows"], [])
+        self.assertTrue(any("invalid quota" in note for note in invalid["notes"]))
+        fallback = data.xai_snapshot({"config": {"onDemandCap": {"val": 1000}, "onDemandUsed": {"val": 250}}})
+        self.assertEqual(fallback["windows"][0]["remainingPercent"], 75)
+        self.assertEqual(fallback["windows"][0]["label"], "Usage pool")
+
+    def test_xai_custom_route_and_expiry_send_no_credentials(self):
+        self.save({"id": "xai-grok", "base_url": "https://gateway.example/v1",
+                   "auth": {"oauth": {"access_token": "SECRET_TOKEN", "expires_at_ms": 9000000000000}}})
+        with patch.object(data, "read_json") as fetch:
+            self.assertEqual(data.snapshot("xai-grok", self.config)["state"], "unavailable")
+            self.save({"id": "xai-grok", "auth": {"oauth": {"access_token": "SECRET_TOKEN", "expires_at_ms": 1}}})
+            self.assertIn("expired", data.snapshot("xai-grok", self.config)["error"])
             fetch.assert_not_called()
 
     def test_error_bodies_and_redirects_never_reach_output(self):

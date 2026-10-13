@@ -70,4 +70,4 @@ Run its own instructions end to end once: launch, doctor, drive ONE mapped featu
 
 ## 5. Offer the maintenance loop
 
-When `maintain-verification-skill` is installed, point the user at it for keeping the map honest as the app changes. It is not part of this import. Suggest a cadence only if they ask.
+Point the user at the installed [maintain-verification-skill](../maintain-verification-skill/SKILL.md) for keeping the map honest as the app changes. Suggest a cadence only if they ask.

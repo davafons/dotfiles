@@ -3,14 +3,10 @@ import { client } from "yuke";
 import { Transcript, wrapRows } from "yuke:chat";
 import { sessions } from "yuke:session";
 import { clip, measure } from "yuke:ui";
+import { elapsed } from "./time.js";
 
 /** @import { Render, Rendered } from "yuke:chat" */
 /** @typedef {{ message: number, part: number, session?: string, started: number, elapsed: number, live: boolean }} Clock */
-
-/** @param {number} ms */
-function seconds(ms) {
-  return (Math.max(0, ms) / 1000).toFixed(1) + "s";
-}
 
 /** Register transcript timing and return its drain observer and clock. The plugin owns registrations; host failures throw. @param {import("yuke").Context} parent @param {number} periodMs @returns {import("./index.js").Feature | undefined} */
 export default function(parent, periodMs) {
@@ -24,14 +20,19 @@ export default function(parent, periodMs) {
   const clocks = new Map();
   /** @type {Set<Clock>} */
   const active = new Set();
+  /** @type {Map<string, number>} */
+  const requests = new Map();
+  /** @type {Map<string, number | null>} */
+  const estimates = new Map();
   // Message and part IDs are local to a session, not globally unique.
   /** @type {WeakMap<Transcript, string>} */
   const drafts = new WeakMap();
   let draftId = 0;
-  /** @param {Transcript} transcript */
+  /** @param {Transcript} transcript @returns {import("yuke:session").Session | string} */
   const sessionOf = (transcript) => {
-    for (const session of sessions) for (const view of session.views) {
-      if (view.transcript === transcript && session.sessionId) return session.sessionId;
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i];
+      for (let j = 0; j < session.views.length; j++) if (session.views[j].transcript === transcript && session.sessionId) return session;
     }
     let id = drafts.get(transcript);
     if (!id) { id = "draft:" + (++draftId); drafts.set(transcript, id); }
@@ -56,12 +57,41 @@ export default function(parent, periodMs) {
     clock.live = false;
     active.delete(clock);
   };
+  /** @param {string} key @param {number} message @param {string | undefined} session */
+  const estimate = (key, message, session) => {
+    const requestKey = session ? session + ":" + message : null;
+    const after = requestKey ? requests.get(requestKey) : null;
+    const now = Date.now();
+    estimates.set(key, after != null ? Math.max(0, now - after) : null);
+    if (requestKey && after != null) requests.set(requestKey, now);
+    const clock = clocks.get(key);
+    if (clock) active.delete(clock);
+    clocks.delete(key);
+  };
+  /** @param {string} id @param {Wire.SessionActivity | null} activity */
+  const activity = (id, activity) => {
+    if (!activity) {
+      const prefix = id + ":";
+      for (const key of requests.keys()) if (key.startsWith(prefix)) requests.delete(key);
+      for (const key of estimates.keys()) if (key.startsWith(prefix)) estimates.delete(key);
+      return;
+    }
+    if (activity.state.type !== "waiting") return;
+    const message = client.sessionOutline(id)?.active?.id;
+    if (message == null) return;
+    const key = id + ":" + message;
+    if (!requests.has(key)) requests.set(key, Date.now());
+  };
   /** @param {number} message @param {Wire.AssistantPart} part @param {boolean} live @param {string | undefined} [session] */
   const observe = (message, part, live, session) => {
     if (part.type !== "reasoning" && part.type !== "tool") return;
     const key = keyFor(message, part.id, session);
     const ms = part.type === "reasoning" ? part.duration_ms : "duration_ms" in part.state ? part.state.duration_ms : undefined;
     if (typeof ms === "number") {
+      if (part.type === "reasoning" && !part.text && ms < 50) {
+        if (!estimates.has(key)) estimate(key, message, session);
+        return;
+      }
       const clock = clocks.get(key);
       if (clock) active.delete(clock);
       clocks.delete(key);
@@ -113,13 +143,19 @@ export default function(parent, periodMs) {
     showEmptyReasoning: true,
     part(part, env, transcript) {
       if (part.type !== "reasoning") return undefined;
-      const session = sessionOf(transcript);
-      observe(env.messageId, part, env.live, session);
+      const owner = sessionOf(transcript);
+      const session = typeof owner === "string" ? owner : owner.sessionId ?? "";
+      const state = typeof owner === "string" ? null : owner.activity?.state;
+      const nativeLive = env.live || (state?.type === "reasoning" && state.message_id === env.messageId && state.part_id === part.id && part.duration_ms == null);
+      observe(env.messageId, part, nativeLive, session);
       const clock = clocks.get(keyFor(env.messageId, part.id, session));
-      const live = part.duration_ms == null && env.live && clock?.live;
+      const live = part.duration_ms == null && nativeLive && clock?.live;
       const ms = part.duration_ms ?? (clock ? live ? Date.now() - clock.started : clock.elapsed : undefined);
       const verb = live ? "thinking" : "thought";
-      const suffix = " · " + (ms == null || (!live && !part.text && ms < 50) ? "time unavailable" : seconds(ms));
+      const hidden = !live && !part.text && ms != null && ms < 50;
+      const guess = hidden ? estimates.get(keyFor(env.messageId, part.id, session)) : null;
+      const estimated = guess != null && guess >= 50;
+      const suffix = estimated ? " for ~" + elapsed(guess) : ms == null || hidden ? " for an unknown time" : " for " + elapsed(ms);
       const width = Math.max(1, env.width - 2);
       const title = part.title ? " " + clip(part.title, Math.max(0, width - verb.length - suffix.length - 1)) : "";
       /** @type {Rendered["rows"]} */
@@ -127,15 +163,16 @@ export default function(parent, periodMs) {
         { text: verb, group: "TxToolTitle" },
         { text: title, group: "TxToolArg" },
         { text: suffix, group: "TxToolHint" },
-      ], indent: 1, header: !!part.text, stop: true }];
+      ], indent: 1, header: !!part.text || estimated, stop: true }];
+      if (env.expanded && estimated) rows.push(...wrapRows("Estimated from the observed wait before this hidden block arrived. Includes network and server delays. Coalesced blocks can have no separate estimate.", width, "TxMeta", 1));
       if (env.expanded && part.text) rows.push(...wrapRows(part.text, width, "TxThought", 1));
       return { rows, source: part.text };
     },
   };
   c.chat.render(look);
 
-  c.ctx.own(() => { active.clear(); clocks.clear(); });
-  return { periodMs, lastTick: 0, drain,
+  c.ctx.own(() => { active.clear(); clocks.clear(); requests.clear(); estimates.clear(); });
+  return { periodMs, lastTick: 0, drain, activity,
     live: () => active.size > 0,
     tick: () => { for (const clock of active) c.chat.refresh(clock.message, clock.part); },
   };

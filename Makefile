@@ -14,7 +14,7 @@ endif
 
 PACKAGES ?= $(PROFILE_PACKAGES)
 
-.PHONY: help bootstrap install uninstall plan status doctor check skills-sync upgrade-skills tools-status list list-profiles check-stow check-profile install-packages install-packages-non-aur install-packages-aur list-installed
+.PHONY: all help bootstrap install uninstall plan status doctor check skills-sync upgrade-skills tools-status list list-profiles check-stow check-profile install-packages install-packages-non-aur install-packages-aur list-installed
 
 # Default target
 all: help
@@ -102,7 +102,7 @@ doctor: check-stow check-profile
 
 check:
 	@shellcheck "$(DOTFILES_DIR)/bin/bin/playwright-cli" "$(DOTFILES_DIR)/bin/bin/playwright-brave-launcher" "$(DOTFILES_DIR)/bin/bin/agent-skills" "$(DOTFILES_DIR)/bin/bin/codex-mcp-grafana" "$(DOTFILES_DIR)/agents/.agents/davstack/skills/show-me-your-work/scripts/log.sh"
-	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py bin/tests/test_pstack_inventory.py bin/tests/test_decision_log.py
+	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py bin/tests/test_pstack_inventory.py bin/tests/test_decision_log.py bin/tests/test_workspace_audit.py bin/tests/test_skill_creator_native.py
 
 skills-sync:
 	@"$(DOTFILES_DIR)/bin/bin/agent-skills" sync

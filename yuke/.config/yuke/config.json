@@ -1,6 +1,10 @@
 {
   "plugins": [
-    "./plugins/solarized-theme",
+    {
+      "github": "lostcoords/yuke-plugins",
+      "ref": "cd951a43e4abc7325edc944c465c71b0b4140704",
+      "path": "plugins/solarized-theme"
+    },
     "./plugins/vim-mode",
     "./plugins/models",
     "./plugins/build-status",
@@ -8,7 +12,12 @@
     "./plugins/controls",
     "./plugins/prompt-history",
     "./plugins/path-completion",
-    "./plugins/yuke-dashboard",
+    {
+      "github": "lostcoords/yuke-plugins",
+      "ref": "eab26f39c00178c86a829de81883cce9104d39e0",
+      "path": "plugins/yuke-dashboard"
+    },
+    "./plugins/dashboard-config",
     "./plugins/project-work",
     "./plugins/search",
     "./plugins/insights",
@@ -21,6 +30,7 @@
     "./plugins/web",
     "./plugins/agent-tools",
     "./plugins/loop",
-    "./plugins/peek"
+    "./plugins/peek",
+    "./plugins/session-fork"
   ]
 }

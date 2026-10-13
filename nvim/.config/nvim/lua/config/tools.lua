@@ -2,6 +2,10 @@
 -- LSP packages are managed by mason-lspconfig from config.languages.servers.
 return {
   "rubocop",
+  "biome",
+  "markdownlint-cli2",
+  "yamllint",
+  "checkmake",
   "stylua",
   "shfmt",
   "ruff",

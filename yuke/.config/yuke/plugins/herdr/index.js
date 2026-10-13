@@ -147,6 +147,8 @@ const c = { ctx: parent, tui: tuiBorrow };
         let seq = 0;
         let attempts = 0;
         let retry = 0;
+        const questionsBorrow = parent.get("yuke-clarify");
+        let questionsPending = false;
         let desiredState = "";
         let acknowledgedState = "";
         let desiredSummary = "";
@@ -247,7 +249,7 @@ const c = { ctx: parent, tui: tuiBorrow };
         function refresh() {
           const entry = currentEntry();
           const outline = entry ? client.sessionOutline(entry.session.id) : null;
-          const state = herdrAgentState(c.ctx.interaction.pending, client.isBusy(), outline);
+          const state = herdrAgentState(c.ctx.interaction.pending + (questionsPending ? 1 : 0), client.isBusy(), outline);
           const firstUser = outline?.messages.find((message) => message.type === "user");
           const summary = entry && firstUser ? herdrPromptSummary(client.sessionParts(entry.session.id, firstUser.id)) : "";
           const sessionId = currentPane()?.session.sessionId || "";
@@ -272,12 +274,19 @@ const c = { ctx: parent, tui: tuiBorrow };
           // Herdr documents release_agent as the exit report; it clears only the label that this source and agent hold.
           try { await request("pane.release_agent", {}, true); } catch {}
         });
+        function refreshQuestions() {
+          const sessionId = currentPane()?.session.sessionId;
+          questionsPending = !!sessionId && (questionsBorrow?.pending(sessionId) ?? false);
+          refresh();
+        }
+
+        c.ctx.on("yuke-clarify:changed", refreshQuestions);
         c.ctx.on("interaction.changed", refresh);
         c.ctx.on("engine.activity.changed", refresh);
         c.ctx.on("run.done", refresh);
-        c.ctx.on("session.current.changed", refresh);
+        c.ctx.on("session.current.changed", refreshQuestions);
         c.ctx.on("session.summary_changed", refresh);
-        refresh();
+        refreshQuestions();
       });
 }
 }

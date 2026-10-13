@@ -1,6 +1,9 @@
 return {
   servers = {
     "ruby_lsp",
+    "rust_analyzer",
+    "perlnavigator",
+    "vimls",
     "herb_ls",
     "vtsls",
     "vue_ls",
@@ -26,6 +29,8 @@ return {
   },
   parsers = {
     "ruby",
+    "rust",
+    "perl",
     "embedded_template",
     "javascript",
     "typescript",

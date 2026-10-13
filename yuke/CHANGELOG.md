@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Add bundled `/pwd` to show the current workspace. Keep the conversation and unsent draft unchanged. After `/cd`, report the destination workspace.
+
+- Add directory-only completion for `/cd`, including empty arguments, relative paths, home paths, and the filesystem root. Keep Tab and Enter as completion keys. Quote paths with spaces. The command needs the native workspace-aware build.
+
+- Show the xAI weekly usage pool in `/status`. The bar is the share left in the current pool, not a remaining-token balance. A missing percentage stays unknown. Press `d` for product shares. The reader uses the stored `xai-grok` login and makes no model call.
+
+- Load the empty-session dashboard from the published `lostcoords/yuke-plugins` commit. The menu is sign-in, sessions, search, work, model, commands, and quit. Sign-in is `l`. Assigned letters run those rows before Vim. The menu is configured from `dashboard-config` through `setup`. Remove the duplicated dashboard folder from the dotfiles.
+
+- Load Solarized from the published `lostcoords/yuke-plugins` commit. Remove the duplicated theme folder from the dotfiles and ignore the GitHub source cache.
+
+- Add a fresh `reviewer` child role on Codex GPT-6.1 Sol at `xhigh`. Preserve general and dav-agent defaults. Save engine model receipts in spawn results and log child request models. Verify native routing, stored settings, request payloads, depth limits, and project skill discovery with private scripted-provider fixtures. These fixtures do not prove model judgment or different-family review.
+
+- Report pending clarification questions to Herdr as blocked. Use Herdr's normal needs-attention notifications for single questions and batches. Keep question state in the inbox plugin and external reporting in the Herdr plugin. Preserve pending state through reload and clear it after resolution. Verify the visible notification with a private Herdr server and muted detached client.
+
+- Add the `fork_session` model tool over native `session.fork`. Return an independent conversation ID and `yuke resume` command for Herdr. Reload destination instructions and skills without moving the source or copying its active run, queue, children, or jobs. Requires the workspace-aware fork build; keep normal activation separate from source preparation.
+
+- Move live timing to the end of the response after thoughts and tool output. Use verb headings with "model response" and short h/m/s durations. Freeze intermediate completed observations in place. Hide only the final timing summary when the run ends. Keep thought and tool durations visible. Label hidden-thought estimates with `~` and explain their observed waiting-time basis. Preserve native history, source copying, grouping, and live reasoning identity.
+
 - Show `thought · time unavailable` for a completed hidden-only reasoning block whose measured duration rounds to zero. Preserve real visible reasoning clocks and stored replay data. Add a native encrypted-only Responses regression.
 
 - Move detailed phase timings from the prompt strip into display-only blocks beside model responses. Use one thought-style heading with a clock mark, the current phase, and total elapsed time. A click or Ctrl+O expands the phase breakdown. Keep observed phases after the run ends without adding engine messages or model context. Rename the phase label "responding" to "reading model response" and document the coarse activity states. Reload clears these temporary observations.
@@ -13,7 +31,7 @@
 - Start Herdr reporting after the interactive UI is ready. Restore missing Yuke sidebar agents at startup and after native reload. Add a private-server regression for reporting, approvals, reload, quit, and parent-pane safety.
 
 - Port `/loop` to manifests and current engine drains. Read root turn outcomes explicitly so failure and cancellation pause schedules. Cache status counts. Add a native loopback guard for delivery, stop, and reload cleanup.
-- Add the optional `/peek` profile entry for frozen read-only progress snapshots and observer-only cancellation.
+- Add the optional `/peek` profile entry for frozen read-only progress snapshots and observer-only cancellation. Show captured activity, completed-turn outcomes, check exit codes, recorded diff excerpts, recent actions, and errors separately from the model's summary. Compare visible records on refresh without reading the worktree or messaging the worker.
 - Show observed native or Herdr activity on `/work` task cards. Follow the latest linked checkpoint without changing the saved task stage. Poll only while the dialog is open. Animate cached marker text.
 - Refresh dashboard action availability after plugin startup so Search and Work appear on the first screen. Document manifest reuse, command dependencies, and reload ownership in `DASHBOARD.md`.
 - Bound matching chat previews by characters as well as FTS tokens. Keep a match visible after a long token. Port work, alias, clarification, and search storage guards to the canonical manifest profile.

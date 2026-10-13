@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 import uuid
+import sqlite3
 
 
 def main():
@@ -43,11 +44,11 @@ import { client, events, fs } from "yuke";
 import { currentPane, showSession } from "yuke:session";
 export default function(ctx) {
   ctx.tools.define({ name: "fixture_tool", description: "Local test fixture", parameters: { type: "object", properties: {}, additionalProperties: false },
-    async execute() { await new Promise(done => setTimeout(done, 450)); return "fixture tool completed"; }
+    async execute() { await new Promise(done => setTimeout(done, 1100)); return "fixture tool completed"; }
   });
   const tui = ctx.get("tui");
-  for (const name of ["sessionParts", "sessionPart", "partTextPage"]) ctx.advise(client, name, "before", (_session, id) => {
-    if (id < 0) throw Error("display-only ID reached native reader " + name);
+  for (const name of ["sessionParts", "sessionPart", "partTextPage"]) ctx.advise(client, name, "before", (_session, id, part) => {
+    if (id < 0 || (name !== "sessionParts" && typeof part === "number" && part < 0)) throw Error("display-only ID reached native reader " + name);
   });
   let originalId = null;
   let snapshot = 0;
@@ -58,10 +59,12 @@ export default function(ctx) {
     "f8": async () => {
       const pane = currentPane(), id = pane.session.sessionId;
       const outline = client.sessionOutline(id);
+      const width = pane.transcriptRect.w;
+      const displayRows = pane.transcript.rows(width, 0, pane.transcript.rowCount(width));
       const shown = pane.transcript.messages().map(message => ({ ...message,
         rows: Array.from({ length: pane.transcript.rowCountOf(message.id) }, (_, row) => pane.transcript.rowTextAt(message.id, row))
       }));
-      await fs.writeFile(ctx.root + "/snapshot-" + (++snapshot) + ".json", JSON.stringify({ outline, shown, strip: events.bail("chat.strip", pane), queue: await client.sessionQueue(id) }));
+      await fs.writeFile(ctx.root + "/snapshot-" + (++snapshot) + ".json", JSON.stringify({ outline, shown, displayRows, strip: events.bail("chat.strip", pane), queue: await client.sessionQueue(id) }));
       ctx.print("FEEDBACK_SNAPSHOT", snapshot);
     },
     "f6": async () => {
@@ -76,8 +79,12 @@ export default function(ctx) {
     },
     "f4": () => {
       const transcript = currentPane().transcript;
-      const card = transcript.messages().find(message => message.id < 0);
-      if (card) transcript.activate({ id: card.id, row: 0, col: 0 });
+      const width = currentPane().transcriptRect.w;
+      const row = transcript.rows(width, 0, transcript.rowCount(width)).find(row => row.partId < 0 && row.header);
+      if (row) {
+        const index = Array.from({ length: transcript.rowCountOf(row.key) }, (_, index) => index).find(index => transcript.rowTextAt(row.key, index).startsWith("◷ "));
+        transcript.activate({ id: row.key, row: index, col: 0 });
+      }
     },
     "f9": async () => {
       const saved = await client.sessionCreate({ workspace_path: (await fs.stat(".")).path, model: "feedback-test/model", reasoning: "high" });
@@ -129,6 +136,10 @@ export default function(ctx) {
                 if len(requests) == 1:
                     item = {'id': 'f1', 'type': 'function_call', 'call_id': 'fixture-call', 'name': 'fixture_tool', 'arguments': '{}', 'status': 'completed'}
                     event('response.output_item.added', output_index=1, item=item)
+                    event('response.function_call_arguments.delta', output_index=1, delta='{')
+                    time.sleep(0.8)
+                    event('response.function_call_arguments.delta', output_index=1, delta='}')
+                    event('response.function_call_arguments.done', output_index=1, arguments='{}')
                     event('response.output_item.done', output_index=1, item=item)
                 else:
                     event('response.output_item.added', output_index=1, item={'id': 'm1', 'type': 'message', 'role': 'assistant'})
@@ -142,11 +153,13 @@ export default function(ctx) {
                 return
             time.sleep(0.5)
             chunk({'role': 'assistant', 'reasoning_content': 'Fixture reasoning'})
-            time.sleep(0.5)
+            time.sleep(0.7)
             chunk({'reasoning_content': ' with visible duration.'})
-            time.sleep(0.5)
+            time.sleep(0.7)
             if len(requests) == 1:
-                chunk({'tool_calls': [{'index': 0, 'id': 'fixture-call', 'type': 'function', 'function': {'name': 'fixture_tool', 'arguments': '{}'}}]})
+                chunk({'tool_calls': [{'index': 0, 'id': 'fixture-call', 'type': 'function', 'function': {'name': 'fixture_tool', 'arguments': '{'}}]})
+                time.sleep(0.6)
+                chunk({'tool_calls': [{'index': 0, 'function': {'arguments': '}'}}]})
                 chunk({}, 'tool_calls', {'prompt_tokens': 10, 'completion_tokens': 8, 'total_tokens': 18})
             else:
                 chunk({'content': 'FEEDBACK_'})
@@ -179,9 +192,11 @@ export default function(ctx) {
     def wait(condition, label):
         end = time.monotonic() + 15
         while time.monotonic() < end:
-            if condition():
-                captures.append(label + '\n' + screen())
-                return
+            result = condition()
+            if result:
+                frame = result if isinstance(result, str) else screen()
+                captures.append(label + '\n' + frame)
+                return frame
             time.sleep(0.03)
         raise AssertionError(label + '\n' + screen() + '\n' + logs())
 
@@ -191,7 +206,7 @@ export default function(ctx) {
         wait(lambda: 'FEEDBACK_READY' in logs(), 'private session ready')
         mux('send-keys', '-t', 'test', '-l', 'Run the local feedback fixture.')
         mux('send-keys', '-t', 'test', 'Enter')
-        wait(lambda: 'waiting for model' in screen(), 'native waiting phase')
+        wait(lambda: '◷ waiting for model response ·' in screen(), 'native waiting phase uses a direct action heading')
         mux('send-keys', '-t', 'test', 'F6')
         wait(lambda: 'FEEDBACK_QUEUED' in logs() and 'QUEUED_FIXTURE' in screen(), 'queued input still appears above the prompt')
         queued = screen().splitlines()
@@ -201,23 +216,30 @@ export default function(ctx) {
         mux('send-keys', '-t', 'test', 'F7')
         wait(lambda: 'FEEDBACK_QUEUE_CLEARED' in logs(), 'fixture queue removed before delivery')
         if args.hidden_reasoning:
-            wait(lambda: 'reading model response' in screen(), 'hidden reasoning waits for output without an invented thought clock')
+            wait(lambda: '◷ reading model response ·' in screen(), 'hidden reasoning waits for output without an invented thought clock')
             mux('send-keys', '-t', 'test', 'C-t')
             wait(lambda: 'FEEDBACK_CLOCK 1 {"periodMs":100}' in logs(), 'one active feedback clock')
-            wait(lambda: 'thought · time unavailable' in screen(), 'encrypted-only thought does not claim a zero compute duration')
-            assert 'thought · 0.0s' not in screen(), screen()
+            wait(lambda: re.search(r'thought for ~(?:\d+[hms]|<1s)', screen()) is not None, 'encrypted-only thought gets a clearly marked observed estimate')
+            assert 'thought for 0s' not in screen() and 'thought · 0.0s' not in screen(), screen()
         else:
             wait(lambda: 'thinking' in screen() and 'reasoning' in screen() and '~' in screen() and 'tok/s' in screen(), 'live reasoning duration and estimated token speed')
             def thinking_time():
-                match = re.search(r'thinking[^\n]* · (\d+\.\d+)s', screen())
-                return float(match.group(1)) if match else -1
+                match = re.search(r'thinking[^\n]* for (\d+)s', screen())
+                return int(match.group(1)) if match else 0 if 'thinking' in screen() and '<1s' in screen() else -1
             first = thinking_time()
             assert first >= 0, screen()
             wait(lambda: thinking_time() > first, 'reasoning clock advances while streaming')
             mux('send-keys', '-t', 'test', 'C-t')
             wait(lambda: 'FEEDBACK_CLOCK 1 {"periodMs":100}' in logs(), 'one active feedback clock')
+        if args.hidden_reasoning:
+            frame = wait(lambda: (frame := screen()) and 'thought for' in frame and '◷ reading model response' in frame and frame, 'closed reasoning switches back to reading tool arguments')
+            lines = frame.splitlines()
+            assert next(i for i, row in enumerate(lines) if 'thought for' in row) < next(i for i, row in enumerate(lines) if '◷ reading model response' in row), screen()
+        frame = wait(lambda: (frame := screen()) and '◷ running fixture_tool' in frame and frame, 'live tool action follows the completed thought')
+        lines = frame.splitlines()
+        assert next(i for i, row in enumerate(lines) if 'thought for' in row) < next(i for i, row in enumerate(lines) if '◷ running fixture_tool' in row), screen()
         wait(lambda: 'fixture tool completed' in screen(), 'real local tool result')
-        wait(lambda: 'FEEDBACK_' in screen() and 'FEEDBACK_COMPLETE' not in screen() and 'reading model response' in screen(), 'partial answer displays before the next response chunk')
+        wait(lambda: 'FEEDBACK_' in screen() and 'FEEDBACK_COMPLETE' not in screen() and '◷ reading model response ·' in screen(), 'partial answer displays before the next response chunk')
         wait(lambda: 'FEEDBACK_COMPLETE' in screen() and 'thought' in screen(), 'completed reasoning and assistant response')
         time.sleep(0.5)
         mux('send-keys', '-t', 'test', 'F8')
@@ -226,29 +248,33 @@ export default function(ctx) {
         native = saved['outline']['messages']
         shown = saved['shown']
         assert [row['id'] for row in shown if row['id'] >= 0] == [row['id'] for row in native], saved
-        cards = [row for row in shown if row['id'] < 0]
-        assert len(cards) == 2, saved
-        assert all(len([text for text in card['rows'] if text]) == 1 and re.match(r'◷ model timing · \d+\.\d+s$', card['rows'][0]) for card in cards), saved
-        assert not any('→ ' in text for card in cards for text in card['rows']), saved
+        cards = [row for row in shown if any('◷ waited for model response' in text for text in row['rows'])]
+        assert len(cards) == 1 and cards[0]['id'] == shown[1]['id'], saved
+        final_rows = shown[-1]['rows']
+        assert not any('◷ ' in text for text in final_rows), saved
+        assert any('thought' in text for text in final_rows), saved
+        assert [text for text in final_rows if text.strip()][-1] == 'FEEDBACK_COMPLETE', saved
+        assert all(re.search(r'◷ waited for model response · (?:<1s|[0-9hms]+)', '\n'.join(card['rows'])) for card in cards), saved
         assert saved['queue']['items'] == [], saved
         assert not any('waiting for model' in row['text'] for row in saved.get('strip') or []), saved
-        assert shown[0]['type'] == 'user' and shown[1]['id'] < 0 and shown[2]['type'] == 'assistant' and shown[3]['id'] < 0, saved
+        assert [row['id'] for row in shown] == [row['id'] for row in native], saved
+        assert shown[0]['type'] == 'user' and all(row['type'] == 'assistant' for row in shown[1:]), saved
         frozen = [card['rows'] for card in cards]
         mux('send-keys', '-t', 'test', 'C-o')
         wait(lambda: 'waiting for model' in screen(), 'Ctrl+O expands the timing breakdown')
         mux('send-keys', '-t', 'test', 'F8')
         wait(lambda: (probe / 'snapshot-2.json').exists(), 'expanded phase snapshot')
         expanded = json.loads((probe / 'snapshot-2.json').read_text())
-        expanded_cards = [row for row in expanded['shown'] if row['id'] < 0]
+        expanded_cards = [row for row in expanded['shown'] if any('◷ waited for model response' in text for text in row['rows'])]
         assert all(any('waiting for model' in text for text in card['rows']) for card in expanded_cards), expanded
         assert all(any('reading model response' in text for text in card['rows']) for card in expanded_cards), expanded
-        assert all(card['rows'][0] == cards[i]['rows'][0] for i, card in enumerate(expanded_cards)), expanded
+        assert [next(text for text in card['rows'] if '◷ waited for model response' in text) for card in expanded_cards] == [next(text for text in card['rows'] if '◷ waited for model response' in text) for card in cards], expanded
         mux('send-keys', '-t', 'test', 'C-o')
         wait(lambda: 'waiting for model' not in screen(), 'Ctrl+O folds the timing breakdown')
         time.sleep(0.3)
         mux('send-keys', '-t', 'test', 'F8')
         wait(lambda: (probe / 'snapshot-3.json').exists(), 'idle phase clocks stay frozen after a fold')
-        assert [row['rows'] for row in json.loads((probe / 'snapshot-3.json').read_text())['shown'] if row['id'] < 0] == frozen
+        assert [row['rows'] for row in json.loads((probe / 'snapshot-3.json').read_text())['shown'] if any('◷ waited for model response' in text for text in row['rows'])] == frozen
         mux('send-keys', '-t', 'test', 'F4')
         wait(lambda: screen().count('waiting for model') == 1, 'activating one heading expands only that timing block')
         mux('send-keys', '-t', 'test', 'F4')
@@ -268,7 +294,7 @@ export default function(ctx) {
         mux('send-keys', '-t', 'test', 'F8')
         wait(lambda: (probe / 'snapshot-1.json').exists() and logs().count('FEEDBACK_SNAPSHOT 1') == 2, 'reload removes observed-only blocks')
         reloaded = json.loads((probe / 'snapshot-1.json').read_text())
-        assert [row['id'] for row in reloaded['shown']] == [row['id'] for row in native], reloaded
+        assert [row['id'] for row in reloaded['shown']] == [row['id'] for row in native] and not any('◷ ' in text for row in reloaded['shown'] for text in row['rows']), reloaded
         mux('send-keys', '-t', 'test', 'F9')
         wait(lambda: 'FEEDBACK_OTHER_SESSION' in logs(), 'switch to a different session')
         mux('send-keys', '-t', 'test', 'F8')
@@ -283,9 +309,16 @@ export default function(ctx) {
         assert [row['id'] for row in original['shown']] == [row['id'] for row in native], original
         assert len(requests) == 2, requests
         assert not any((tool['name'] if args.hidden_reasoning else tool['function']['name']) == 'phase_timing' for request in requests for tool in request.get('tools', [])), requests
-        assert 'waiting for model ·' not in json.dumps(requests) and 'reading model response ·' not in json.dumps(requests), requests
+        assert 'waiting for model response ·' not in json.dumps(requests) and 'reading model response ·' not in json.dumps(requests), requests
+        if args.hidden_reasoning:
+            db = sqlite3.connect((root / 'data/yuke/yuke.db').as_uri() + '?mode=ro', uri=True)
+            db.execute('PRAGMA query_only=ON')
+            recorded = [json.loads(payload) for (payload,) in db.execute("SELECT payload FROM events WHERE name='message.committed'")]
+            reasoning = [part for message in recorded if message.get('type') == 'assistant' for part in message['content'] if part.get('type') == 'reasoning']
+            assert len(reasoning) == 2 and all(part['duration_ms'] < 50 and part['text'] == '' and part['replay']['kind'] == 'responses_encrypted' for part in reasoning), reasoning
+            db.close()
         assert '[error]' not in logs(), logs()
-        print('PASS streamed partial answer, thought-style heading/fold/activation, transcript placement, queue preservation, engine/context isolation, frozen clocks, narrow layout, session isolation, live reasoning/speed/tool, one idle-aware clock, and reload cleanup', flush=True)
+        print('PASS live status at tail, closed reasoning transition, estimated hidden thought, hms clocks, streamed partial answer, heading/fold/activation, transcript placement, queue preservation, engine/context isolation, frozen clocks, narrow layout, session isolation, live reasoning/speed/tool, one idle-aware clock, and reload cleanup', flush=True)
     finally:
         (root / 'captures.txt').write_text('\n'.join(captures))
         (root / 'requests.json').write_text(json.dumps(requests, indent=2))

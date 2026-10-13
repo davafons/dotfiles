@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 import subprocess
 import tempfile
@@ -70,6 +71,48 @@ class DecisionLog(unittest.TestCase):
                 self.assertEqual(result.returncode, 1)
                 self.assertIn("usage: log.sh", result.stderr)
                 self.assertFalse(logfile.exists())
+
+    def test_links_canonical_decisions_to_complete_attempt_records(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            attempts = Path(temporary) / "attempts.tsv"
+            logfile = Path(temporary) / "decisions.tsv"
+            fields = ["id", "hypothesis", "change", "before", "after", "delta", "tests", "verdict", "note"]
+            records = [
+                ["1", "Avoid repeated parsing", "Cache parsed input", "100", "80", "-20", "green", "kept", "Literal fixture data"],
+                ["2", "Reduce allocations", "Reuse buffer", "80", "79", "-1", "failed", "reverted", "Regression gate failed"],
+            ]
+            with attempts.open("w", newline="") as artifact:
+                writer = csv.writer(artifact, delimiter="\t")
+                writer.writerow(fields)
+                writer.writerows(records)
+            artifact_before = attempts.read_bytes()
+            for record, why in zip(records, ["Gate green and metric past noise", "Regression gate failed"]):
+                result = self.run_logger(
+                    logfile, "attempt", f"Attempt {record[0]}: {record[2]}",
+                    why, f"{attempts}#id={record[0]}", record[7],
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(attempts.read_bytes(), artifact_before)
+            with logfile.open(newline="") as log:
+                rows = list(csv.reader(log, delimiter="\t"))
+            self.assertEqual(rows[0], ["ts", "phase", "decision", "why", "evidence", "result"])
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows[1][1:], [
+                "attempt", "Attempt 1: Cache parsed input", "Gate green and metric past noise",
+                f"{attempts}#id=1", "kept",
+            ])
+            self.assertEqual(rows[2][1:], [
+                "attempt", "Attempt 2: Reuse buffer", "Regression gate failed",
+                f"{attempts}#id=2", "reverted",
+            ])
+            for row, expected in zip(rows[1:], records):
+                self.assertEqual(len(row), 6)
+                artifact_path, attempt_id = row[4].split("#id=")
+                with Path(artifact_path).open(newline="") as artifact:
+                    retrieved = list(csv.DictReader(artifact, delimiter="\t"))
+                attempt = next(item for item in retrieved if item["id"] == attempt_id)
+                self.assertEqual([attempt[field] for field in fields], expected)
+                self.assertEqual(attempt["verdict"], row[5])
 
     def test_uses_an_existing_empty_file(self):
         with tempfile.TemporaryDirectory() as temporary:

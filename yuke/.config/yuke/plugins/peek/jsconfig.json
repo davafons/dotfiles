@@ -1,5 +1,5 @@
 {
-  "extends": "../../src/js/app/tsconfig.json",
-  "include": ["./*.js", "../../src/js/app/generated/yuke.d.ts", "../../src/js/app/generated/yuke-modules.d.ts"],
+  "extends": "../../yuke.jsconfig.json",
+  "include": ["./*.js", "../../yuke.d.ts", "../../yuke-modules.d.ts"],
   "compilerOptions": { "paths": {} }
 }

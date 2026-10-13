@@ -74,9 +74,16 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 vim.filetype.add({
   extension = { egg = "egg" },
   filename = {
+    [".xprofile"] = "sh",
+    [".xsessionrc"] = "sh",
     ["docker-compose.yml"] = "yaml.docker-compose",
     ["docker-compose.yaml"] = "yaml.docker-compose",
     ["compose.yml"] = "yaml.docker-compose",
     ["compose.yaml"] = "yaml.docker-compose",
+  },
+  pattern = {
+    [".*/bin/bin/public%-ip"] = "sh",
+    [".*/i3/%.config/i3/scripts/keyhint%-2"] = "sh",
+    [".*/dav%-mode/scripts/watch%-pr/watch%-pr"] = "typescript",
   },
 })

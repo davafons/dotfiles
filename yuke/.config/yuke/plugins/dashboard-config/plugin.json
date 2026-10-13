@@ -1,11 +1,9 @@
 {
-  "name": "solarized-theme",
+  "name": "dashboard-config",
   "extensions": {
     "sh.yuke": {
       "entry": "./index.js",
-      "uses": [
-        "tui"
-      ]
+      "uses": ["yuke-dashboard"]
     }
   }
 }

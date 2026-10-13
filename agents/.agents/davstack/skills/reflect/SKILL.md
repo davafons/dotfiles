@@ -28,11 +28,13 @@ selection, or that a read-only flag controls MCP access in this runtime.
 Without delegation permission, apply all three templates serially yourself,
 then synthesize. Label this as direct review, not independent or cross-model proof.
 
-The `create-skill` routing labels below name an upstream authoring workflow, not
-an installed command. Resolve a supported native skill-authoring workflow before
-executing those rows. If none is available, keep that routing open and report the
-gap. Do not replace its draft / test / iterate or description-optimization loop
-with an ad hoc edit. Creating a verification skill is a different workflow.
+The `create-skill` routing labels below map to the installed
+[skill-creator](../skill-creator/SKILL.md), the user-approved complete public
+Anthropic authoring workflow. It is not Cursor's unpublished built-in. Follow
+its draft/test/iterate and description-optimization loops through the native
+adapter. No ad hoc edit replaces those loops. Creating a verification skill
+remains a separate specialized workflow. Missing model, budget, human-review,
+or independent-role capabilities keep the affected execution gate open.
 
 Mine the current conversation for durable learnings, then route them into skill edits.
 
@@ -88,8 +90,8 @@ File each Backlog item in the project's internal task record with `project_work`
 Follow each approved row's Routing exactly:
 
 - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
-- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the supported skill-authoring workflow and run its draft / test / iterate loop. If none is available, report the routing as blocked.
-- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to the supported skill-authoring workflow and run its description-optimization loop. If none is available, report the routing as blocked.
+- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to the installed skill-creator workflow and run its draft / test / iterate loop. If none is available, report the routing as blocked.
+- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to the installed skill-creator workflow and run its description-optimization loop. If none is available, report the routing as blocked.
 - `new skill via create-skill: <kebab-name>`: hand creation to the supported skill-authoring workflow. If none is available, report the routing as blocked. Do not invent the shape ad hoc.
 
 If your environment ships an authorized SKILL.md validator, run it on every touched skill before declaring done. Respect the project's exclusions on skill-prose, metadata, and reference-structure tests. A missing or excluded validator is a reported gap, not a passed check.

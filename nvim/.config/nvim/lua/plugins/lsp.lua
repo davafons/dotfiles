@@ -81,6 +81,9 @@ return {
           },
         },
       })
+      vim.lsp.config("perlnavigator", {
+        settings = { perlnavigator = { perlcriticEnabled = false, perltidyEnabled = false } },
+      })
       vim.lsp.config("jsonls", {
         settings = { json = { schemas = require("schemastore").json.schemas(), validate = { enable = true } } },
       })

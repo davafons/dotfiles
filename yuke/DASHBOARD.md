@@ -4,14 +4,11 @@ The `yuke-dashboard` manifest replaces the title and hint of each empty chat pan
 
 ## Reuse in a profile
 
-Keep the dashboard folder under the profile's `plugins/` directory. Add `./plugins/yuke-dashboard` to `config.json`. The manifest requires `tui` and `composer-vim`. Include the pinned `vim-mode` provider to supply `composer-vim`. Without those services, the plugin does nothing.
-
-The Vim source record has no confirmed redistribution license. This profile is for personal use. Confirm its reuse terms before redistribution.
-
-The dashboard calls existing commands. It does not implement sessions, search, project work, or model selection. It checks command availability after all plugins load. Optional commands have no row or letter when their plugin is absent.
+The dashboard loads from `lostcoords/yuke-plugins` at the commit in `config.json`. Do not keep a second copy under `plugins/`. Personal rows are a local plugin, `dashboard-config`, which calls `setup` on the `yuke-dashboard` capability. Vim can be absent. Without a `setup` call, letter keys stay off.
 
 | Letter | Command | Action |
 | --- | --- | --- |
+| `l` | `auth:login` | Sign in |
 | `r` | `ui:sessions` | Resume a session |
 | `s` | `search:open` | Search chats and files |
 | `w` | `project-work:work` | Open project tasks and checkpoints |
@@ -19,11 +16,11 @@ The dashboard calls existing commands. It does not implement sessions, search, p
 | `c` | `ui:palette` | Open commands |
 | `q` | `quit` | Quit Yuke |
 
-Click an action row to run the same command. Press `i` to type a prompt. Press Escape to return to normal mode.
+Click an action row to run the same command. An assigned letter runs that row only while the draft is empty. Any other character starts the prompt.
 
 ## Input and lifetime
 
-A new empty pane starts in normal mode. Returning to the same pane preserves its selected mode. Dashboard letters run only in the active empty normal-mode composer. Open dialogs and pending window chords retain their keys. Insert mode types the letters. A nonempty draft retains Vim's normal-mode commands.
+Assigned letters run on an empty draft in the active chat, including while Vim is in normal mode. A nonempty draft types those letters.
 
 The view clips and positions text when its bounds or content change. Drawing reads cached rows. Ordinary saved-chat input has no dashboard key interceptor. The plugin owns its advice, listeners, and pane replacements. Unloading restores the original title and hint only if the dashboard still owns them. It does not overwrite a later replacement from another plugin.
 

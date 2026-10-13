@@ -6,6 +6,9 @@
       "uses": [
         "chat",
         "tui"
+      ],
+      "provides": [
+        "yuke-clarify"
       ]
     }
   }

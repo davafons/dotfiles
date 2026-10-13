@@ -1,17 +1,17 @@
-//! Observed request phases belong to display-only transcript blocks, not engine messages.
+//! One display-only clock follows each model response; intermediate completed observations stay there.
 import { client } from "yuke";
 import { Transcript } from "yuke:chat";
 import { sessions } from "yuke:session";
 import { clip, measure } from "yuke:ui";
+import { elapsed } from "./time.js";
 
 /** @typedef {{ key: string, label: string, start: number, end: number | null }} Phase */
-/** @typedef {{ id: number, phases: Phase[] }} Card */
-/** @typedef {{ run: number, card: Card | null, current: Phase | null, cards: Map<number | null, Card[]> }} Timeline */
+/** @typedef {{ id: number, message: number | null, phases: Phase[], current: Phase | null, part: Wire.AssistantPart }} Card */
+/** @typedef {{ run: number, card: Card | null, records: Map<number, Card> }} Timeline */
 
-/** Register display-only phase blocks. The context owns observations and rows; missing UI skips them and host failures throw. @param {import("yuke").Context} ctx @param {number} periodMs @returns {import("./index.js").Feature | undefined} */
+/** Register display-only clocks at the end of native response parts. The context owns observations and rows; missing UI skips them and host failures throw. @param {import("yuke").Context} ctx @param {number} periodMs @returns {import("./index.js").Feature | undefined} */
 export default function(ctx, periodMs) {
-  const tui = ctx.get("tui");
-  const chat = ctx.get("chat");
+  const tui = ctx.get("tui"), chat = ctx.get("chat");
   if (!tui || !chat) return;
   /** @type {Map<string, Timeline>} */
   const timelines = new Map();
@@ -19,74 +19,81 @@ export default function(ctx, periodMs) {
   const cards = new Map();
   /** @type {WeakSet<Transcript>} */
   const attached = new WeakSet();
-  /** @type {Wire.AssistantPart[]} */
-  const timingParts = [{ type: "tool", id: 0, call_id: "display-only", name: "phase_timing", arguments: "{}", state: { type: "completed", output: "", duration_ms: 0 } }];
-  let nextId = -1;
+  let nextId = -2;
 
   /** @param {Transcript} transcript */
-  const sessionOf = (transcript) => {
+  const viewOf = transcript => {
     for (let i = 0; i < sessions.length; i++) {
-      const session = sessions[i];
-      for (let j = 0; j < session.views.length; j++) if (session.views[j].transcript === transcript) return session;
+      const views = sessions[i].views;
+      for (let j = 0; j < views.length; j++) if (views[j].transcript === transcript) return views[j];
     }
     return null;
   };
-  /** @param {Transcript} transcript */
-  const attach = (transcript) => {
+  /** @param {Transcript} transcript @param {import("yuke:session").Session["views"][number]} view */
+  const attach = (transcript, view) => {
     if (attached.has(transcript)) return;
     attached.add(transcript);
-    ctx.advise(transcript, "partsOf", "around", (next, id) => cards.has(id) ? timingParts : next(id));
-    if (transcript.partOf) ctx.advise(/** @type {{ partOf: NonNullable<Transcript["partOf"]> }} */ (transcript), "partOf", "around", (next, id, part, cursor) => cards.has(id) ? null : next(id, part, cursor));
-    if (transcript.partTextPage) ctx.advise(/** @type {{ partTextPage: NonNullable<Transcript["partTextPage"]> }} */ (transcript), "partTextPage", "around", (next, id, field, offset, limit) => cards.has(id) ? { text: "", next: null } : next(id, field, offset, limit));
+    ctx.advise(transcript, "partsOf", "around", (next, id) => {
+      const pending = cards.get(id);
+      if (pending) return [pending.part];
+      const parts = next(id);
+      const sid = view.session.sessionId;
+      const card = sid ? timelines.get(sid)?.records.get(id) : null;
+      if (!card) return parts;
+      const shown = parts.slice();
+      shown.push(card.part);
+      return shown;
+    });
+    if (transcript.partOf) ctx.advise(/** @type {{ partOf: NonNullable<Transcript["partOf"]> }} */ (transcript), "partOf", "around", (next, id, part, cursor) => {
+      const card = cards.get(part);
+      return card ? { part: card.part, cursor: null, tail: false } : next(id, part, cursor);
+    });
+    if (transcript.partTextPage) ctx.advise(/** @type {{ partTextPage: NonNullable<Transcript["partTextPage"]> }} */ (transcript), "partTextPage", "around", (next, id, part, field, offset, limit) => cards.has(id) || cards.has(part) ? { text: "", next: null } : next(id, part, field, offset, limit));
   };
   ctx.advise(Transcript.prototype, "setOutline", "around", function(next, messages, active) {
-    const session = sessionOf(this);
-    const timeline = session?.sessionId ? timelines.get(session.sessionId) : null;
-    if (!timeline || !timeline.cards.size || !messages.length) return next(messages, active);
-    attach(this);
-    /** @type {Parameters<Transcript["setOutline"]>[0]} */
-    const shown = [];
-    const first = timeline.cards.get(null);
-    if (first) for (let i = 0; i < first.length; i++) shown.push({ id: first[i].id, type: "assistant" });
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      shown.push(message);
-      const after = timeline.cards.get(message.id);
-      if (after) for (let j = 0; j < after.length; j++) shown.push({ id: after[j].id, type: "assistant" });
-    }
-    return next(shown, active);
+    const view = viewOf(this);
+    if (!view) return next(messages, active);
+    attach(this, view);
+    const sid = view.session.sessionId;
+    const card = sid ? timelines.get(sid)?.card : null;
+    if (!active && card?.current && card.message == null && messages.length) return next([...messages, { id: card.id, type: "assistant" }], active);
+    return next(messages, active);
   });
-
   chat.render({
-    fold(part) { return part === timingParts[0] ? false : undefined; },
+    fold(part) { return cards.has(part.id) ? false : undefined; },
     part(part, env) {
-      const card = cards.get(env.messageId);
+      const card = cards.get(part.id);
       if (!card) return undefined;
+      if (!card.current && !card.phases.length) return { rows: [], source: "" };
       const now = Date.now();
       const last = card.phases[card.phases.length - 1];
-      const seconds = (Math.max(0, (last.end ?? now) - card.phases[0].start) / 1000).toFixed(1);
-      const suffix = " · " + seconds + "s";
+      const span = card.current ? now - card.current.start : (last?.end ?? now) - (card.phases[0]?.start ?? now);
+      const suffix = " · " + elapsed(span);
       const width = Math.max(0, env.width - 2);
-      const title = clip("◷ " + (last.end == null ? last.label : "model timing"), Math.max(0, width - measure(suffix)));
       /** @type {import("yuke:chat").Rendered["rows"]} */
       const rows = [{ segments: [
-        { text: title, group: "TxToolTitle" },
+        { text: clip("◷ " + (card.current?.label ?? "waited for model response"), Math.max(0, width - measure(suffix))), group: "TxToolTitle" },
         { text: clip(suffix, width), group: "TxToolHint" },
       ], indent: 1, header: true, stop: true }];
       if (env.expanded) for (let i = 0; i < card.phases.length; i++) {
         const phase = card.phases[i];
-        const seconds = (Math.max(0, (phase.end ?? now) - phase.start) / 1000).toFixed(1);
-        const text = (phase.end == null ? "→ " : "· ") + phase.label + " · " + seconds + "s";
-        rows.push({ text: clip(text, Math.max(0, env.width - 3)), indent: 2, group: phase.end == null ? "TxToolHint" : "TxMeta" });
+        rows.push({ text: clip(phase.label + " · " + elapsed((phase.end ?? now) - phase.start), Math.max(0, env.width - 3)), indent: 2, group: "TxMeta" });
       }
       return { rows, source: "" };
     },
   });
 
   /** @param {string} id */
-  const reload = (id) => {
+  const reload = id => {
     for (let i = 0; i < sessions.length; i++) if (sessions[i].sessionId === id) sessions[i].reload();
     tui.root.invalidate();
+  };
+  /** @param {Card} card @param {number} now */
+  const finish = (card, now) => {
+    const last = card.phases[card.phases.length - 1];
+    if (last && last.end == null) last.end = now;
+    card.current = null;
+    if (card.message != null) chat.refresh(card.message, card.id);
   };
   /** @param {string} id @param {Wire.SessionActivity | null} activity */
   const update = (id, activity) => {
@@ -94,68 +101,73 @@ export default function(ctx, periodMs) {
     const now = Date.now();
     if (!activity) {
       if (timeline) {
-        timeline.cards.forEach(group => { for (let i = 0; i < group.length; i++) cards.delete(group[i].id); });
+        timeline.records.forEach(card => { cards.delete(card.id); });
+        if (timeline.card) cards.delete(timeline.card.id);
         timelines.delete(id);
         reload(id);
       }
       return;
     }
     const state = activity.state;
-    if (state.type === "idle" || state.type === "running_tool") {
-      if (timeline?.current && timeline.card) {
-        timeline.current.end = now;
-        chat.refresh(timeline.card.id, 0);
-        timeline.current = null;
+    if (state.type === "idle") {
+      if (timeline?.card) {
+        const pending = timeline.card.message == null;
+        timeline.card.phases.length = 0;
+        finish(timeline.card, now);
+        if (pending) cards.delete(timeline.card.id);
         timeline.card = null;
-        tui.root.invalidate();
+        if (pending) reload(id);
+        else tui.root.invalidate();
       }
       return;
     }
-    const label = state.type === "waiting" ? "waiting for model" : state.type === "streaming" ? "reading model response" : state.type === "reasoning" ? "reasoning" : state.type === "building" ? "preparing request" : state.type === "retrying" ? "retry " + state.attempt : state.type === "compacting" ? "compacting" : "";
-    if (!label) return;
-    const key = state.type === "reasoning" ? state.type + ":" + state.message_id + ":" + state.part_id : state.type === "retrying" ? state.type + ":" + state.attempt : state.type;
-    if (timeline?.run === state.run_id && timeline.current?.key === key) return;
-    if (timeline?.current && timeline.card) {
-      timeline.current.end = now;
-      chat.refresh(timeline.card.id, 0);
+    const message = state.type === "running_tool" || state.type === "reasoning" ? state.message_id : client.sessionOutline(id)?.active?.id ?? null;
+    const key = state.type === "reasoning" || state.type === "running_tool" ? state.type + ":" + state.message_id + ":" + state.part_id : state.type === "retrying" ? state.type + ":" + state.attempt : state.type;
+    if (timeline?.run === state.run_id && timeline.card?.current?.key === key) return;
+    if (!timeline) { timeline = { run: state.run_id, card: null, records: new Map() }; timelines.set(id, timeline); }
+    let card = timeline.card;
+    let structure = false;
+    if (timeline.run !== state.run_id || (card?.message != null && card.message !== message)) {
+      if (card) finish(card, now);
+      card = null;
+      timeline.run = state.run_id;
     }
-    if (!timeline) {
-      timeline = { run: state.run_id, card: null, current: null, cards: new Map() };
-      timelines.set(id, timeline);
-    }
-    if (timeline.run !== state.run_id) { timeline.run = state.run_id; timeline.card = null; }
-    let inserted = false;
-    if (!timeline.card) {
-      const outline = client.sessionOutline(id);
-      const after = outline?.messages.at(-1)?.id ?? null;
-      /** @type {Card} */
-      const card = { id: nextId--, phases: [] };
+    if (!card) {
+      const cardId = nextId--;
+      card = { id: cardId, message: null, phases: [], current: null, part: { type: "tool", id: cardId, call_id: "display-only", name: "phase_timing", arguments: "{}", state: { type: "completed", output: "", duration_ms: 0 } } };
       timeline.card = card;
-      let group = timeline.cards.get(after);
-      if (!group) { group = []; timeline.cards.set(after, group); }
-      group.push(card);
-      cards.set(card.id, card);
-      inserted = true;
+      cards.set(cardId, card);
+      structure = true;
     }
-    timeline.current = { key, label, start: now, end: null };
-    timeline.card.phases.push(timeline.current);
-    if (inserted) reload(id);
-    else { chat.refresh(timeline.card.id, 0); tui.root.invalidate(); }
+    if (card.message == null && message != null) {
+      card.message = message;
+      timeline.records.set(message, card);
+      structure = true;
+    }
+    const last = card.phases[card.phases.length - 1];
+    if (last && last.end == null) last.end = now;
+    const label = state.type === "waiting" ? "waiting for model response" : state.type === "streaming" ? "reading model response" : state.type === "reasoning" ? "reading reasoning" : state.type === "running_tool" ? "running " + state.tool_name : state.type === "building" ? "preparing request" : state.type === "retrying" ? "waiting to retry model, attempt " + state.attempt : "compacting context";
+    const phase = { key, label, start: state.type === "running_tool" ? state.started_at_ms : now, end: null };
+    card.current = phase;
+    if (state.type !== "running_tool") card.phases.push(phase);
+    if (structure) reload(id);
+    else if (message != null) { chat.refresh(message, card.id); tui.root.invalidatePaint(); }
   };
-  for (let i = 0; i < sessions.length; i++) {
-    const session = sessions[i];
-    if (session.sessionId) update(session.sessionId, session.activity);
-  }
+  for (let i = 0; i < sessions.length; i++) if (sessions[i].sessionId) update(/** @type {string} */ (sessions[i].sessionId), sessions[i].activity);
   ctx.own(() => {
     timelines.clear();
-    for (let i = 0; i < sessions.length; i++) sessions[i].reload();
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i];
+      for (let j = 0; j < session.views.length; j++) session.views[j].transcript.setOutline([], null);
+      session.reload();
+    }
     cards.clear();
     tui.root.invalidate();
   });
   return { periodMs, lastTick: 0, activity: update,
-    live: () => { for (const timeline of timelines.values()) if (timeline.current) return true; return false; },
+    live: () => { for (const timeline of timelines.values()) if (timeline.card?.current) return true; return false; },
     tick: () => {
-      for (const timeline of timelines.values()) if (timeline.current && timeline.card) chat.refresh(timeline.card.id, 0);
+      for (const timeline of timelines.values()) if (timeline.card?.current && timeline.card.message != null) chat.refresh(timeline.card.message, timeline.card.id);
       tui.root.invalidatePaint();
     },
   };

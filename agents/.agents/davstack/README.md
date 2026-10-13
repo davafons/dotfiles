@@ -21,7 +21,7 @@ the dotfiles project context and the linked review task in `/work`.
 
 | Skill | Purpose | Main dependency |
 | --- | --- | --- |
-| `dav-mode` | Working mode, task routing, shared working rules | Its 21 playbooks, runtime adapters, and native helpers |
+| `dav-mode` | Working mode, task routing, shared working rules | Its 23 playbooks, runtime adapters, and native helpers |
 | `blast-radius` | Find what a change breaks beyond the diff; prove its safety facts | Real code and the project's checks |
 | `comment-sicko` | Report-only comment review, precise cuts, confusing code, missing guards | In-scope source files |
 | `no-comments` | Verify the review, apply accepted cuts, fix unclear code | `comment-sicko` and the project's checks |
@@ -39,8 +39,11 @@ the dotfiles project context and the linked review task in `/work`.
 | `teach` | Build a plain explanation at the reader's pace | `how`, `why`, and `unslop` |
 | `recall` | Reconstruct current state, threads, problems, and next move | Authorised in-scope history and `why` |
 | `create-verification-skill` | Generate a project-local driving and verification skill with retained proof | A runnable app and safe control harness |
+| `maintain-verification-skill` | Audit every mapped feature from source and live behavior | Project verification skill, authorized source readers, and coordinator-owned driving |
+| `control-cli` | Drive, inspect, and profile an interactive terminal app | Existing project harness or isolated PTY/private tmux |
+| `skill-creator` | Full authoring, paired evals, human review, iteration, and description optimization | Authorized bounded native model runs, feedback, and its full helpers/templates |
 
-The 21 playbooks are references, not additional registered skills. Their ordered
+The 23 playbooks are references, not additional registered skills. Their ordered
 methods now come from the selected upstream copies, not the abbreviated Shirabe
 versions. The [playbook runtime](skills/dav-mode/references/playbook-runtime.md)
 records their source revision and the tool, permission, and dependency adaptations.
@@ -77,9 +80,10 @@ agents/.agents/
 │       │   ├── SKILL.md
 │       │   ├── LICENSE
 │       │   ├── agents/{claude.md,codex.toml,yuke.js}
-│       │   ├── scripts/{check-plan.mjs,patch-id.mjs,orch/,watch-pr/}
+│       │   ├── scripts/{check-plan.mjs,patch-id.mjs,workspace-audit.py,orch/,watch-pr/}
 │       │   ├── references/{working-rules.md,playbook-runtime.md}
 │       │   └── playbooks/
+│       │       ├── authoring-a-skill.md
 │       │       ├── autonomous-run.md
 │       │       ├── autopilot-full.md
 │       │       ├── autopilot-stack.md
@@ -100,7 +104,8 @@ agents/.agents/
 │       │       ├── session-pickup.md
 │       │       ├── shipping.md
 │       │       ├── trace-forensics.md
-│       │       └── visual-parity.md
+│       │       ├── visual-parity.md
+│       │       └── worktree-cleanup.md
 │       ├── blast-radius/SKILL.md
 │       ├── comment-sicko/{SKILL.md,agents/claude.md,agents/codex.toml}
 │       ├── no-comments/SKILL.md
@@ -117,6 +122,9 @@ agents/.agents/
 │       ├── why/{SKILL.md,LICENSE,references/}
 │       ├── teach/{SKILL.md,LICENSE}
 │       ├── recall/{SKILL.md,LICENSE}
+│       ├── skill-creator/{SKILL.md,LICENSE.txt,NOTICE.md,agents/,assets/,eval-viewer/,references/,scripts/}
+│       ├── control-cli/{SKILL.md,LICENSE}
+│       ├── maintain-verification-skill/{SKILL.md,LICENSE}
 │       └── create-verification-skill/{SKILL.md,LICENSE,references/feature-map-example/}
 └── personal/
     └── skills/
@@ -143,7 +151,7 @@ bin/bin/agent-skills check
 make check
 ```
 
-The installer explicitly lists all 18 davstack names. It links their complete
+The installer explicitly lists all 21 davstack names. It links their complete
 directories into `~/.agents/skills/` for Yuke/Codex and `~/.claude/skills/` for
 Claude Code. It also links the `comment-sicko` and `dav-agent` adapters into
 `~/.claude/agents/` and `~/.codex/agents/`. The adapters inherit configured models.
@@ -178,6 +186,9 @@ or start a new chat after installation, then:
 /skill:why did we choose this format?
 /skill:teach explain the boundary
 /skill:recall my importer work
+/skill:control-cli
+/skill:skill-creator
+/skill:maintain-verification-skill
 /skill:create-verification-skill
 ```
 
@@ -234,7 +245,7 @@ counterpart filenames without changing methods. A subsequent restoration replace
 all 14 methods with upstream copies and adapted their runtime references.
 The approved expansion added Autonomous run, Autopilot-full, Autopilot-stack,
 Orchestrate, Babysit, and Opening a PR from the same pinned source. The current
-set has 21 playbooks after the subsequent Trace forensics addition, with the
+set has 23 playbooks after Trace forensics, skill authoring, and workspace cleanup, with the
 full upstream mode principles and methods retained.
 The mode's original metadata still records its Shirabe lineage; the playbook
 runtime records the separate upstream source and license.
@@ -282,8 +293,7 @@ read-only evidence, jj, privacy, and desktop safety.
 
 `teach` uses Mermaid/ASCII when image generation is absent. `recall` uses only
 authorised current-harness history, not unrelated chats or invented session IDs.
-Optional upstream `session-pickup`, `automate-me`, and
-`maintain-verification-skill` remain uninstalled. The session-pickup *playbook*
+Optional upstream `session-pickup` and `automate-me` remain uninstalled. The session-pickup *playbook*
 is an adapted upstream playbook, not an installation of that separate skill.
 
 `create-verification-skill` writes `.agents/skills/verify-<app>/` for Yuke/Codex
@@ -298,3 +308,51 @@ and `bin/tests/test_{investigation_skills,davstack_migration}.py`. They do not
 assert skill prose, reference structure, or metadata. The check target does not
 run the Codex skill-format validator. New upstream skills still require individual
 review and approval.
+
+## Verification and control batch
+
+`control-cli` and `maintain-verification-skill` retain their complete methods
+from `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, with MIT licenses. Control CLI
+comes from `cursor-team-kit`; maintenance comes from pstack. Runtime changes
+use private terminal sessions, retained proof, native delegation, jj, and
+explicit desktop/publication authority. The maintenance method still requires
+its independent source wave and every-feature live pass for a complete result.
+
+This repository owns three local skills, not additional global imports:
+
+- [verify-yuke-profile](../../../.agents/skills/verify-yuke-profile/SKILL.md)
+  covers composer/reload, model controls, build status, and native child routing.
+- [verify-herdr-profile](../../../.agents/skills/verify-herdr-profile/SKILL.md)
+  covers Code ordering, indexed shortcuts, and Yuke notifications.
+- [verify-neovim-profile](../../../.agents/skills/verify-neovim-profile/SKILL.md)
+  covers project pickers/completion, diff review, and Markdown rendering.
+
+Each has a feature map and reuses the existing driver. Their sources are under
+`.agents/skills/`; `.claude/skills/` links the same sources. Native Yuke catalog
+discovery was exercised in an isolated profile. All ten mapped features were
+driven, with passing evidence retained outside the checkout. An additional
+Code-order repeat failed its initial multi-editor order and a fresh-instance
+retry passed; stability remains open. This is generation and behavior proof,
+not a completed delegated maintenance wave or real model review.
+The [batch report](VERIFICATION-BATCH.md) records evidence and limits.
+
+The imported [authoring playbook](skills/dav-mode/playbooks/authoring-a-skill.md)
+now uses the installed [skill-creator](skills/skill-creator/SKILL.md). The user
+approved the complete public Anthropic method at `dbd4588f9e1033efb41dad4bef2f7947c8993d44`,
+with Apache-2.0 license and all supporting files. It is not Cursor's unpublished
+built-in. Native helpers were exercised with bounded real Codex tasks and
+selection/proposal trials; full campaigns and human feedback are not implied.
+See [the authoring port report](AUTHORING-PORT.md). The imported
+[cleanup playbook](skills/dav-mode/playbooks/worktree-cleanup.md) uses a native
+read-only jj audit. It never infers safe deletion from an empty snapshot or old
+commit. PR/chat usage, unsaved buffers, and untracked/ignored data need separate
+evidence and explicit approval before cleanup.
+
+The Yuke profile adds `reviewer` on `openai-codex/gpt-6.1-sol` at `xhigh`, leaving
+`general` and `dav-agent` defaults unchanged. Spawn results retain engine-accepted
+model/effort receipts; child request hooks log selected models. The native guard
+checks actual child settings, stored histories, localhost request payloads, depth
+limits, and project skill discovery. Scripted provider replies prove plumbing,
+not LLM judgment, authentication, a read-only sandbox, or model-family diversity.
+Codex-only review cannot close different-family gates. Claude/Codex standalone
+agent adapters keep their existing model inheritance; this reviewer role is Yuke-specific.

@@ -2,6 +2,26 @@
 
 The profile groups related features into `models`, `controls`, `run-feedback`, and `insights`. Each group reads its own `settings.json`. Other plugins remain independent entries in `config.json`.
 
+## Continue a conversation in another checkout
+
+The `session-fork` plugin exposes `fork_session` in every frontend. It requires a Yuke build that implements workspace-aware `session.fork`. A skill alone cannot enable this native operation.
+
+Ask the agent to create the requested jj workspace, call `fork_session` with that directory, and open a Herdr pane there. The tool returns the new session ID and `yuke resume <id>` command. Launch that ID in the pane. A panel-launch retry uses the same ID instead of making another fork.
+
+The new session keeps committed history, compaction, attachment references, and model settings. It loads instructions and skills from the destination. It does not copy the live assistant draft, that draft's tool results, queued input, children, running jobs, pending dialogs, or unsent text. Leave the source open unless the user asks to close it. Name already completed setup actions in the continuation prompt so the new agent does not repeat them.
+
+The source profile lists this plugin. Source preparation does not install its required native build or change an active chat's tool catalog. Install a combined build that preserves other current native changes before copying the plugin into the normal profile. Save unsent text and restart Yuke after a native update. Do not use only `/reload` for a binary change.
+
+## Change this conversation's workspace
+
+The bundled `/cd <path>` command needs the workspace-aware native build. It needs no profile plugin entry. `/pwd` shows the current workspace without changing the conversation or its draft. `/cd` without an argument also shows the current workspace.
+
+The enabled `path-completion` plugin lists only directories after `/cd `. It supports a bare name, `./`, `../`, `~/`, and `/`. Tab or Enter completes the selected directory without submitting the command. Completion adds quotes when a name contains spaces. Matching outer quotes delimit the path. They do not execute shell expressions.
+
+The command forks committed history into the destination and leaves the source unchanged. It reloads destination instructions, skills, tool activation, and MCP context. Default file access and new chats use the destination. It requires one pane and refuses active work, queued input, running jobs, or an unsaved draft.
+
+After a native update, save the draft and restart Yuke. Resume the saved conversation before using `/cd`. `/reload` alone cannot add a native command to an older binary.
+
 ## Select features
 
 Create `~/.config/yuke/plugins/<group>/settings.json`. Set only the options you want to change. A missing file or omitted option uses the defaults below.
@@ -100,7 +120,7 @@ File `plugins/run-feedback/settings.json`.
 | Option | Default | Behavior |
 |---|---|---|
 | `tokenSpeed` | `true` | Live estimated output speed and provider-reported speed after commit. |
-| `phaseTimers` | `true` | Display-only request and model phase blocks in the transcript. Requires `chat`. Queued inputs keep their own prompt rows. |
+| `phaseTimers` | `true` | A display-only live action at the end of the response. Intermediate completed records stay visible. The final summary disappears when the run ends. Requires `chat`. Queued inputs keep their own prompt rows. |
 | `stepTimers` | `true` | Live reasoning duration and tracking of tool and reasoning clocks. Requires the `chat` capability. |
 | `speedRefreshMs` | `250` | Refresh interval for live token speed. |
 | `timerRefreshMs` | `100` | Refresh interval for phase and transcript clocks. |
@@ -117,24 +137,28 @@ The engine reports one coarse state per session. These states describe observed 
 |---|---|---|
 | `idle` | No active phase | This session has no active run. A child session can still work. |
 | `building` | preparing request | The engine prepares the request before it opens a provider round. This can include request hooks and context preparation. |
-| `waiting` | waiting for model | The provider round exists, but the engine has not accepted a successful response header. This includes connection and server delay. |
+| `waiting` | waiting for model response | The provider round exists, but the engine has not accepted a successful response header. This includes connection and server delay. |
 | `streaming` | reading model response | The response stream is open, and no running tool or latest reasoning part takes priority. Text, tool arguments, and gaps between output blocks can all use this state. |
-| `reasoning` | reasoning | The latest draft part is a reasoning part, and no tool runs. A provider can hide its reasoning text. This state does not prove that the model still computes reasoning. |
-| `running_tool` | The tool's existing chat heading | A tool executes. The engine chooses the first running tool when several tools run. Tool headings keep their own durations. |
-| `retrying` | retry N | The engine waits before another request attempt after a provider failure. The bundled indicator also shows the retry countdown and error code. |
-| `compacting` | compacting | The engine summarizes older context. Compaction can start automatically or from a manual request. |
+| `reasoning` | reading reasoning | The latest native draft part is an unfinished reasoning part, and no tool runs. A provider can hide its reasoning text. This state does not prove that the model still computes reasoning. |
+| `running_tool` | running TOOL | A tool executes. The engine chooses the first running tool when several tools run. Tool headings keep their own durations. |
+| `retrying` | waiting to retry model, attempt N | The engine waits before another request attempt after a provider failure. The bundled indicator also shows the retry countdown and error code. |
+| `compacting` | compacting context | The engine summarizes older context. Compaction can start automatically or from a manual request. |
 
 The bundled indicator calls `streaming` "responding". The timing heading calls it "reading model response" to avoid a promise of visible answer text. The engine enters this state after a successful HTTP response header, sometimes before the first output arrives. Yuke displays answer text as chunks arrive. Between chunks, the open stream waits for the provider's next bytes.
 
-A timing block uses the same heading styles and fold behavior as a thought entry. Its clock mark identifies UI metadata. While active, the heading shows `◷ reading model response · 1.6s`, with the current phase and total observed elapsed time. After the request phases end, it shows `◷ model timing · 2.4s`. A click on the heading or Ctrl+O expands the individual phase durations. The default view shows one heading row.
+A timing block uses the same heading styles and fold behavior as a thought entry. Its clock mark identifies UI metadata. The live action follows the last response part, including new thoughts and tool output. It shows verbs such as `◷ waiting for model response · 8s`, `◷ reading model response · 2m8s`, and `◷ running exec · 1h2m8s`. The live clock measures the current action. After an intermediate response ends, the same entry shows `◷ waited for model response · 2m8s`. The final timing summary disappears when the run ends. Thought and tool durations remain visible. Its completed total excludes observed tool execution. A click or Ctrl+O expands the phase breakdown. Completed thoughts and actions stay in their original order.
 
 A thought is a reasoning part of an assistant message. A timing block is local display data, not an assistant message in engine history.
 
 Phase durations use the UI's observation times. Coalesced activity events can omit short intermediate states. A phase duration is not provider compute time. Reasoning and tool headings use stored durations when the engine supplies them.
 
-A completed thought with no visible text and a duration below 50 ms shows `thought · time unavailable` instead of `0.0s`. Below 50 ms, the one-decimal seconds display rounds to zero. The Responses adapter can open and close an encrypted-only reasoning block when its completed payload arrives. That receipt interval does not measure the model's earlier hidden reasoning. The renderer does not replace it with a guessed duration. Visible reasoning and nonzero displayed reasoning durations keep their existing clocks. Stored durations and encrypted replay data stay unchanged.
+A completed hidden thought whose engine duration rounds to zero can show `thought for ~8s`. This is an estimate from the observed wait before its completed payload arrived. The first hidden block uses the observed request start. A later hidden block uses the previous observed hidden-block arrival. Network delays, server queues, retries, and other model output can enter this interval. It is not a measurement of private model computation. Expand the thought heading for that explanation.
 
-Blocks stay beside their responses until the session closes or plugins reload. They do not use the engine store. A restart or reload cannot restore past observations. An ended phase means that its state changed, not that the request succeeded.
+Coalesced hidden blocks can arrive together and have no separate estimate. Old blocks from before the observer started also have no estimate. They show `thought for an unknown time`. The plugin does not infer a duration from the whole turn or overwrite stored durations and encrypted replay data.
+
+Phase, thought, and built-in tool clocks use short h/m/s labels. Examples are `8s`, `2m8s`, and `1h2m8s`. A subsecond duration reads `<1s`. The built-in tool format and corrected native reasoning state require the updated binary, not only a profile reload.
+
+Intermediate blocks stay beside their responses until the session closes or plugins reload. They do not use the engine store. A restart or reload cannot restore past observations. An ended phase means that its state changed, not that the request succeeded.
 
 ## Insights
 
@@ -142,7 +166,7 @@ File `plugins/insights/settings.json`.
 
 | Option | Default | Behavior |
 |---|---|---|
-| `status` | `true` | `/status` with model, session, build, and provider limits. |
+| `status` | `true` | `/status` with model, session, build, and provider limits. Codex and OpenRouter use their quota endpoints. xAI shows the current usage-pool share left when the login reports one. |
 | `context` | `true` | Enhanced `/context` with budget, instructions, skills, and tools. |
 | `usage` | `true` | `/usage` with historical usage, costs, tools, skills, and chats. |
 

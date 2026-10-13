@@ -10,6 +10,7 @@ This profile enables the plugin. Use `/reload` or restart Yuke to load it. No ex
 |---|---|
 | `openai-codex` | Account plan, remaining timed allowances, reset times, additional model-specific limits, and credits when present |
 | `openrouter` | Remaining API-key spending cap and free-model daily requests when present |
+| `xai-grok` | Remaining share of the current usage pool, its reset time, and product shares in details |
 | Other providers and custom routes | Account quota unavailable; no invented balance |
 
 Codex windows use the duration in the response. A primary window can be weekly, not 5-hour. The card labels 5-hour and weekly windows only when the provider reports those durations. It shows a zero allowance. It does not treat an absent window as full, exhausted, or unlimited.
@@ -41,16 +42,17 @@ Quota failures remain visible with the session fields. A failed refresh removes 
 
 ## Credentials and requests
 
-`status-data.py` reads the profile's private `providers.json`. It uses Yuke's stored Codex OAuth access token and account ID. OpenRouter accepts its configured literal key or environment variable; with no override it uses `OPENROUTER_API_KEY`. An explicitly empty configured key does not fall back to that variable.
+`status-data.py` reads the profile's private `providers.json`. It uses Yuke's stored Codex OAuth access token and account ID, or the stored xAI access token. OpenRouter accepts its configured literal key or environment variable; with no override it uses `OPENROUTER_API_KEY`. An explicitly empty configured key does not fall back to that variable.
 
-The reader makes one read-only GET to a fixed official endpoint:
+The reader makes one read-only GET to a fixed endpoint:
 
 - Codex: `https://chatgpt.com/backend-api/wham/usage`
 - OpenRouter: `https://openrouter.ai/api/v1/key`
+- xAI: `https://cli-chat-proxy.grok.com/v1/billing?format=credits`
 
 It sends no model request. It does not refresh a login, reset an allowance, purchase credits, or write credentials. It rejects redirects and custom base routes. It does not print request headers, tokens, account IDs, or error bodies. Configuration and response reads have a 256 KiB limit. The network timeout is 10 seconds. The owning command cancels the helper after 15 seconds or on close.
 
-An expired Codex grant needs Yuke's normal login refresh or `/login openai-codex`. The status reader does not run a competing refresh. After a manual provider-file edit, use `/reload-providers` so the active engine and file agree. Authentication in the card comes from the engine catalog; quota credentials come from the stored file. This plugin does not read Codex CLI's separate login store.
+An expired Codex grant needs Yuke's normal login refresh or `/login openai-codex`. An expired xAI grant needs the same refresh or `/login xai-grok`. The status reader does not run a competing refresh. xAI's pool percentage is not a remaining-token count. A response that omits the percentage stays unknown. The reader does not treat that omission as a full allowance. After a manual provider-file edit, use `/reload-providers` so the active engine and file agree. Authentication in the card comes from the engine catalog; quota credentials come from the stored file. This plugin does not read Codex CLI's separate login store.
 
 The Codex endpoint comes from [Codex's backend client](https://github.com/openai/codex/tree/main/codex-rs/backend-client/src). It is an account backend endpoint, not a stable public OpenAI API. A server change can make the reader unavailable. OpenRouter documents [key limits](https://openrouter.ai/docs/api_reference/limits). Its account-credits endpoint requires a management key, so this plugin does not request it with a model API key.
 

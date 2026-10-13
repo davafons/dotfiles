@@ -44,21 +44,35 @@ return {
     "nvim-lualine/lualine.nvim",
     commit = "221ce6b2d999187044529f49da6554a92f740a96",
     event = "VeryLazy",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
-    opts = {
-      options = {
-        theme = "auto",
-        globalstatus = true,
-        disabled_filetypes = { statusline = { "NvimTree", "snacks_dashboard" } },
-      },
-      sections = {
-        lualine_a = { "mode" },
-        lualine_b = { "diagnostics" },
-        lualine_c = { { "filename", path = 1 } },
-        lualine_x = { "filetype" },
-        lualine_y = { "progress" },
-        lualine_z = { "location" },
-      },
-    },
+    dependencies = { "nvim-tree/nvim-web-devicons", "stevearc/conform.nvim" },
+    opts = function()
+      local tools = require("config.tool_status")
+      tools.setup()
+      return {
+        options = {
+          theme = "auto",
+          globalstatus = true,
+          disabled_filetypes = { statusline = { "NvimTree", "snacks_dashboard" } },
+        },
+        sections = {
+          lualine_a = { "mode" },
+          lualine_b = { "diagnostics" },
+          lualine_c = { { "filename", path = 1 } },
+          lualine_x = {
+            tools.formatter,
+            {
+              "lsp_status",
+              icon = "",
+              fmt = function(value)
+                return "lsp:" .. (value ~= "" and value or "none")
+              end,
+            },
+            "filetype",
+          },
+          lualine_y = { "progress" },
+          lualine_z = { "location" },
+        },
+      }
+    end,
   },
 }

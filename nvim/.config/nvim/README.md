@@ -8,6 +8,19 @@ AI assistance and tests run in Herdr. Plugins, parsers and Mason tools are insta
 
 Comma leader; two-space indentation; relative numbers; displayed-line j/k, including counts; screen wrapping; textwidth 99 and a column-100 guide. Saving and clipboard copying are explicit. No formatting on save. Undo history persists with 10,000 levels. Whitespace markers, a global status line and save/discard/cancel confirmation are enabled. Ctrl-C and H/L retain native behavior. No custom split creation or Alt mappings.
 
+The statusline shows formatter availability and language servers attached to the
+current buffer, for example `fmt:prettier` and `lsp:marksman`. `fmt:none` means no
+formatter is configured for a normal file buffer. Special buffers also show none.
+`(missing)` means its executable is absent. `(no-root)` means required project
+configuration is absent, and `(unavailable)` means its
+condition failed, including disabled or unsupported Biome formatting. Biome
+availability is checked asynchronously and shows `(checking)` while pending.
+Statusline redraws use cached formatter results rather than starting tools.
+Buffer switches, filetype or filename changes, saves, directory changes, and
+regained focus refresh the cache.
+`lsp:none` means no server is attached. Configured but inactive servers are not
+listed. LSP progress symbols come from lualine's existing component.
+
 ## Shortcuts
 
 Starting nvim without a file opens the Snacks dashboard, the same dashboard plugin used by LazyVim. Its keys are f (find files), n (new file), g (search text), r (recent files), p (recent projects), c (configuration), s (restore session), l (plugins), ? (Vim shortcuts), and q (quit). The homepage also shows a compact learning reminder. File/project choices use fzf-lua. Projects come from recently opened files in jj or Git repositories; choosing one changes directory and opens its file picker. Session restoration stays explicit.
@@ -51,6 +64,11 @@ Markdown uses Markview with screen wrapping and hybrid editing: the current line
 stays raw in normal and insert mode while surrounding lines render. ,ms opens a
 preview to the right, follows unsaved edits, and keeps focus in the source. Press
 ,ms again to close it. Native gx remains unchanged.
+Markdown accents match Yuke's Solarized theme in dark and light mode. Headings
+and bullets are blue, bold text is brighter, inline code is yellow, and quotes
+are green. Headings have no icons, gutter signs, or background bands. Inline
+code has no background or extra padding. The editor's base Solarized colors and
+syntax highlighting inside fenced code blocks remain unchanged.
 
 For proportional-font reading, save with :w and press ,mv (or run :McatPreview).
 It launches `mcat -I --kitty` in a native Ghostty split to the right, including
@@ -65,7 +83,19 @@ but a relative local image did not; this launcher does not rewrite image links.
 
 :Mason is available at startup and manages the selected language servers. :InstallTools installs the selected standalone formatting/linting tools. Neovim's native LSP uses vim.lsp.config/vim.lsp.enable, with nvim-lspconfig supplying server definitions and mason-lspconfig installing/enabling them.
 
-Formatting is explicit and follows repository tooling. Ruby uses project Bundler and its RuboCop rules. Web files use the local Biome binary when a biome.json/biome.jsonc exists; Biome itself determines whether formatting is enabled for the file. Unsupported or disabled formats do not fall back to another formatter. Prettier runs only where the repository supplies a local executable. ERB uses the local Herb formatter with .herb.yml. No LSP formatting fallback or automatic fixes on save are enabled.
+Formatting is explicit and follows repository tooling. Ruby uses project Bundler
+and its RuboCop rules. Biome and Prettier prefer project-local executables and
+fall back to installed Mason tools. A biome.json/biome.jsonc selects Biome, which
+determines whether formatting is enabled for the file. Unsupported or disabled
+formats do not fall back to another formatter. ERB uses the local Herb formatter
+with .herb.yml. No LSP formatting fallback or automatic fixes on save are enabled.
+
+Markdown uses Markdownlint CLI2, YAML uses yamllint, and saved Makefiles use
+Checkmake. Standalone linters find configuration from the file's directory;
+stdin-capable linters include unsaved edits. Rust adds rustfmt and rust-analyzer.
+Perl adds native PerlTidy and PerlNavigator syntax checking. Vimscript uses the
+Vim language server. The [dotfiles tooling guide](../../../TOOLING.md) covers
+repository defaults, dependencies, and formats without safe generic tooling.
 
 | Project/files | Navigation and diagnostics | Explicit formatting |
 | --- | --- | --- |
@@ -126,6 +156,8 @@ Replaced render-markdown.nvim with Markview. ,mp now toggles the current buffer;
 ,ms toggles its live preview split. The old renderer's Solarized highlight
 customizations were removed. Added ,mv and :McatPreview for saved-file mcat
 previews in a native Ghostty split, without automatic saves.
+Matched Markdown accents to Yuke's Solarized palette and replaced decorative
+headings and list markers with plain headings and bullets.
 
 ## Backup and validation
 
@@ -137,6 +169,11 @@ directories. It checks startup, editor defaults, command completion, review
 dependencies, project roots, pickers, the shortcut guide, and unsaved edits.
 No desktop or clipboard input is used.
 
+Run `python3 -B tests/check-statusline.py` for the drawn formatter/LSP badges,
+missing tools and roots, unavailable and pending conditions, attached-only
+servers, buffer switches, stale async results, cached redraws, and unsaved edits.
+It retains its private terminal fixture and screen capture outside the checkout.
+
 Run `python3 -B tests/check-enhancements.py` for large/minified-file protection,
 Noice's floating command box and ghost text, reference highlights, and automatic
 signature help from the installed Lua language server.
@@ -146,9 +183,15 @@ file list, layout and list toggles, file/hunk navigation, unchanged-code folding
 and unsaved buffers. These checks require an explicit completion report rather
 than trusting the editor's exit status.
 
+Run `python3 -B tests/check-formatting.py` for real mapped formatting and linter
+and language-server diagnostics. It checks Mason fallback, local-tool priority,
+disabled formats, formatter errors, extensionless scripts, unsaved edits, and
+unchanged files on disk. It uses a private terminal and retains failure fixtures.
+
 Run `python3 -B tests/check-markdown.py` for Markview rendering, hybrid editing,
-toggle and live preview checks. It tests focus, unsaved edits, preview additions
-and deletions, and the unchanged file on disk.
+toggle and live preview checks. It tests dark and light Markdown colors,
+colorscheme reloads, plain headings and bullets, inline code padding, focus,
+unsaved edits, preview additions and deletions, and the unchanged file on disk.
 
 Run `python3 -B tests/check-mcat.py` for the mcat shortcut and command, path quoting,
 working directory, explicit-save guards, launch errors, and duplicate-launch

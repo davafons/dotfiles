@@ -126,6 +126,100 @@ def codex_snapshot(data):
                 unlimitedCredits=unlimited, keyRemaining=None, requestsRemaining=None, notes=notes)
 
 
+def parse_time(value):
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.timestamp()
+
+
+def period_seconds(start, end):
+    if start is None or end is None or end <= start:
+        return None
+    seconds = end - start
+    if seconds < 60 or seconds > 366 * 24 * 3600:
+        return None
+    return int(round(seconds))
+
+
+def xai_bounds(config):
+    period = config.get("currentPeriod") if isinstance(config.get("currentPeriod"), dict) else {}
+    current_end = period.get("end") if isinstance(period.get("end"), str) and period.get("end") else None
+    if current_end:
+        start = parse_time(period.get("start"))
+        end = parse_time(current_end)
+        return period_seconds(start, end), end if end and end > 0 else parse_time(config.get("billingPeriodEnd")), clean(period.get("type"))
+    start = parse_time(config.get("billingPeriodStart"))
+    end = parse_time(config.get("billingPeriodEnd"))
+    return period_seconds(start, end), end if end and end > 0 else None, ""
+
+
+def xai_label(kind, seconds):
+    if kind == "USAGE_PERIOD_TYPE_WEEKLY" or seconds == 604800:
+        return "Weekly limit"
+    if seconds == 18000:
+        return "5h limit"
+    if seconds:
+        return f"{seconds / 3600:g}h limit"
+    return "Usage pool"
+
+
+def xai_used_percent(config):
+    raw = config.get("creditUsagePercent")
+    if finite(raw) and 0 <= raw <= 100:
+        return raw
+    if raw is not None:
+        return "invalid"
+    cap = config.get("onDemandCap")
+    used = config.get("onDemandUsed")
+    cap_val = cap.get("val") if isinstance(cap, dict) else None
+    used_val = used.get("val") if isinstance(used, dict) else None
+    if not finite(cap_val) or cap_val <= 0 or not finite(used_val) or used_val < 0:
+        return None
+    percent = used_val / cap_val * 100
+    return percent if 0 <= percent <= 100 else "invalid"
+
+
+def xai_snapshot(data):
+    config = data.get("config")
+    if not isinstance(config, dict):
+        raise StatusError("xAI returned no usage pool.")
+    notes = ["xAI reports a share of the usage pool, not an exact remaining-token balance."]
+    used = xai_used_percent(config)
+    seconds, reset, kind = xai_bounds(config)
+    windows = []
+    if used == "invalid":
+        notes.append("xAI returned an invalid quota window; its remaining allowance is unknown.")
+    elif used is None:
+        notes.append("xAI did not report a usage percentage. Remaining allowance is unknown.")
+    else:
+        if used >= 100:
+            notes.append("xAI reports that its allowance is exhausted.")
+        windows.append(dict(label=xai_label(kind, seconds), remainingPercent=100 - used,
+                            windowSeconds=seconds, resetsAt=int(round(reset)) if reset else None))
+        if not seconds:
+            notes.append("No timed window length was reported.")
+    for item in config.get("productUsage") or []:
+        if not isinstance(item, dict):
+            continue
+        name = clean(item.get("product"))
+        share = item.get("usagePercent")
+        if not name:
+            continue
+        if finite(share) and 0 <= share <= 100:
+            notes.append(name + f" accounts for {share:g}% of reported pool usage.")
+        else:
+            notes.append(name + " returned an invalid usage share.")
+    tier = clean(config.get("subscriptionTier") or data.get("subscriptionTier"))
+    return dict(plan=tier, windows=windows, creditBalance=None, unlimitedCredits=False,
+                keyRemaining=None, requestsRemaining=None, notes=notes)
+
+
 def openrouter_snapshot(data):
     key = data.get("data")
     if not isinstance(key, dict):
@@ -145,15 +239,16 @@ def snapshot(provider, config):
     result = dict(provider=provider, asOf=datetime.now(timezone.utc).isoformat(), state="unavailable",
                   error="", plan="", windows=[], creditBalance=None, unlimitedCredits=False,
                   keyRemaining=None, requestsRemaining=None, notes=[])
-    if provider not in ("openai-codex", "openrouter"):
+    expected = {"openai-codex": "https://chatgpt.com/backend-api/codex",
+                "openrouter": "https://openrouter.ai/api/v1", "xai-grok": "https://api.x.ai/v1"}
+    if provider not in expected:
         result["notes"] = ["This provider has no supported account-quota reader. Remaining tokens and credits are unknown."]
         return result
     try:
         rows = read_providers(Path(config) / "providers.json")
         row = next((row for row in rows if row.get("id") == provider), {})
         base = row.get("base_url")
-        expected = "https://chatgpt.com/backend-api/codex" if provider == "openai-codex" else "https://openrouter.ai/api/v1"
-        if base is not None and (not isinstance(base, str) or base.rstrip("/") != expected):
+        if base is not None and (not isinstance(base, str) or base.rstrip("/") != expected[provider]):
             result["notes"] = ["Custom provider route. The status reader does not send its credentials to the public quota endpoint."]
             return result
         auth = row.get("auth") or {}
@@ -169,6 +264,18 @@ def snapshot(provider, config):
             data = read_json("https://chatgpt.com/backend-api/wham/usage",
                              {"Authorization": "Bearer " + token, "ChatGPT-Account-Id": account, "User-Agent": "yuke-status"})
             result.update(codex_snapshot(data))
+        elif provider == "xai-grok":
+            grant = auth.get("oauth") or {}
+            token = grant.get("access_token")
+            if not isinstance(token, str) or not token:
+                raise StatusError("xAI account login is missing. Use /login xai-grok.")
+            expires = grant.get("expires_at_ms")
+            if finite(expires) and expires <= time.time() * 1000:
+                raise StatusError("xAI login expired. Let Yuke refresh it, or use /login xai-grok.")
+            data = read_json("https://cli-chat-proxy.grok.com/v1/billing?format=credits",
+                             {"Authorization": "Bearer " + token, "x-xai-token-auth": "xai-grok-cli",
+                              "Accept": "application/json", "User-Agent": "yuke-status"})
+            result.update(xai_snapshot(data))
         else:
             source = (auth.get("api_key") or {}).get("source") or {}
             if "api_key" in row:

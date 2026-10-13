@@ -3,3 +3,4 @@ yuke-modules.d.ts
 yuke.jsconfig.json
 providers.json
 __pycache__/
+.plugin-cache/

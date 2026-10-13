@@ -1,6 +1,8 @@
 # Personal Yuke profile
 
-The canonical profile is `.config/yuke/config.json`. It lists 22 plugin folders with `plugin.json` manifests and default `apply(ctx)` entries. Yuke loads them at startup and through native `/reload`.
+The canonical profile is `.config/yuke/config.json`. It lists local plugin folders and GitHub sources with `plugin.json` manifests and default `apply(ctx)` entries. Yuke loads them at startup and through native `/reload`.
+
+Solarized and the empty-session dashboard load from `lostcoords/yuke-plugins`, not copied folders in these dotfiles. Each source entry pins the published commit in `ref`. Change that value to select another version. Keep `.plugin-cache/` out of version control. The other plugins keep their existing local entries.
 
 The initial migration used `0.0.1-dev+e43023f2c5a7.b20261012130844`, including upstream `main` at `f9303882` and the retained personal APIs. Later native installs can have a different build identity. Keep the binary and installed SDK matched. A source checkout can have a later revision after documentation or history changes.
 
@@ -16,9 +18,9 @@ Stow publishes only `.config/`. It excludes repository tests, historical guides,
 
 The pinned [Vim plugin](.config/yuke/plugins/vim-mode/README.md) provides `composer-vim`. Its [source record](.config/yuke/plugins/vim-mode/SOURCE.md) identifies the imported revision. Logical-line `j` and `k` are the default. Set `verticalMotion` to `display` in `plugins/vim-mode/settings.json` for display-row motion. Operators retain logical-line ranges. `gj` and `gk` always use display rows. This profile omits `R` and retains native visual-put repeat. Yanks use OSC 52.
 
-The empty-draft dashboard starts in normal mode. Its letters are `r` for sessions, `s` for search, `w` for work, `m` for models, `c` for commands, and `q` for quit. Press `i` to type. Nonempty drafts and open dialogs keep their own keys.
+The empty-draft dashboard loads from the pinned GitHub commit. `dashboard-config` calls `setup` with the rows. The letters are `l` for sign-in, `r` for sessions, `s` for search, `w` for work, `m` for models, `c` for commands, and `q` for quit. Those letters run only while the draft is empty. Any other character starts the prompt.
 
-The profile keeps direct panel navigation, Ctrl+C handling, prompt history, path completion, model aliases, the Solarized theme, context and usage views, project work, clarification, sudo, web tools, Herdr, timers, and child-agent tools. Native MCP discovery remains enabled. Child tools preserve the configured `general` and `dav-agent` roles.
+The profile keeps direct panel navigation, Ctrl+C handling, prompt history, path completion, model aliases, the Solarized theme, context and usage views, project work, clarification, sudo, web tools, Herdr, timers, and child-agent tools. Native MCP discovery remains enabled. Child tools preserve the configured `general` and `dav-agent` roles. The `reviewer` role selects `openai-codex/gpt-6.1-sol` at `xhigh` for fresh non-author review. Spawn results include engine-accepted model and effort receipts. Child requests log their selected model. Codex-only review does not satisfy a different-model-family requirement. See the [child-tools guide](.config/yuke/plugins/agent-tools/README.md).
 
 ## Feature settings
 
@@ -47,15 +49,19 @@ python3 -B yuke/tests/check-build-status.py --binary "$HOME/.local/bin/yuke"
 
 The Herdr plugin starts reporting after `ui.started`, when the interactive frontend is ready. It reports again after native `/reload` and releases the pane on quit. `yuke check` and nested agents do not report over the parent pane.
 
+Pending clarification questions also report `blocked`, without opening the inbox. Herdr sends its normal needs-attention notification when the pane becomes blocked. A question batch causes one state transition. Repeated inbox polls do not send another report. Answering or dismissing the questions clears this block. Questions in other sessions do not block this pane. Herdr's notification settings still control delivery.
+
+The question plugin provides the `yuke-clarify` capability with `pending(sessionId)` and the `yuke-clarify:changed` event. The capability includes pending questions and uncertain answer deliveries. The Herdr plugin reads it at startup, on session changes, and when the inbox state changes. It keeps Herdr socket operations out of the question plugin.
+
 After installing a plugin edit, wait for the active run to finish, save any typed draft, and run `/reload` in each Yuke session. Herdr does not need a server restart.
 
-Run the regression against a private Herdr server and detached Yuke terminals:
+Run the regression against private Herdr panes and a detached Herdr client:
 
 ```sh
 python3 -B yuke/tests/check-herdr.py
 ```
 
-The check uses temporary homes and stores. It does not copy provider credentials, make model calls, or touch live sessions.
+The check uses temporary homes and stores, real private Herdr panes, and a detached Herdr client. It checks the visible question notification with sound disabled. It does not copy provider credentials, make model calls, or touch live sessions.
 
 ## Verify the current profile
 

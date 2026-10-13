@@ -25,11 +25,11 @@ Remaining triggers:
 - Parallel fan-out → the [swarm protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/swarm/SKILL.md) for coverage matrices, races, gauntlets, and exploration partitions. Use **arena** for design or code bakeoffs with base selection and grafting.
 - Contested design → the [interrogate protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/interrogate/SKILL.md) (multi-model adversarial) before shipping.
 - Nontrivial multi-step → write the throughput checkpoint (Feature step 3).
-- Any prose surface, your reply to the user included → the [unslop skill](../unslop/SKILL.md). Write the reply per **Writing the reply**. Agent-facing prose also follows the [shared writing-instructions rules](references/working-rules.md#writing-agent-instructions); uninstalled authoring protocols are not invented commands.
+- Any prose surface, your reply to the user included → the [unslop skill](../unslop/SKILL.md). Write the reply per **Writing the reply**. Agent-facing prose also follows the [shared writing-instructions rules](references/working-rules.md#writing-agent-instructions); the [skill-authoring playbook](playbooks/authoring-a-skill.md) reports any missing native authoring workflow rather than inventing commands.
 - Docs, RFCs, readmes, PR descriptions, or commit messages → the [technical-writing skill](../technical-writing/SKILL.md) (`/technical-writing`).
 - Before commit → the installed [deslop skill](../deslop/SKILL.md).
 - Before review → the **no-comments** skill (`/no-comments`).
-- Shipping UI / IDE / CLI → the matching control skill. Use the project's proven CLI/TUI driver or configured browser/UI workflow. For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.
+- Shipping UI / IDE / CLI → the matching control skill. For terminals, use [control-cli](../control-cli/SKILL.md) and the project's proven verification skill. For UI, use the configured browser/UI workflow. For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.
 - Running a benchmark, measuring perf yourself, or reporting a speedup or regression you measured → the [benchmark-checklist skill](../benchmark-checklist/SKILL.md) before you report or act on the number.
 - Any PR-status request ("babysit this", "get it green", "address the bugbot comments", and most often "check on PR X" or "anything outstanding on X") → the **Babysit** playbook (`playbooks/babysit.md`), not another runtime's built-in babysit skill, whose description matches the same words. Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
 - Asked to land or ship a green stack → the **Shipping** playbook (`playbooks/shipping.md`). Green is not safe. Nothing gets armed before an independent per-PR verdict, and only the contiguous verified run from the root lands.
@@ -131,6 +131,8 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
 - **[Trace forensics](playbooks/trace-forensics.md).** Diagnose an existing CPU profile, trace, heap snapshot, or spindump. Query the fixed capture and cite the source location; do not re-run the capture.
 - **[Runtime forensics](playbooks/runtime-forensics.md).** Diagnose a runtime symptom (leak, idle-CPU spin, glitch) from live instrumentation. The deliverable is a diagnosis, not a fix.
 - **[Feature](playbooks/feature.md).** New or changed behavior, built from a named data shape.
+- **[Authoring or modifying a skill](playbooks/authoring-a-skill.md).** Skill creation or edits, with native authoring and validation gates.
+- **[Workspace and simulator cleanup](playbooks/worktree-cleanup.md).** Read-only jj workspace audit, usage verification, and explicitly approved state cleanup.
 - **[Refactoring](playbooks/refactoring.md).** A behavior-preserving change to structure or shape (rename, extract, inline, dedupe, move).
 - **[Prototype](playbooks/prototype.md).** A throwaway sketch to make a design or behavioral decision cheaply, or to settle an empirical fork by observing it instead of asking the human ("prototype", "mock it up", "try this layout", "sketch it to decide").
 - **[Visual parity](playbooks/visual-parity.md).** Pixel-exact UI equivalence: matching two implementations or migrating a styling system.
