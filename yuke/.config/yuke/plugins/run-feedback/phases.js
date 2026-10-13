@@ -2,10 +2,10 @@
 import { client } from "yuke";
 import { Transcript } from "yuke:chat";
 import { sessions } from "yuke:session";
-import { clip } from "yuke:ui";
+import { clip, measure } from "yuke:ui";
 
 /** @typedef {{ key: string, label: string, start: number, end: number | null }} Phase */
-/** @typedef {{ id: number, after: number | null, phases: Phase[], parts: Wire.AssistantPart[] }} Card */
+/** @typedef {{ id: number, phases: Phase[] }} Card */
 /** @typedef {{ run: number, card: Card | null, current: Phase | null, cards: Map<number | null, Card[]> }} Timeline */
 
 /** Register display-only phase blocks. The context owns observations and rows; missing UI skips them and host failures throw. @param {import("yuke").Context} ctx @param {number} periodMs @returns {import("./index.js").Feature | undefined} */
@@ -19,6 +19,8 @@ export default function(ctx, periodMs) {
   const cards = new Map();
   /** @type {WeakSet<Transcript>} */
   const attached = new WeakSet();
+  /** @type {Wire.AssistantPart[]} */
+  const timingParts = [{ type: "tool", id: 0, call_id: "display-only", name: "phase_timing", arguments: "{}", state: { type: "completed", output: "", duration_ms: 0 } }];
   let nextId = -1;
 
   /** @param {Transcript} transcript */
@@ -33,7 +35,7 @@ export default function(ctx, periodMs) {
   const attach = (transcript) => {
     if (attached.has(transcript)) return;
     attached.add(transcript);
-    ctx.advise(transcript, "partsOf", "around", (next, id) => cards.get(id)?.parts ?? next(id));
+    ctx.advise(transcript, "partsOf", "around", (next, id) => cards.has(id) ? timingParts : next(id));
     if (transcript.partOf) ctx.advise(/** @type {{ partOf: NonNullable<Transcript["partOf"]> }} */ (transcript), "partOf", "around", (next, id, part, cursor) => cards.has(id) ? null : next(id, part, cursor));
     if (transcript.partTextPage) ctx.advise(/** @type {{ partTextPage: NonNullable<Transcript["partTextPage"]> }} */ (transcript), "partTextPage", "around", (next, id, field, offset, limit) => cards.has(id) ? { text: "", next: null } : next(id, field, offset, limit));
   };
@@ -56,17 +58,28 @@ export default function(ctx, periodMs) {
   });
 
   chat.render({
+    fold(part) { return part === timingParts[0] ? false : undefined; },
     part(part, env) {
       const card = cards.get(env.messageId);
       if (!card) return undefined;
-      /** @type {import("yuke:chat").Rendered["rows"]} */
-      const rows = [];
       const now = Date.now();
-      for (let i = 0; i < card.phases.length; i++) {
+      const last = card.phases[card.phases.length - 1];
+      const seconds = (Math.max(0, (last.end ?? now) - card.phases[0].start) / 1000).toFixed(1);
+      const suffix = " · " + seconds + "s";
+      const width = Math.max(0, env.width - 2);
+      const title = clip("◷ model request", Math.max(0, width - measure(suffix)));
+      const phase = last.end == null ? clip(" · " + last.label, Math.max(0, width - measure(title + suffix))) : "";
+      /** @type {import("yuke:chat").Rendered["rows"]} */
+      const rows = [{ segments: [
+        { text: title, group: "TxToolTitle" },
+        { text: phase, group: "TxToolArg" },
+        { text: clip(suffix, width), group: "TxToolHint" },
+      ], indent: 1, header: true, stop: true }];
+      if (env.expanded) for (let i = 0; i < card.phases.length; i++) {
         const phase = card.phases[i];
         const seconds = (Math.max(0, (phase.end ?? now) - phase.start) / 1000).toFixed(1);
         const text = (phase.end == null ? "→ " : "· ") + phase.label + " · " + seconds + "s";
-        rows.push({ text: clip(text, Math.max(0, env.width - 2)), indent: 1, group: phase.end == null ? "TxToolHint" : "TxMeta" });
+        rows.push({ text: clip(text, Math.max(0, env.width - 3)), indent: 2, group: phase.end == null ? "TxToolHint" : "TxMeta" });
       }
       return { rows, source: "" };
     },
@@ -118,7 +131,7 @@ export default function(ctx, periodMs) {
       const outline = client.sessionOutline(id);
       const after = outline?.messages.at(-1)?.id ?? null;
       /** @type {Card} */
-      const card = { id: nextId--, after, phases: [], parts: [{ type: "tool", id: 0, call_id: "display-only", name: "phase_timing", arguments: "{}", state: { type: "completed", output: "", duration_ms: 0 } }] };
+      const card = { id: nextId--, phases: [] };
       timeline.card = card;
       let group = timeline.cards.get(after);
       if (!group) { group = []; timeline.cards.set(after, group); }

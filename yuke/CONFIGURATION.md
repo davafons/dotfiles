@@ -109,6 +109,31 @@ Selected features share one engine-drain listener and one frame clock. The clock
 
 Disabling every feature registers no feedback listener or clock. It does not hide Yuke's bundled run indicator or completed-tool durations.
 
+### Activity states
+
+The engine reports one coarse state per session. These states describe observed engine work, not the model's private computations.
+
+| Engine state | Display | Meaning |
+|---|---|---|
+| `idle` | No active phase | This session has no active run. A child session can still work. |
+| `building` | preparing request | The engine prepares the request before it opens a provider round. This can include request hooks and context preparation. |
+| `waiting` | waiting for model | The provider round exists, but the engine has not accepted a successful response header. This includes connection and server delay. |
+| `streaming` | receiving response | The response stream is open, and no running tool or latest reasoning part takes priority. Text, tool arguments, and gaps between output blocks can all use this state. |
+| `reasoning` | reasoning | The latest draft part is a reasoning part, and no tool runs. A provider can hide its reasoning text. This state does not prove that the model still computes reasoning. |
+| `running_tool` | The tool's existing chat heading | A tool executes. The engine chooses the first running tool when several tools run. Tool headings keep their own durations. |
+| `retrying` | retry N | The engine waits before another request attempt after a provider failure. The bundled indicator also shows the retry countdown and error code. |
+| `compacting` | compacting | The engine summarizes older context. Compaction can start automatically or from a manual request. |
+
+The bundled indicator calls `streaming` "responding". The timing heading calls it "receiving response" to avoid a promise of visible answer text. The engine enters this state after a successful HTTP response header, sometimes before the first output arrives. Yuke displays answer text as chunks arrive. Between chunks, the open stream waits for the provider's next bytes.
+
+A timing block uses the same heading styles and fold behavior as a thought entry. Its clock mark identifies UI metadata. While active, the heading shows `◷ model request · receiving response · 1.6s`, with the current phase and total observed elapsed time. After the request phases end, it shows `◷ model request · 2.4s`. A click on the heading or Ctrl+O expands the individual phase durations. The default view shows one heading row.
+
+A thought is a reasoning part of an assistant message. A timing block is local display data, not an assistant message in engine history.
+
+Phase durations use the UI's observation times. Coalesced activity events can omit short intermediate states. A phase duration is not provider compute time. Reasoning and tool headings use stored durations when the engine supplies them.
+
+Blocks stay beside their responses until the session closes or plugins reload. They do not use the engine store. A restart or reload cannot restore past observations. An ended phase means that its state changed, not that the request succeeded.
+
 ## Insights
 
 File `plugins/insights/settings.json`.
