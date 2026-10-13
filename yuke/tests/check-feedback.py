@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, default=Path(shutil.which('yuke') or 'yuke'))
     parser.add_argument('--with-vim', action='store_true')
+    parser.add_argument('--hidden-reasoning', action='store_true')
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     source = Path(__file__).resolve().parents[1] / '.config/yuke'
@@ -118,6 +119,27 @@ export default function(ctx) {
                 self.wfile.write(('data: ' + json.dumps(body) + '\n\n').encode())
                 self.wfile.flush()
 
+            if args.hidden_reasoning:
+                def event(kind, **fields):
+                    self.wfile.write(('data: ' + json.dumps({'type': kind, **fields}) + '\n\n').encode())
+                    self.wfile.flush()
+                event('response.output_item.added', output_index=0, item={'id': 'r1', 'type': 'reasoning'})
+                time.sleep(1.0)
+                event('response.output_item.done', output_index=0, item={'id': 'r1', 'type': 'reasoning', 'encrypted_content': 'fixture-encrypted-only'})
+                if len(requests) == 1:
+                    item = {'id': 'f1', 'type': 'function_call', 'call_id': 'fixture-call', 'name': 'fixture_tool', 'arguments': '{}', 'status': 'completed'}
+                    event('response.output_item.added', output_index=1, item=item)
+                    event('response.output_item.done', output_index=1, item=item)
+                else:
+                    event('response.output_item.added', output_index=1, item={'id': 'm1', 'type': 'message', 'role': 'assistant'})
+                    event('response.content_part.added', output_index=1, content_index=0, part={'type': 'output_text', 'text': ''})
+                    event('response.output_text.delta', output_index=1, content_index=0, delta='FEEDBACK_')
+                    time.sleep(0.5)
+                    event('response.output_text.delta', output_index=1, content_index=0, delta='COMPLETE')
+                    time.sleep(0.4)
+                    event('response.output_item.done', output_index=1, item={'id': 'm1', 'type': 'message'})
+                event('response.completed', response={'status': 'completed', 'usage': {'input_tokens': 20, 'output_tokens': 12, 'output_tokens_details': {'reasoning_tokens': 5}}})
+                return
             time.sleep(0.5)
             chunk({'role': 'assistant', 'reasoning_content': 'Fixture reasoning'})
             time.sleep(0.5)
@@ -137,7 +159,7 @@ export default function(ctx) {
 
     provider = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Provider)
     threading.Thread(target=provider.serve_forever, daemon=True).start()
-    (profile / 'providers.json').write_text(json.dumps({'providers': [{'id': 'feedback-test', 'base_url': f'http://127.0.0.1:{provider.server_port}/v1', 'api_key': 'fixture-only', 'endpoints': [{'protocol': 'openai_chat', 'credential_header': 'authorization_bearer'}], 'models': [{'id': 'model', 'upstream_id': 'model', 'reasoning_levels': ['high'], 'flags': {'supports_tools': True, 'thinking_format': 'openai'}, 'limits': {'context_window': 100000, 'max_output_tokens': 4096}}]}]}))
+    (profile / 'providers.json').write_text(json.dumps({'providers': [{'id': 'feedback-test', 'base_url': f'http://127.0.0.1:{provider.server_port}/v1', 'api_key': 'fixture-only', 'endpoints': [{'protocol': 'openai_responses' if args.hidden_reasoning else 'openai_chat', 'credential_header': 'authorization_bearer'}], 'models': [{'id': 'model', 'upstream_id': 'model', 'reasoning_levels': ['high'], 'flags': {'supports_tools': True, 'thinking_format': 'openai'}, 'limits': {'context_window': 100000, 'max_output_tokens': 4096}}]}]}))
     (profile / 'providers.json').chmod(0o600)
     env = {'PATH': os.environ['PATH'], 'HOME': str(root / 'home'), 'TERM': 'xterm-256color', 'YUKE_APPNAME': 'yuke'}
     for name in ['config', 'state', 'data', 'cache']:
@@ -178,17 +200,24 @@ export default function(ctx) {
         assert phase_row < queue_row - 2, screen()
         mux('send-keys', '-t', 'test', 'F7')
         wait(lambda: 'FEEDBACK_QUEUE_CLEARED' in logs(), 'fixture queue removed before delivery')
-        wait(lambda: 'thinking' in screen() and 'reasoning' in screen() and '~' in screen() and 'tok/s' in screen(), 'live reasoning duration and estimated token speed')
-        def thinking_time():
-            match = re.search(r'thinking[^\n]* · (\d+\.\d+)s', screen())
-            return float(match.group(1)) if match else -1
-        first = thinking_time()
-        assert first >= 0, screen()
-        wait(lambda: thinking_time() > first, 'reasoning clock advances while streaming')
-        mux('send-keys', '-t', 'test', 'C-t')
-        wait(lambda: 'FEEDBACK_CLOCK 1 {"periodMs":100}' in logs(), 'one active feedback clock')
+        if args.hidden_reasoning:
+            wait(lambda: 'reading model response' in screen(), 'hidden reasoning waits for output without an invented thought clock')
+            mux('send-keys', '-t', 'test', 'C-t')
+            wait(lambda: 'FEEDBACK_CLOCK 1 {"periodMs":100}' in logs(), 'one active feedback clock')
+            wait(lambda: 'thought · time unavailable' in screen(), 'encrypted-only thought does not claim a zero compute duration')
+            assert 'thought · 0.0s' not in screen(), screen()
+        else:
+            wait(lambda: 'thinking' in screen() and 'reasoning' in screen() and '~' in screen() and 'tok/s' in screen(), 'live reasoning duration and estimated token speed')
+            def thinking_time():
+                match = re.search(r'thinking[^\n]* · (\d+\.\d+)s', screen())
+                return float(match.group(1)) if match else -1
+            first = thinking_time()
+            assert first >= 0, screen()
+            wait(lambda: thinking_time() > first, 'reasoning clock advances while streaming')
+            mux('send-keys', '-t', 'test', 'C-t')
+            wait(lambda: 'FEEDBACK_CLOCK 1 {"periodMs":100}' in logs(), 'one active feedback clock')
         wait(lambda: 'fixture tool completed' in screen(), 'real local tool result')
-        wait(lambda: 'FEEDBACK_' in screen() and 'FEEDBACK_COMPLETE' not in screen() and 'receiving response' in screen(), 'partial answer displays before the next response chunk')
+        wait(lambda: 'FEEDBACK_' in screen() and 'FEEDBACK_COMPLETE' not in screen() and 'reading model response' in screen(), 'partial answer displays before the next response chunk')
         wait(lambda: 'FEEDBACK_COMPLETE' in screen() and 'thought' in screen(), 'completed reasoning and assistant response')
         time.sleep(0.5)
         mux('send-keys', '-t', 'test', 'F8')
@@ -199,7 +228,7 @@ export default function(ctx) {
         assert [row['id'] for row in shown if row['id'] >= 0] == [row['id'] for row in native], saved
         cards = [row for row in shown if row['id'] < 0]
         assert len(cards) == 2, saved
-        assert all(len([text for text in card['rows'] if text]) == 1 and re.match(r'◷ model request · \d+\.\d+s$', card['rows'][0]) for card in cards), saved
+        assert all(len([text for text in card['rows'] if text]) == 1 and re.match(r'◷ model timing · \d+\.\d+s$', card['rows'][0]) for card in cards), saved
         assert not any('→ ' in text for card in cards for text in card['rows']), saved
         assert saved['queue']['items'] == [], saved
         assert not any('waiting for model' in row['text'] for row in saved.get('strip') or []), saved
@@ -212,7 +241,7 @@ export default function(ctx) {
         expanded = json.loads((probe / 'snapshot-2.json').read_text())
         expanded_cards = [row for row in expanded['shown'] if row['id'] < 0]
         assert all(any('waiting for model' in text for text in card['rows']) for card in expanded_cards), expanded
-        assert all(any('receiving response' in text for text in card['rows']) for card in expanded_cards), expanded
+        assert all(any('reading model response' in text for text in card['rows']) for card in expanded_cards), expanded
         assert all(card['rows'][0] == cards[i]['rows'][0] for i, card in enumerate(expanded_cards)), expanded
         mux('send-keys', '-t', 'test', 'C-o')
         wait(lambda: 'waiting for model' not in screen(), 'Ctrl+O folds the timing breakdown')
@@ -253,8 +282,8 @@ export default function(ctx) {
         original = json.loads((probe / 'snapshot-3.json').read_text())
         assert [row['id'] for row in original['shown']] == [row['id'] for row in native], original
         assert len(requests) == 2, requests
-        assert not any(tool['function']['name'] == 'phase_timing' for request in requests for tool in request.get('tools', [])), requests
-        assert 'waiting for model ·' not in json.dumps(requests) and 'receiving response ·' not in json.dumps(requests), requests
+        assert not any((tool['name'] if args.hidden_reasoning else tool['function']['name']) == 'phase_timing' for request in requests for tool in request.get('tools', [])), requests
+        assert 'waiting for model ·' not in json.dumps(requests) and 'reading model response ·' not in json.dumps(requests), requests
         assert '[error]' not in logs(), logs()
         print('PASS streamed partial answer, thought-style heading/fold/activation, transcript placement, queue preservation, engine/context isolation, frozen clocks, narrow layout, session isolation, live reasoning/speed/tool, one idle-aware clock, and reload cleanup', flush=True)
     finally:

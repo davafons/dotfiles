@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Move detailed phase timings from the prompt strip into display-only blocks beside model responses. Use one thought-style heading with a clock mark, the current phase, and total elapsed time. A click or Ctrl+O expands the phase breakdown. Keep observed phases after the run ends without adding engine messages or model context. Rename the phase label "responding" to "receiving response" and document the coarse activity states. Reload clears these temporary observations.
+- Move detailed phase timings from the prompt strip into display-only blocks beside model responses. Use one thought-style heading with a clock mark, the current phase, and total elapsed time. A click or Ctrl+O expands the phase breakdown. Keep observed phases after the run ends without adding engine messages or model context. Rename the phase label "responding" to "reading model response" and document the coarse activity states. Reload clears these temporary observations. Empty encrypted-only thoughts with near-zero observed durations show `time unavailable`.
 
 - Consolidate model controls and effort status into `models`, basic controls into `controls`, live timing and speed into `run-feedback`, and inspection views into `insights`. Add per-feature settings, model shortcuts, and feedback intervals. Share accepted model state, an idle-aware feedback clock, and lazy inspection setup. Keep diagnostic tracing off by default and leave the pinned xyaman Vim implementation unchanged. See `CONFIGURATION.md`.
 

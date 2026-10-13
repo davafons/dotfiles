@@ -67,12 +67,10 @@ export default function(ctx, periodMs) {
       const seconds = (Math.max(0, (last.end ?? now) - card.phases[0].start) / 1000).toFixed(1);
       const suffix = " · " + seconds + "s";
       const width = Math.max(0, env.width - 2);
-      const title = clip("◷ model request", Math.max(0, width - measure(suffix)));
-      const phase = last.end == null ? clip(" · " + last.label, Math.max(0, width - measure(title + suffix))) : "";
+      const title = clip("◷ " + (last.end == null ? last.label : "model timing"), Math.max(0, width - measure(suffix)));
       /** @type {import("yuke:chat").Rendered["rows"]} */
       const rows = [{ segments: [
         { text: title, group: "TxToolTitle" },
-        { text: phase, group: "TxToolArg" },
         { text: clip(suffix, width), group: "TxToolHint" },
       ], indent: 1, header: true, stop: true }];
       if (env.expanded) for (let i = 0; i < card.phases.length; i++) {
@@ -113,7 +111,7 @@ export default function(ctx, periodMs) {
       }
       return;
     }
-    const label = state.type === "waiting" ? "waiting for model" : state.type === "streaming" ? "receiving response" : state.type === "reasoning" ? "reasoning" : state.type === "building" ? "preparing request" : state.type === "retrying" ? "retry " + state.attempt : state.type === "compacting" ? "compacting" : "";
+    const label = state.type === "waiting" ? "waiting for model" : state.type === "streaming" ? "reading model response" : state.type === "reasoning" ? "reasoning" : state.type === "building" ? "preparing request" : state.type === "retrying" ? "retry " + state.attempt : state.type === "compacting" ? "compacting" : "";
     if (!label) return;
     const key = state.type === "reasoning" ? state.type + ":" + state.message_id + ":" + state.part_id : state.type === "retrying" ? state.type + ":" + state.attempt : state.type;
     if (timeline?.run === state.run_id && timeline.current?.key === key) return;

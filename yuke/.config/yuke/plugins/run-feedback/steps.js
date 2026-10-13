@@ -119,7 +119,7 @@ export default function(parent, periodMs) {
       const live = part.duration_ms == null && env.live && clock?.live;
       const ms = part.duration_ms ?? (clock ? live ? Date.now() - clock.started : clock.elapsed : undefined);
       const verb = live ? "thinking" : "thought";
-      const suffix = " · " + (ms == null ? "time unavailable" : seconds(ms));
+      const suffix = " · " + (ms == null || (!live && !part.text && ms < 50) ? "time unavailable" : seconds(ms));
       const width = Math.max(1, env.width - 2);
       const title = part.title ? " " + clip(part.title, Math.max(0, width - verb.length - suffix.length - 1)) : "";
       /** @type {Rendered["rows"]} */
