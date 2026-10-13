@@ -136,6 +136,7 @@ const tuiBorrow = parent.get("tui");
 if (tuiBorrow) {
 const c = { ctx: parent, tui: tuiBorrow };
 
+      parent.once("ui.started", () => {
         if (!c.ctx.interaction.interactive) return;
         const path = env.get("HERDR_SOCKET_PATH");
         const pane = env.get("HERDR_PANE_ID");
@@ -277,6 +278,7 @@ const c = { ctx: parent, tui: tuiBorrow };
         c.ctx.on("session.current.changed", refresh);
         c.ctx.on("session.summary_changed", refresh);
         refresh();
+      });
 }
 }
     
