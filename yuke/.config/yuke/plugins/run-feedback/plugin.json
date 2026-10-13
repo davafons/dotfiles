@@ -1,0 +1,12 @@
+{
+  "name": "run-feedback",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "./index.js",
+      "uses": [
+        "tui",
+        "chat"
+      ]
+    }
+  }
+}

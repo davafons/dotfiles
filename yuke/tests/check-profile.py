@@ -45,6 +45,7 @@ export default async function(ctx) {
     if (generation) {
       check(c.text, "", "reload loses the draft");
       check(root.overlays.length, 0, "reload closes overlays");
+      for (const name of ["models:effort", "controls:panel", "insights:status", "insights:usage"]) check(tui.command.available(name), false, "reload applies disabled feature " + name);
       transitions.length = 0; vim.setMode(c, "insert");
       check(transitions, ["normal>insert"], "one mode notification after reload");
       ctx.print("MIGRATION_RELOAD_PASS"); quit(); return;
@@ -84,10 +85,16 @@ export default async function(ctx) {
     const modal = ui.pick({ title: "Modal priority", items: ["modal"], filter: false }); tui.overlay(modal.win);
     key("k", 4); check(c.text, "./folder/", "modal blocks history"); root.popOverlay(modal.win);
     c.input.setText("clear me"); key("c", 4); check(c.text, "", "Ctrl+C clears"); check(vim.mode(c), "normal", "Ctrl+C selects normal");
-    check(tui.command.perform("panel-navigation:panel", "vsplit"), true, "panel command exists");
-    check(root.root_node?.leaves().length, 2, "panel split"); tui.command.perform("panel-navigation:panel", "only"); check(root.root_node?.leaves().length, 1, "panel only");
+    check(tui.command.perform("controls:panel", "vsplit"), true, "panel command exists");
+    check(root.root_node?.leaves().length, 2, "panel split"); tui.command.perform("controls:panel", "only"); check(root.root_node?.leaves().length, 1, "panel only");
     const active = root.active; if (!(active instanceof ChatView)) throw Error("missing pane after split");
     active.composer.input.setText("reload must discard this");
+    for (const [name, settings] of Object.entries({
+      models: { picker: false, effortPicker: false, aliases: false, effortStatus: false },
+      controls: { clearAlias: false, exitAliases: false, interrupt: false, navigation: false, panelCommand: false },
+      "run-feedback": { tokenSpeed: false, phaseTimers: false, stepTimers: false },
+      insights: { status: false, context: false, usage: false },
+    })) await fs.writeFile(ctx.root + "/../plugins/" + name + "/settings.json", JSON.stringify(settings));
     ctx.print("MIGRATION_INPUT_PASS", display ? "display" : "logical");
     check(tui.command.available("reload"), true, "native reload exists");
   } catch (error) { ctx.print("MIGRATION_FAIL", String(error)); quit(); } });
@@ -137,6 +144,7 @@ def main():
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--types-dir", required=True, type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--profile", type=Path, default=Path(__file__).resolve().parents[1] / ".config/yuke")
     args = parser.parse_args()
     binary = args.binary.resolve()
     assert binary.is_file(), "build the candidate first"
@@ -146,7 +154,7 @@ def main():
     for mode in ("logical", "display"):
         root = report / mode
         profile = root / "config/yuke"
-        shutil.copytree(Path(__file__).resolve().parents[1] / ".config/yuke", profile, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "yuke.d.ts", "yuke-modules.d.ts", "yuke.jsconfig.json", "providers.json*", "*.key", ".env"))
+        shutil.copytree(args.profile.resolve(strict=True), profile, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "yuke.d.ts", "yuke-modules.d.ts", "yuke.jsconfig.json", "providers.json*", "*.key", ".env"))
         for name in ("home", "cache", "work", "state", "data"):
             (root / name).mkdir()
         (root / "work/folder").mkdir()

@@ -1,5 +1,6 @@
 //! Diagnostic timing at engine, hook, and cancellation boundaries. Never log tool contents.
 import { client } from "yuke";
+import { readSettings } from "../../lib/settings.js";
 import { sessions } from "yuke:session";
 
 /** @typedef {{ session: string, message: number, part: number, name: string, fingerprint: string, observed: number, started: number | null, state: string, updated: number }} Call */
@@ -13,7 +14,9 @@ function fingerprint(value) {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 /** Register the migrated step-trace operations. The plugin owns registrations; host failures throw. @param {import("yuke").Context} parent */
-export default function(parent) {
+export default async function(parent) {
+    const options = await readSettings(parent, { enabled: false });
+    if (!parent.alive || !options.enabled) return;
 
     /** @type {Map<string, Call>} */
     const calls = new Map();

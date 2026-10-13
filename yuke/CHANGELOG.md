@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Consolidate model controls and effort status into `models`, basic controls into `controls`, live timing and speed into `run-feedback`, and inspection views into `insights`. Add per-feature settings, model shortcuts, and feedback intervals. Share accepted model state, an idle-aware feedback clock, and lazy inspection setup. Keep diagnostic tracing off by default and leave the pinned xyaman Vim implementation unchanged. See `CONFIGURATION.md`.
+
 - Shorten the bottom build label and `/status` Build row to an eight-character revision without the build timestamp. Keep the full embedded version in `yuke --version`, RPC, and request metadata.
 
 - Start Herdr reporting after the interactive UI is ready. Restore missing Yuke sidebar agents at startup and after native reload. Add a private-server regression for reporting, approvals, reload, quit, and parent-pane safety.

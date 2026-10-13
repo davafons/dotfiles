@@ -31,8 +31,13 @@ def main():
     print("Artifacts:", root, flush=True)
     source = args.profile.resolve(strict=True) / "plugins"
     profile = root / "config/yuke"
-    for name in ("build-status", "status"):
-        shutil.copytree(source / name, profile / name)
+    status_plugin = "insights" if (source / "insights").exists() else "status"
+    for name in ("build-status", status_plugin):
+        shutil.copytree(source / name, profile / "plugins" / name)
+    if status_plugin == "insights":
+        (profile / "lib").mkdir()
+        shutil.copyfile(source.parent / "lib/settings.js", profile / "lib/settings.js")
+        (profile / "plugins/insights/settings.json").write_text(json.dumps({"context": False, "usage": False}))
     probe = profile / "probe"
     probe.mkdir()
     (probe / "plugin.json").write_text(json.dumps({"name": "build-label-probe", "extensions": {"sh.yuke": {"entry": "./index.js", "uses": ["tui"]}}}))
@@ -43,7 +48,7 @@ import { quit } from "yuke:ui";
 export default function(ctx) {
   const tui = ctx.get("tui");
   if (!tui) return;
-  tui.keymap.add({ "ctrl+s": () => tui.command.perform("status:show"), "ctrl+g": "reload", "ctrl+q": () => quit() });
+  tui.keymap.add({ "ctrl+s": () => tui.command.perform(STATUS_COMMAND), "ctrl+g": "reload", "ctrl+q": () => quit() });
   ctx.once("ui.started", async () => {
     const pane = tui.root.active;
     if (pane instanceof ChatView) pane.composer.input.setText("UNSENT_BUILD_DRAFT");
@@ -52,8 +57,8 @@ export default function(ctx) {
     await fs.writeFile(marker, JSON.stringify(count + 1));
   });
 }
-''')
-    (profile / "config.json").write_text(json.dumps({"plugins": ["./build-status", "./status", "./probe"]}))
+'''.replace('STATUS_COMMAND', json.dumps('insights:status' if status_plugin == 'insights' else 'status:show')))
+    (profile / "config.json").write_text(json.dumps({"plugins": ["./plugins/build-status", "./plugins/" + status_plugin, "./probe"]}))
     for name in ("home", "work", "data", "state", "cache", "bin"):
         (root / name).mkdir()
     fake = root / "bin/yuke"
