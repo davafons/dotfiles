@@ -130,7 +130,9 @@ A timing block uses the same heading styles and fold behavior as a thought entry
 
 A thought is a reasoning part of an assistant message. A timing block is local display data, not an assistant message in engine history.
 
-Phase durations use the UI's observation times. Coalesced activity events can omit short intermediate states. A phase duration is not provider compute time. Reasoning and tool headings use stored durations when the engine supplies them. An encrypted-only reasoning item with no text and a near-zero observed duration shows `time unavailable` rather than claiming zero model compute time.
+Phase durations use the UI's observation times. Coalesced activity events can omit short intermediate states. A phase duration is not provider compute time. Reasoning and tool headings use stored durations when the engine supplies them.
+
+A completed thought with no visible text and a duration below 50 ms shows `thought · time unavailable` instead of `0.0s`. Below 50 ms, the one-decimal seconds display rounds to zero. The Responses adapter can open and close an encrypted-only reasoning block when its completed payload arrives. That receipt interval does not measure the model's earlier hidden reasoning. The renderer does not replace it with a guessed duration. Visible reasoning and nonzero displayed reasoning durations keep their existing clocks. Stored durations and encrypted replay data stay unchanged.
 
 Blocks stay beside their responses until the session closes or plugins reload. They do not use the engine store. A restart or reload cannot restore past observations. An ended phase means that its state changed, not that the request succeeded.
 
