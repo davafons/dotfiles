@@ -1,0 +1,4 @@
+{
+  "name": "workspace",
+  "extensions": { "sh.yuke": { "entry": "./index.js", "uses": ["tui"] } }
+}

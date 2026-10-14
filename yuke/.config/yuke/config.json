@@ -12,6 +12,7 @@
     "./plugins/controls",
     "./plugins/prompt-history",
     "./plugins/path-completion",
+    "./plugins/workspace",
     {
       "github": "lostcoords/yuke-plugins",
       "ref": "eab26f39c00178c86a829de81883cce9104d39e0",

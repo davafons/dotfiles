@@ -14,7 +14,7 @@ The source profile lists this plugin. Source preparation does not install its re
 
 ## Change this conversation's workspace
 
-The bundled `/cd <path>` command needs the workspace-aware native build. It needs no profile plugin entry. `/pwd` shows the current workspace without changing the conversation or its draft. `/cd` without an argument also shows the current workspace.
+The `workspace` profile plugin owns `/cd <path>` and `/pwd`. Its `"./plugins/workspace"` entry is enabled in `config.json`. It needs the public `workspace` API in the native build. `/pwd` shows the current workspace without changing the conversation or its draft. `/cd` without an argument also shows the current workspace.
 
 The enabled `path-completion` plugin lists only directories after `/cd `. It supports a bare name, `./`, `../`, `~/`, and `/`. Tab or Enter completes the selected directory without submitting the command. Completion adds quotes when a name contains spaces. Matching outer quotes delimit the path. They do not execute shell expressions.
 

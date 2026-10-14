@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add bundled `/pwd` to show the current workspace. Keep the conversation and unsent draft unchanged. After `/cd`, report the destination workspace.
+- Move `/cd` and `/pwd` out of bundled `sessions` into the standalone `workspace` profile plugin. Expose the existing native transition through the public workspace API. Keep session state and restoration in core.
+
+- Add `/pwd` to show the current workspace. Keep the conversation and unsent draft unchanged. After `/cd`, report the destination workspace.
 
 - Add directory-only completion for `/cd`, including empty arguments, relative paths, home paths, and the filesystem root. Keep Tab and Enter as completion keys. Quote paths with spaces. The command needs the native workspace-aware build.
 
