@@ -5,7 +5,7 @@
 # Secrets/overrides go in ~/.hermes/config.local.yaml (gitignored)
 #
 # Features enabled:
-#   - Obsidian, Fizzy, Nadeshiko, Browser, GitHub
+#   - Fizzy, Nadeshiko, Browser, GitHub
 #   - Note-taking, Productivity, Software-dev
 #   - MLOps basics, Media, Research
 # ============================================================================

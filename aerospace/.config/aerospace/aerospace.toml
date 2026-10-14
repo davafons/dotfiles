@@ -88,11 +88,6 @@ run = 'move-node-to-workspace 4'
 if.app-id = 'com.spotify.client'
 run = 'move-node-to-workspace 5'
 
-# Always open Obsidian on Workspace 5
-[[on-window-detected]]
-if.app-id = 'com.obisdian.obsidian'
-run = 'move-node-to-workspace 9'
-
 # Always open Spotify on Workspace 9
 [[on-window-detected]]
 if.app-id = 'com.spotify.client'

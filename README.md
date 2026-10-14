@@ -25,8 +25,6 @@ After initializing the colocated repository, use `jj` for version-control operat
 `make` defaults `PROFILE` to the current hostname for compatibility. Specify
 `PROFILE` explicitly on a new machine.
 
-Obsidian configuration and vaults are managed by Syncthing, not by these packages.
-
 Useful commands:
 
 ```sh
