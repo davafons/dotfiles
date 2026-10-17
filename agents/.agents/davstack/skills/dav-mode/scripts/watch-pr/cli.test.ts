@@ -191,6 +191,40 @@ describe("main", () => {
     expect(harness.stdout[0]).not.toContain('"kind":"QUEUE"');
   });
 
+  it("waits for only the explicit frontier when the checkout points at another PR", async () => {
+    const reader = fakeReader({
+      current: { owner: "owner", repo: "repo", number: parsePrNumber(99) },
+    });
+    const harness = testRuntime(reader);
+    const requested: number[] = [];
+    let merged = false;
+    const code = await main(["--queued-stack", "--stack-prs", "42"], {
+      ...harness.runtime,
+      reader: {
+        ...reader,
+        async pullRequest(context) {
+          requested.push(context.number);
+          const facts = await reader.pullRequest(context);
+          return merged ? { ...facts, state: "MERGED", mergedAt: "now" } : facts;
+        },
+      },
+      clock: {
+        ...harness.runtime.clock,
+        async sleep() { merged = true; },
+      },
+    });
+    expect(code).toBe(0);
+    const verdicts = harness.stdout.map(value => JSON.parse(value));
+    expect(verdicts[0]).toMatchObject({ kind: "QUEUE", queue: [{ number: 42 }] });
+    expect(verdicts).toContainEqual(expect.objectContaining({
+      kind: "WAITING", terminal: false, reason: { kind: "merge-queue", unmergedCount: 1 },
+    }));
+    expect(verdicts.at(-1)).toMatchObject({ kind: "COMPLETE", merged: [{ context: { number: 42 } }] });
+    expect(requested).toEqual([42, 42]);
+    expect(reader.calls).not.toContain("currentPr");
+    expect(reader.calls).not.toContain("openPullRequests");
+  });
+
   it("returns exit 4 for a hidden GitHub-side CI refusal", async () => {
     const reader = fakeReader({
       facts: { mergeStateStatus: "BLOCKED" },

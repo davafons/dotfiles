@@ -57,6 +57,16 @@ The native result identifies `artifact_dir`, accepted `session`, stored
 `history.json`, `rpc.jsonl`, `stderr.log`, and `result.json`. `work/` contains actual
 task files. Failed evidence survives process cleanup. Copy only requested output
 files into the upstream iteration/eval/with_skill or baseline `outputs/` layout.
+
+Skill names must be lowercase kebab-case components of at most 64 characters.
+The adapter checks the resolved skill path before writing. It creates a private
+`run-<uuid>` evidence directory before reserving budget. A reserved run records
+its counter as `reservation` in `result.json`. Preparation and launch failures
+retain an INCONCLUSIVE result and keep that reservation consumed.
+`native_process_started` distinguishes launch failure from a stopped process.
+One deadline covers RPC writes, reads, and buffered events. Cleanup can add up to
+five seconds for termination before killing and reaping the owned process.
+
 Do not expose the skill source or internal stores as task outputs to a blind
 judge. Save transcript and timing records beside the outputs, not inside them.
 

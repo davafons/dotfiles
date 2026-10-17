@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import select
 import shutil
 import subprocess
@@ -37,38 +38,19 @@ def run_trial(prompt, model, *, skill_name=None, description=None, skill_content
         raise NativeRunError("An explicit native provider/model selector is required.")
     if not 0 < timeout <= 60:
         raise NativeRunError("Trial timeout must be between 1 and 60 seconds.")
+    if skill_name is not None and (not isinstance(skill_name, str) or len(skill_name) > 64
+                                   or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", skill_name)):
+        raise NativeRunError("A skill name must be a lowercase kebab-case component of at most 64 characters.")
     binary = shutil.which(os.environ.get("DAVSTACK_AUTHORING_BINARY", "yuke"))
     sandbox = shutil.which("sandbox-exec")
     if not binary or not sandbox:
         raise NativeRunError("This adapter requires Yuke and macOS sandbox-exec; no unsafe fallback.")
-    number = reserve_run()
     evidence = Path(os.environ["DAVSTACK_AUTHORING_EVIDENCE"]).resolve(strict=True)
-    root = evidence / (f"run-{number:03d}-" + uuid.uuid4().hex[:8])
-    root.mkdir(mode=0o700)
-    for name in ("home", "work", "data", "state", "cache"):
-        (root / name).mkdir()
-    if files:
-        for name, content in files.items():
-            path = root / "work" / name
-            if not path.resolve().is_relative_to(root / "work"):
-                raise NativeRunError("Fixture path must stay inside its private workspace.")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-    skill_path = None
-    if skill_name:
-        skill_path = root / "work/.agents/skills" / skill_name / "SKILL.md"
-        skill_path.parent.mkdir(parents=True)
-        if skill_content is None:
-            skill_content = f"---\nname: {skill_name}\ndescription: {json.dumps(description)}\n---\n\nThis skill handles: {description}\n"
-        skill_path.write_text(skill_content)
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))).resolve()
-    env = {"PATH": os.environ["PATH"], "HOME": str(root / "home"), "TERM": "dumb", "SHELL": "/bin/sh",
-           "YUKE_APPNAME": os.environ.get("YUKE_APPNAME", "yuke"), "XDG_CONFIG_HOME": str(config_home)}
-    for name in ("data", "state", "cache"):
-        env["XDG_" + name.upper() + "_HOME"] = str(root / name)
-    profile = f'(version 1) (allow default) (deny file-write* (require-not (subpath {json.dumps(str(root))})))'
-    profile += ' (deny process-exec (literal "/usr/bin/open") (literal "/usr/bin/osascript") (literal "/usr/bin/pbcopy") (literal "/usr/bin/pbpaste") (literal "/usr/bin/afplay"))'
-    (root / "sandbox.sb").write_text(profile)
+    root = evidence / ("run-" + uuid.uuid4().hex)
+    try:
+        root.mkdir(mode=0o700)
+    except OSError as error:
+        raise NativeRunError("Cannot create trial evidence: " + str(error)) from error
     records, buffer, sequence = [], b"", 0
     started = time.monotonic()
     deadline = started + timeout
@@ -78,26 +60,65 @@ def run_trial(prompt, model, *, skill_name=None, description=None, skill_content
     trigger_decision = None
     result = {"artifact_dir": str(root), "model_requested": model, "timeout_seconds": timeout,
               "max_rounds": 8, "mode": mode, "status": "INCONCLUSIVE"}
-    errors = (root / "stderr.log").open("w")
-    process = subprocess.Popen([sandbox, "-f", str(root / "sandbox.sb"), binary, "--rpc"], cwd=root / "work",
-                               env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, bufsize=0)
+    process = None
+    errors = None
     try:
+        result["reservation"] = reserve_run()
+        for name in ("home", "work", "data", "state", "cache"):
+            (root / name).mkdir()
+        if files:
+            for name, content in files.items():
+                path = root / "work" / name
+                if not path.resolve().is_relative_to(root / "work"):
+                    raise NativeRunError("Fixture path must stay inside its private workspace.")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+        skill_path = None
+        if skill_name:
+            skill_path = root / "work/.agents/skills" / skill_name / "SKILL.md"
+            if not skill_path.resolve().is_relative_to(root / "work/.agents/skills"):
+                raise NativeRunError("Skill path must stay inside its private skills directory.")
+            skill_path.parent.mkdir(parents=True)
+            if skill_content is None:
+                skill_content = f"---\nname: {skill_name}\ndescription: {json.dumps(description)}\n---\n\nThis skill handles: {description}\n"
+            skill_path.write_text(skill_content)
+        config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))).resolve()
+        env = {"PATH": os.environ["PATH"], "HOME": str(root / "home"), "TERM": "dumb", "SHELL": "/bin/sh",
+               "YUKE_APPNAME": os.environ.get("YUKE_APPNAME", "yuke"), "XDG_CONFIG_HOME": str(config_home)}
+        for name in ("data", "state", "cache"):
+            env["XDG_" + name.upper() + "_HOME"] = str(root / name)
+        profile = f'(version 1) (allow default) (deny file-write* (require-not (subpath {json.dumps(str(root))})))'
+        profile += ' (deny process-exec (literal "/usr/bin/open") (literal "/usr/bin/osascript") (literal "/usr/bin/pbcopy") (literal "/usr/bin/pbpaste") (literal "/usr/bin/afplay"))'
+        (root / "sandbox.sb").write_text(profile)
+        errors = (root / "stderr.log").open("w")
+        process = subprocess.Popen([sandbox, "-f", str(root / "sandbox.sb"), binary, "--rpc"], cwd=root / "work",
+                                   env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, bufsize=0)
+        os.set_blocking(process.stdin.fileno(), False)
         def rpc(method, params=None):
             nonlocal buffer, sequence, first_tool, trigger_decision
             sequence += 1
             request_id = "authoring-" + str(sequence)
-            process.stdin.write((json.dumps({"id": request_id, "method": method, "params": params or {}}) + "\n").encode())
-            process.stdin.flush()
+            pending = memoryview((json.dumps({"id": request_id, "method": method, "params": params or {}}) + "\n").encode())
             while True:
-                if b"\n" not in buffer:
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0 or not select.select([process.stdout], [], [], remaining)[0]:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("Native trial deadline reached.")
+                if pending or b"\n" not in buffer:
+                    readable, writable, _ = select.select([process.stdout], [process.stdin] if pending else [], [], remaining)
+                    if not readable and not writable:
                         raise TimeoutError("Native trial deadline reached.")
-                    data = os.read(process.stdout.fileno(), 65536)
-                    if not data:
-                        raise NativeRunError("Native process exited before " + method)
-                    buffer += data
-                    continue
+                    if writable:
+                        try:
+                            pending = pending[os.write(process.stdin.fileno(), pending[:65536]):]
+                        except BlockingIOError:
+                            pass
+                    if readable:
+                        data = os.read(process.stdout.fileno(), 65536)
+                        if not data:
+                            raise NativeRunError("Native process exited before " + method)
+                        buffer += data
+                    if pending or b"\n" not in buffer:
+                        continue
                 line, buffer = buffer.split(b"\n", 1)
                 if not line.strip():
                     continue
@@ -178,16 +199,19 @@ def run_trial(prompt, model, *, skill_name=None, description=None, skill_content
         result["error"] = str(error)
         raise NativeRunError(str(error) + "; evidence: " + str(root)) from error
     finally:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        process.stdin.close()
-        process.stdout.close()
-        errors.close()
-        result["native_process_stopped"] = process.poll() is not None
+        if process is not None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            process.stdin.close()
+            process.stdout.close()
+        if errors is not None:
+            errors.close()
+        result["native_process_started"] = process is not None
+        result["native_process_stopped"] = process is None or process.poll() is not None
         (root / "rpc.jsonl").write_text("".join(json.dumps(row) + "\n" for row in records))
         (root / "result.json").write_text(json.dumps(result, indent=2) + "\n")
 

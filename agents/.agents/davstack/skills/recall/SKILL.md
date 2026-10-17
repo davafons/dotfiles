@@ -25,9 +25,9 @@ serially using the installed `why` skill. Use configured models and the actual
 child API, and follow its start-and-wait lifecycle. Pass complete briefs and the
 shared-desktop rules. All searches and live-state checks are read-only. Check for
 `.jj/` before version-control commands; in colocated repos use `jj` rather than
-Git. `unslop`, `session-pickup`, and `automate-me` are not part of this import:
-apply the brief's writing contract directly, follow project resume instructions
-for a specific session, and do not silently load an unavailable skill.
+Git. Use the installed `unslop` skill for the brief and the installed
+`dav-mode/playbooks/session-pickup.md` for a specific session handoff.
+`automate-me` is not installed; do not silently load an unavailable skill.
 
 **Before you start or resume work, you rebuild the user's recent working context and hand back a tight capsule of where things stand now and what to do next.**
 

@@ -106,3 +106,21 @@ No native core/SDK edits, provider changes, credential copies, user-data changes
 GUI activation, system-wide input, clipboard/audio operations, external posting,
 push, merge, deploy, or shared history restructuring were performed. Concurrent
 Neovim, Yuke, Peek and Herdr work remains outside this port.
+
+## October 17 audit fixes
+
+The native transport now rejects invalid skill names before any skill write or
+budget reservation and checks resolved skill-path containment. It creates the
+private evidence directory before reserving budget. Preparation and launch errors
+retain an INCONCLUSIVE receipt with the consumed reservation and explicit process
+start/stop fields. Nonblocking RPC input and simultaneous output draining share
+the response deadline, including while buffered events remain.
+
+The original no-model, sandboxed stalled-reader probe now exits without its
+external watchdog and confirms that the owned fixture stopped. Seven new boundary
+checks cover invalid names, symlinks, unwritable evidence, preparation and launch
+failures, blocked input, and full-duplex pipe progress. All ten native-authoring
+checks pass, including the existing real-Yuke localhost-provider fixtures.
+`make check` passes 51 tests plus ShellCheck. These checks make no real model calls.
+The original eight-session grant remains exhausted, and the campaign and judging
+limits above still apply.
