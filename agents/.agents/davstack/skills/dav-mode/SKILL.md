@@ -1,6 +1,7 @@
 ---
 name: dav-mode
-description: The working mode. Names the playbook it matched, commits to its steps before starting, and carries the rules that hold whatever the task is. Read it at the start of any multi-step task.
+description: Opt-in development mode. Use only when the user explicitly invokes $dav-mode for the task. Matches a playbook and follows its steps, principles, and verification gates.
+disable-model-invocation: true
 metadata:
   upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/poteto-mode
   revision: 101b274dd991f694e1f7024be2157e5f3adf07de

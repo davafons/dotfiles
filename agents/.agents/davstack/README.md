@@ -268,9 +268,17 @@ Stow excludes both source groups; `agent-skills link` owns the per-skill links.
 It repoints links to the previous dotfiles source paths during the layout
 migration, but still refuses unrelated links or user-owned files.
 
-Global `AGENTS.md` starts multi-step development work with `dav-mode` unless
-the user opts out. The skill is also directly invokable. In Yuke, use `/reload`
-or start a new chat after installation, then:
+`dav-mode` is opt-in. Invoke it explicitly with `$dav-mode` or the frontend's
+skill picker. Global instructions do not automatically activate it for multi-step
+work. Other skills remain usable individually without enabling the mode.
+
+The shared global instructions apply across projects in frontends that load them.
+Yuke uses `~/.agents/AGENTS.md`. The Codex entrypoint and Claude source template
+link to the same canonical file. These defaults supplement repository instructions;
+they do not replace the local `AGENTS.md` or the frontend's project instructions.
+
+Existing chats can retain old instruction snapshots. In Yuke, save any draft and
+use `/reload` when idle, or start a new chat. Explicit invocation examples:
 
 ```text
 /skill:dav-mode
