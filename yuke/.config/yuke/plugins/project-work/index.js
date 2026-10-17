@@ -12,12 +12,13 @@ import { focusHerdrSession, herdrSessionPanes } from "../herdr/index.js";
 
 const statuses = ["now", "later", "blocked", "review", "done"];
 const properties = {
-  action: { type: "string", enum: ["list", "get", "task", "checkpoint", "context"] },
+  action: { type: "string", enum: ["list", "get", "task", "claim", "release", "message", "checkpoint", "context"] },
   id: { type: "string", maxLength: 100, description: "Task ID for get or task update. Omit to create a task." },
   version: { type: "integer", minimum: 0, description: "Version from list/get. Required for task updates and context. A new context has version 0." },
   title: { type: "string", maxLength: 200 },
   status: { type: "string", enum: statuses },
-  notes: { type: "string", maxLength: 4000 },
+  notes: { type: "string", maxLength: 4000, description: "Markdown task notes. Use short paragraphs, headings and bullet points. Keep handoff history in messages or checkpoints." },
+  body: { type: "string", maxLength: 2000, description: "Markdown task message for action message. Requires id. Appends a session-attributed coordination message without replacing notes; does not notify or start another session." },
   github_url: { type: "string", maxLength: 500, description: "Optional github.com issue or PR URL. Empty clears the link; omit to retain it on an update. Internal status never updates GitHub." },
   task_id: { type: "string", maxLength: 100, description: "Optional task to associate with this session's checkpoint." },
   summary: { type: "string", maxLength: 4000, description: "Where work stopped, decisions, and blockers." },
@@ -74,11 +75,11 @@ export default function(parent) {
 
     parent.hook("prompt.build", (payload) => ({ replace: { sections: [...payload.sections, {
       key: "project-work",
-      text: "Use project_work action list when starting substantial work or resuming a project. Tasks belong to the project, not one chat. Save deferred work with action task; supply title, status, and notes. Read list/get before updating a task; include its id and version. Save action checkpoint after meaningful progress and before stopping, waiting on a decision, or ending a substantial run. Supply summary, next_step, and verification; state which checks have not run. Associate task_id when known. Do not claim a task is done merely because a run ended. Context holds the project goal and short decisions; keep architecture details in project docs. The user opens /work to read tasks and checkpoints. Reading work or preparing a draft does not authorize delegation, sending external messages, pushing, or merging. GitHub is the outer loop; project_work tasks are the inner loop. When work refers to an issue or PR, use github_work to read its GitHub state. Link internal steps with github_url. Keep internal task status separate from GitHub issue, PR, review, and CI state. github_work is read-only.",
+      text: "Use project_work list when starting substantial work or resuming a project. Tasks are shared across linked checkouts. Read list/get before updating; use the fresh id and version. Claim a task before working on it. Saving a task as now also claims it when unowned. A task has one owner session and checkout; child agents claim separate tasks. Never treat the creator, latest checkpoint, or now status as ownership. If someone owns the task, post a message to coordinate or choose another task. Messages are read with get or UI refresh, not pushed to sessions. Release your claim at handoff; done releases it. Update notes in readable Markdown with short paragraphs and bullets. Save a short checkpoint when pausing, handing off, waiting on a decision, or ending substantial work with new progress; do not duplicate the task history after every turn. Include summary, next_step, verification and task_id when known. Record failed and unrun checks. Context is optional repository-wide goal and short decisions, not checkout/session progress; put that on tasks. Do not mark a task done just because a run ended. The user reads /work. Reading records or preparing a brief does not authorize delegation, sending external messages, pushing, merging, or deployment. GitHub is the outer loop; read github_work for linked issues/PRs and keep internal task status separate. github_work is read-only.",
     }] } }));
     parent.tools.define({
       name: "project_work",
-      description: "Read and save this project's tasks, context, and session checkpoints. action list returns paged tasks and recent checkpoints; get requires id. task requires title, status, notes; updates also require id and version from a fresh read. checkpoint requires summary, next_step, verification; optional task_id links it to a task. context requires goal, notes, version from list. Data persists across sessions and linked checkouts. Nothing sends messages or starts agents.",
+      description: "Read and save shared project tasks. list returns paged tasks with explicit owner_session/owner_root and recent checkpoints. get requires id and includes latest 20 task messages. task requires title/status/Markdown notes; updates require fresh id/version and refuse another owner. Saving now claims an unowned task. claim/release require id/version; only the owner may release. message requires id/body and appends coordination text attributed to this session, without notification or starting agents. done releases ownership. checkpoint requires summary/next_step/verification and optional task_id. context requires goal/notes/version and is optional repository-wide context across linked checkouts. No GitHub writes or automatic completion.",
       parameters: { type: "object", additionalProperties: false, properties, required: ["action"] },
       async execute(args, signal, toolCtx) {
         if (!args || typeof args !== "object" || Array.isArray(args)) throw new Error("Work arguments must be an object.");
@@ -123,7 +124,6 @@ export default function(parent) {
       activityTail = activityTail.then(async () => {
         if (!parent.alive) return;
         const item = await client.sessionGet(session);
-        if (item.session.origin.type === "child") return;
         await store({ action: "activity", root: item.session.root, session, observed_at: observed });
       }).catch((error) => { if (parent.alive) parent.print("Work activity not saved:", String(error)); });
     });
@@ -217,6 +217,9 @@ const c = { ctx: parent, tui: tuiBorrow };
         if (pane.session.sessionId !== session && pane.composer?.input.text) {
           throw new Error("Your composer has an unsent draft. Save or clear it before resuming another session.");
         }
+        await client.sessionGet(session);
+        if (!c.ctx.alive) return;
+        ensurePane();
         showSession(pane, session);
       }
 
@@ -260,32 +263,6 @@ const c = { ctx: parent, tui: tuiBorrow };
           ...(task.github_url ? ["GitHub outer loop: " + task.github_url + "\nRead github_work before continuing. Internal completion does not change GitHub status."] : []),
           ...(checkpoint ? [checkpointText(checkpoint)] : []),
         ].join("\n\n"));
-      }
-
-      /** @param {{root: string, session: string}} source @param {{id: string}} selected @param {Pick<BoardSnapshot, "root">} snapshot */
-      async function taskMenu(source, selected, snapshot) {
-        const detail = /** @type {{task: Task, checkpoint: Checkpoint | null}} */ (await store({ action: "get", ...source, id: selected.id }, c.ctx.signal));
-        if (!c.ctx.alive) return;
-        const { task, checkpoint } = detail;
-        const choice = await pick(task.title, [
-          { label: "Prepare a brief in the composer (does not send)", kind: "prepare" },
-          { label: "Open linked session", kind: "resume" },
-          { label: "Save checkpoint from this session", kind: "checkpoint" },
-          { label: "Edit task notes", kind: "notes" },
-          ...statuses.map((status) => ({ label: "Set status: " + status, kind: status })),
-        ], [`${task.status} · ${task.id}`, task.notes || "No task notes.", checkpointText(checkpoint),
-          "Task captured in: " + task.root, "Original session: " + (task.session || "none")].join("\n\n"));
-        if (!choice || !c.ctx.alive) return;
-        if (choice.kind === "prepare") { prepare(task, checkpoint, snapshot); return "close"; }
-        else if (choice.kind === "resume") { await resume(checkpoint?.session || task.session); return "close"; }
-        else if (choice.kind === "checkpoint") await saveCheckpoint(source, task.id);
-        else {
-          const notes = choice.kind === "notes" ? await c.ctx.interaction.input("Task notes (blank clears them)", task.notes) : task.notes;
-          if (notes == null || !c.ctx.alive) return;
-          ensurePane();
-          await store({ action: "task", ...source, id: task.id, version: task.version, title: task.title,
-            notes, status: choice.kind === "notes" ? task.status : choice.kind }, c.ctx.signal);
-        }
       }
 
       async function openWork() {
@@ -334,7 +311,11 @@ const c = { ctx: parent, tui: tuiBorrow };
                   ...view.githubDetail.linked_tasks.map((linked) => ({ label: linked.status + " · " + linked.title, kind: "task", id: linked.id })),
                 ]);
                 if (!selected || !c.ctx.alive) return;
-                if (selected.id) return taskMenu(source, { id: selected.id }, { root: view.data?.root || source.root });
+                if (selected.id) {
+                  const detail = await store({ action: "get", ...source, id: selected.id }, c.ctx.signal);
+                  if (c.ctx.alive) view.inspect(detail.task);
+                  return;
+                }
               }
               const defaultTitle = Array.from(item.title).slice(0, 200).join("");
               const title = await c.ctx.interaction.input("Internal step for GitHub #" + item.number, "Blank uses: " + defaultTitle);
@@ -354,12 +335,31 @@ const c = { ctx: parent, tui: tuiBorrow };
               await store({ action: "context", ...source, goal, notes, version: data.context.version }, c.ctx.signal);
             } else if (name === "resume" && checkpoint) { await resume(checkpoint.session); return "close"; }
             else if (task) {
-              if (name === "task") return taskMenu(source, task, { root: view.data?.root || source.root });
+
               const detail = /** @type {{task: Task, checkpoint: Checkpoint | null}} */ (await store({ action: "get", ...source, id: task.id }, c.ctx.signal));
               if (!c.ctx.alive) return;
               ensurePane();
               if (name === "prepare") { prepare(detail.task, detail.checkpoint, { root: view.data?.root || source.root }); return "close"; }
-              if (name === "resume") { await resume(detail.checkpoint?.session || detail.task.session); return "close"; }
+              if (name === "owner" || name === "resume") {
+                if (!detail.task.owner_session) throw new Error("This task is unclaimed. Its creator is not its current owner.");
+                await resume(detail.task.owner_session); return "close";
+              }
+              if (name === "claim" || name === "release") {
+                if (!source.session) throw new Error("Start a saved conversation before changing task ownership.");
+                let force = false;
+                if (name === "release" && detail.task.owner_session && detail.task.owner_session !== source.session) {
+                  force = Boolean(await c.ctx.interaction.confirm("Release " + detail.task.owner_session + "? This does not stop its agent. Coordinate before reassigning."));
+                  if (!force || !c.ctx.alive) return;
+                }
+                ensurePane();
+                await store({ action: name, ...source, id: task.id, version: detail.task.version, ...(force ? { force: true } : {}) }, c.ctx.signal);
+              } else if (name === "message" || name === "notes") {
+                const value = await c.ctx.interaction.input(name === "message" ? "Message to task participants (read on refresh)" : "Task notes (Markdown; blank clears)", name === "notes" ? detail.task.notes : "");
+                if (value == null || !c.ctx.alive) return;
+                ensurePane();
+                if (name === "message") await store({ action: "message", ...source, id: task.id, body: value }, c.ctx.signal);
+                else await store({ action: "task", ...source, id: task.id, version: detail.task.version, title: detail.task.title, status: detail.task.status, notes: value }, c.ctx.signal);
+              }
               if (name === "status") {
                 const status = await c.ctx.interaction.select("Task status", statuses);
                 if (status == null || !c.ctx.alive) return;
@@ -373,8 +373,9 @@ const c = { ctx: parent, tui: tuiBorrow };
         const win = new Window({ border: "none", width: (max) => max, height: (max) => max,
           outsidePress: "ignore", content: view, footer: () => view.footer });
         const pollActivity = setInterval(() => { void view.refreshActivity(); }, 1000);
+        const pollBoard = setInterval(() => { void view.refresh(true); }, 3000);
         const animateActivity = setInterval(() => { view.animate(); }, 200);
-        githubOwner.own(() => { clearInterval(pollActivity); clearInterval(animateActivity); });
+        githubOwner.own(() => { clearInterval(pollActivity); clearInterval(pollBoard); clearInterval(animateActivity); });
         try {
           await new Promise((resolve) => {
             view.close = c.tui.overlay(win, () => { view.closed = true; resolve(undefined); });

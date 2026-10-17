@@ -61,6 +61,8 @@ def operate(database, args):
         "list": ("offset", "include_done"), "board": ("offsets", "include_done", "query"), "get": ("id",),
         "task": ("id", "version", "title", "status", "notes", "github_url"),
         "linked": ("github_url",),
+        "claim": ("id", "version"), "release": ("id", "version", "force"),
+        "message": ("id", "body"),
         "checkpoint": ("task_id", "summary", "next_step", "verification"),
         "context": ("version", "goal", "notes"),
         "activity": ("observed_at",),
@@ -93,6 +95,11 @@ def operate(database, args):
                 project TEXT NOT NULL, session TEXT NOT NULL, task_id TEXT NOT NULL,
                 summary TEXT NOT NULL, next_step TEXT NOT NULL, verification TEXT NOT NULL,
                 root TEXT NOT NULL, updated INTEGER NOT NULL, PRIMARY KEY(project, session));
+            CREATE TABLE IF NOT EXISTS task_messages (
+                id TEXT PRIMARY KEY, project TEXT NOT NULL, task_id TEXT NOT NULL,
+                session TEXT NOT NULL, root TEXT NOT NULL, body TEXT NOT NULL,
+                updated INTEGER NOT NULL, site TEXT UNIQUE);
+            CREATE INDEX IF NOT EXISTS messages_task ON task_messages(project, task_id, updated DESC, id);
             CREATE TABLE IF NOT EXISTS activity (
                 project TEXT NOT NULL, session TEXT NOT NULL, started INTEGER NOT NULL,
                 PRIMARY KEY(project, session));
@@ -100,6 +107,10 @@ def operate(database, args):
         db.execute("BEGIN IMMEDIATE")
         if "github_url" not in {row[1] for row in db.execute("PRAGMA table_info(tasks)")}:
             db.execute("ALTER TABLE tasks ADD COLUMN github_url TEXT NOT NULL DEFAULT ''")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(tasks)")}
+        for column in ("owner_session", "owner_root"):
+            if column not in columns:
+                db.execute(f"ALTER TABLE tasks ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
         db.execute("INSERT OR IGNORE INTO projects(id) VALUES (?)", (key,))
         if action in ("list", "board"):
             context = dict(db.execute("SELECT goal, notes, version FROM projects WHERE id=?", (key,)).fetchone())
@@ -113,7 +124,7 @@ def operate(database, args):
                 count = db.execute("SELECT COUNT(*) FROM tasks WHERE project=? AND (? OR status!='done')",
                                    (key, include_done)).fetchone()[0]
                 tasks = [dict(row) for row in db.execute(
-                    "SELECT id, title, status, notes, session, root, updated, version, github_url FROM tasks WHERE project=? AND (? OR status!='done') ORDER BY updated DESC, id LIMIT 10 OFFSET ?",
+                    "SELECT id, title, status, notes, session, root, updated, version, github_url, owner_session, owner_root FROM tasks WHERE project=? AND (? OR status!='done') ORDER BY updated DESC, id LIMIT 10 OFFSET ?",
                     (key, include_done, offset))]
                 paging = {"total": count, "offset": offset}
             else:
@@ -127,10 +138,11 @@ def operate(database, args):
                     count = db.execute("SELECT COUNT(*) FROM tasks WHERE project=? AND status=? AND instr(lower(title || ' ' || notes), lower(?))>0",
                                        (key, status, query)).fetchone()[0]
                     counts.append(count)
+                    offsets[index] = min(offsets[index], max(0, (count - 1) // 5 * 5))
                     if status == "done" and not include_done:
                         continue
                     tasks.extend(dict(row) for row in db.execute(
-                        "SELECT id, title, status, notes, session, root, updated, version, github_url FROM tasks WHERE project=? AND status=? AND instr(lower(title || ' ' || notes), lower(?))>0 ORDER BY updated DESC, id LIMIT 5 OFFSET ?",
+                        "SELECT id, title, status, notes, session, root, updated, version, github_url, owner_session, owner_root FROM tasks WHERE project=? AND status=? AND instr(lower(title || ' ' || notes), lower(?))>0 ORDER BY updated DESC, id LIMIT 5 OFFSET ?",
                         (key, status, query, offsets[index])))
                 paging = {"counts": counts, "offsets": offsets, "query": query, "include_done": include_done}
             checkpoints = [dict(row) for row in db.execute("""
@@ -138,12 +150,13 @@ def operate(database, args):
                 LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
                 WHERE c.project=? ORDER BY c.updated DESC, c.session LIMIT 5""", (key,))]
             return {"project": key, "name": name, "root": checkout, "context": context,
-                    "tasks": tasks, "checkpoints": checkpoints, **paging}
+                    "tasks": tasks, "checkpoints": checkpoints,
+                    "message_revision": db.execute("SELECT COUNT(*) FROM task_messages WHERE project=?", (key,)).fetchone()[0], **paging}
         if action == "linked":
             url = text(args.get("github_url"), "github_url", 500)
             return {"total": db.execute("SELECT COUNT(*) FROM tasks WHERE project=? AND github_url=?", (key, url)).fetchone()[0],
                     "tasks": [dict(row) for row in db.execute(
-                "SELECT id, title, status, version, github_url FROM tasks WHERE project=? AND github_url=? ORDER BY updated DESC, id LIMIT 50", (key, url))]}
+                "SELECT id, title, status, version, github_url, owner_session, owner_root FROM tasks WHERE project=? AND github_url=? ORDER BY updated DESC, id LIMIT 50", (key, url))]}
         if action == "get":
             ident = text(args.get("id"), "id", 100)
             row = db.execute("SELECT * FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
@@ -152,7 +165,47 @@ def operate(database, args):
             checkpoint = db.execute("""SELECT c.*, COALESCE(a.started, 0) > c.updated AS stale
                 FROM checkpoints c LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
                 WHERE c.project=? AND c.task_id=? ORDER BY c.updated DESC LIMIT 1""", (key, ident)).fetchone()
-            return {"task": dict(row), "checkpoint": dict(checkpoint) if checkpoint else None}
+            messages = [dict(message) for message in db.execute(
+                "SELECT id, session, root, body, updated FROM task_messages WHERE project=? AND task_id=? ORDER BY updated DESC, id DESC LIMIT 20", (key, ident))]
+            return {"task": dict(row), "checkpoint": dict(checkpoint) if checkpoint else None,
+                    "messages": list(reversed(messages))}
+        if action in ("claim", "release", "message"):
+            ident = text(args.get("id"), "id", 100)
+            row = db.execute("SELECT * FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
+            if not row:
+                raise ValueError("task does not belong to this project")
+            if action == "message":
+                if not session:
+                    raise ValueError("a task message requires a saved session")
+                body = text(args.get("body"), "body", 2000)
+                if site:
+                    existing = db.execute("SELECT id FROM task_messages WHERE site=? AND project=? AND task_id=?", (site, key, ident)).fetchone()
+                    if existing:
+                        return dict(existing)
+                message_id = "m-" + uuid.uuid4().hex[:16]
+                db.execute("INSERT INTO task_messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                           (message_id, key, ident, session, checkout, body, now, site or None))
+                return {"id": message_id}
+            version = args.get("version")
+            if type(version) is not int or version != row["version"]:
+                raise ValueError("task changed; refresh before changing ownership")
+            force = args.get("force", False)
+            if type(force) is not bool:
+                raise ValueError("force must be boolean")
+            if action == "claim":
+                if not session:
+                    raise ValueError("a claim requires a saved session")
+                if row["status"] == "done":
+                    raise ValueError("reopen the task before claiming it")
+                if row["owner_session"] and row["owner_session"] != session:
+                    raise ValueError("task is owned by session " + row["owner_session"] + "; coordinate in task messages before taking over")
+                owner, owner_root = session, checkout
+            else:
+                if row["owner_session"] != session and not force:
+                    raise ValueError("only the owner can release a task; ask the operator to clear an abandoned claim")
+                owner, owner_root = "", ""
+            db.execute("UPDATE tasks SET owner_session=?, owner_root=?, version=version+1, updated=? WHERE project=? AND id=?", (owner, owner_root, now, key, ident))
+            return {"id": ident, "version": version + 1}
         if action == "context":
             goal = text(args.get("goal"), "goal", 2000, empty=True)
             notes = text(args.get("notes"), "notes", 4000, empty=True)
@@ -203,9 +256,18 @@ def operate(database, args):
             version = args.get("version")
             if type(version) is not int or version < 1:
                 raise ValueError("read work first; task updates require its version")
+            current = db.execute("SELECT owner_session, owner_root FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
+            if current and current["owner_session"] and current["owner_session"] != session:
+                raise ValueError("task is owned by session " + current["owner_session"] + "; use a task message to coordinate")
+            owner = current["owner_session"] if current else ""
+            owner_root = current["owner_root"] if current else ""
+            if status == "now" and not owner and session:
+                owner, owner_root = session, checkout
+            if status == "done":
+                owner, owner_root = "", ""
             if not db.execute("""UPDATE tasks SET title=?, status=?, notes=?, github_url=COALESCE(?, github_url), version=version+1,
-                              updated=? WHERE project=? AND id=? AND version=?""",
-                              (title, status, notes, github_url, now, key, ident, version)).rowcount:
+                              updated=?, owner_session=?, owner_root=? WHERE project=? AND id=? AND version=?""",
+                              (title, status, notes, github_url, now, owner, owner_root, key, ident, version)).rowcount:
                 raise ValueError("task changed or belongs to another project; refresh before editing")
             return {"id": ident, "version": version + 1}
         if "version" in args:
@@ -215,8 +277,9 @@ def operate(database, args):
             if existing:
                 return dict(existing)
         ident = "w-" + uuid.uuid4().hex[:16]
-        db.execute("INSERT INTO tasks (id, project, title, status, notes, session, root, site, updated, version, github_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
-                   (ident, key, title, status, notes, session, checkout, site or None, now, github_url or ""))
+        db.execute("INSERT INTO tasks (id, project, title, status, notes, session, root, site, updated, version, github_url, owner_session, owner_root) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+                   (ident, key, title, status, notes, session, checkout, site or None, now, github_url or "",
+                    session if status == "now" else "", checkout if status == "now" and session else ""))
         return {"id": ident, "version": 1}
 
 

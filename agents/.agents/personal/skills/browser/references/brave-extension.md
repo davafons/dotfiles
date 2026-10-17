@@ -18,8 +18,15 @@ flow and use separate names for parallel stateful work:
 ```
 
 Never pass a session name or invoke the global `playwright-cli` binary. A
-non-Codex controller must set a unique `PLAYWRIGHT_CLI_SESSION`. Use absolute
-paths for uploads, scripts, and named artifacts.
+non-Codex controller must set a unique `PLAYWRIGHT_CLI_SESSION` on every call.
+For Yuke, use `yuke-<current-session-id>`, substituting this chat's actual session
+ID. Reuse that value for this chat, including across tool calls, and never store
+it as a shared profile default. If the ID is unavailable, generate a UUID once
+and retain it for this chat. Pass `DAVAFONS_BROWSER_BACKEND=brave-extension`
+when the backend was resolved from the wrapper's private configuration rather
+than inherited. Do not set a fake `CODEX_SESSION_ID`.
+
+Use absolute paths for uploads, scripts, and named artifacts.
 
 The groups share David's normal Brave profile but remain separate tab groups.
 Do not create another browser window, minimize Brave, or substitute a headless

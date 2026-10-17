@@ -30,9 +30,23 @@ Across backends:
 
 ## Configured backends
 
-Resolve the backend before operating the browser. An explicit
-`DAVAFONS_BROWSER_BACKEND` wins; when it is unset, a Codex session identified
-by `CODEX_SESSION_ID` uses `brave-extension`:
+Resolve the backend before operating the browser, in this order:
+
+1. Use an inherited `DAVAFONS_BROWSER_BACKEND` when set.
+2. Otherwise, check `~/.config/playwright-cli/env` for a configured backend.
+   Read only the backend value in a subshell; never print the file or its token:
+
+   ```bash
+   bash -c 'if [[ -f "$HOME/.config/playwright-cli/env" ]]; then source "$HOME/.config/playwright-cli/env" >/dev/null 2>&1; printf "%s\n" "${DAVAFONS_BROWSER_BACKEND:-}"; fi'
+   ```
+
+3. If neither supplies a backend, a Codex session identified by
+   `CODEX_SESSION_ID` uses `brave-extension`.
+
+Pass the resolved `DAVAFONS_BROWSER_BACKEND` to each browser command when it
+was not inherited. For Yuke and other non-Codex controllers, also set a unique
+`PLAYWRIGHT_CLI_SESSION` as described in the Brave reference. Missing inherited
+variables alone do not establish that the browser is unconfigured.
 
 - For `brave-extension`, read
   [references/brave-extension.md](references/brave-extension.md).

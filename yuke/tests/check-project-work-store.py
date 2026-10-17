@@ -138,6 +138,54 @@ class WorkStoreTest(unittest.TestCase):
         self.rejected("board", offsets=[0])
         self.rejected("board", offsets=[0, -1, 0, 0, 0])
 
+    def test_claims_are_atomic_and_messages_do_not_overwrite_notes(self):
+        task = self.task()
+        commands = [self.command("claim", id=task["id"], version=1, session=owner) for owner in ("agent-a", "child-b")]
+        processes = [subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for command in commands]
+        results = [(process.communicate(), process.returncode) for process in processes]
+        self.assertEqual(sorted(code for _, code in results), [0, 1])
+        stored = self.run_store("get", id=task["id"])["task"]
+        owner = stored["owner_session"]
+        other = "child-b" if owner == "agent-a" else "agent-a"
+        self.assertEqual(stored["owner_root"], str(self.repo.resolve()))
+        self.assertEqual(stored["session"], "source", "claiming must preserve provenance")
+        self.rejected("task", session=other, id=task["id"], version=stored["version"], title="Clash", status="done", notes="")
+        self.rejected("release", session=other, id=task["id"], version=stored["version"])
+        message = dict(id=task["id"], body="## Handoff\n\n- Please review `focus`." , site="message:1:1", session=other)
+        first = self.run_store("message", **message)
+        self.assertEqual(self.run_store("message", **message), first, "replayed messages must not duplicate")
+        detail = self.run_store("get", id=task["id"])
+        self.assertEqual(detail["messages"][0]["body"], message["body"])
+        self.assertEqual(detail["messages"][0]["session"], other)
+        self.assertEqual(detail["task"]["notes"], "Not tested yet")
+        self.assertEqual(detail["task"]["version"], stored["version"])
+        self.run_store("release", session=owner, id=task["id"], version=stored["version"])
+        released = self.run_store("get", id=task["id"])["task"]
+        self.assertEqual(released["owner_session"], "")
+        self.run_store("claim", session=other, id=task["id"], version=released["version"])
+        claimed = self.run_store("get", id=task["id"])["task"]
+        self.run_store("task", session=other, id=task["id"], version=claimed["version"], title="Finished", status="done", notes="Verified")
+        self.assertEqual(self.run_store("get", id=task["id"])["task"]["owner_session"], "")
+
+    def test_linked_checkout_claims_and_legacy_tasks(self):
+        legacy = self.run_store("task", title="Existing now", status="now", notes="", session="")
+        self.assertEqual(self.run_store("get", id=legacy["id"])["task"]["owner_session"], "")
+        linked = self.root / "linked-owner"
+        (linked / ".jj").mkdir(parents=True)
+        (linked / ".jj/repo").write_text("../../repo/.jj/repo")
+        self.run_store("claim", root=linked, session="child", id=legacy["id"], version=1)
+        record = self.run_store("board")["tasks"][0]
+        self.assertEqual(record["owner_session"], "child")
+        self.assertEqual(record["owner_root"], str(linked.resolve()))
+        self.rejected("claim", root=self.other, session="child", id=legacy["id"], version=record["version"])
+        self.rejected("message", session="", id=legacy["id"], body="Missing author")
+        self.rejected("message", id=legacy["id"], body="bad\x1b[31m")
+        self.rejected("claim", session="", id=legacy["id"], version=record["version"])
+        active = self.run_store("task", title="New active", status="now", notes="", session="new-owner")
+        self.assertEqual(self.run_store("get", id=active["id"])["task"]["owner_session"], "new-owner")
+        self.rejected("release", session="source", id=legacy["id"], version=1, force=True)
+        self.run_store("release", session="source", id=legacy["id"], version=record["version"], force=True)
+
     def test_validation_and_paging_do_not_drop_work(self):
         for index in range(12):
             self.run_store("task", title=f"Task {index}", status="done" if index == 0 else "later", notes="A quote: ' and 日本語")
