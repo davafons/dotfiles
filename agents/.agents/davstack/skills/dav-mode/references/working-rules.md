@@ -26,6 +26,13 @@ Shirabe's Rails tools or plan format exist in another project.
 
 ## Changes and proof
 
+- **Execute the smallest useful case first.** Plan only enough to perform the
+  next concrete check. Add infrastructure only when an observed blocker requires
+  it. Once the acceptance check passes, move directly to execution or handoff.
+  Reopen planning only when new evidence changes the decision. If prerequisite
+  work exceeds five minutes without exercising the target behavior, report the
+  blocker and remaining work. Never relax safety or permission gates to meet a
+  timebox.
 - **The best part is no part.** Subtract before adding. Build the simplest thing
   that works, then let reality push; do not speculate. Extract on the fourth
   occurrence, not the first, unless a real boundary already earns its place.

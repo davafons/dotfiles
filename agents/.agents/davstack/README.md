@@ -60,17 +60,33 @@ Five reviewed workflows remain deliberately uninstalled:
 | `make-bot-ui` | Skip for this development stack. | Requires Cursor/Grok Bot routines, secret cards, webhook infrastructure, and network exposure that are not part of the native runtime. |
 
 The priority is verification of the curated set, not catalogue completion.
-The user approved a fresh Codex smoke campaign, including children, capped at
-12 model sessions total, 60 seconds and eight rounds per session, and 15 minutes
-for the campaign. Failed sessions count. The campaign is blocked at preflight.
-A scripted localhost-provider probe observed nine child requests despite the
-parent's eight-round cap. The child adapter does not pass that cap to children.
-The existing authoring helper forbids delegation and does not budget child
-sessions. A bounded campaign guard must prove every limit before real calls.
-No real sessions were consumed from the new grant. The old eight-session grant
-remains exhausted. Provider changes and publication need separate approval.
-The TypeScript duration finding was reproduced by compiling the exact upstream
-type with a negative value and inspecting the runtime result.
+An initial probe showed that a parent's eight-round limit did not constrain its
+children. The existing adapter and runner now have an opt-in campaign guard,
+verified with 67 repository tests plus ShellCheck and native bootstrap checks.
+Ordinary non-campaign sessions keep their existing behavior.
+
+The authorized smoke campaign used 11 of 12 sessions, including parents and
+children, under the unchanged 60-second, eight-round and 15-minute limits.
+Failed sessions counted. All owned engine processes were reaped. The old
+eight-session grant remains exhausted and untouched.
+
+Real Started/Queued receipts, cancellation and explicit coverage gaps were
+observed. The Swarm parent claimed one dispatch batch, but actual receipts showed
+two assistant messages. That check failed. Interrogate did not finish its reviews;
+Architect produced only one partial sketch; the approved existing Grok judge
+exhausted its rounds without a verdict. A useful Ketchup recap was produced, but
+its comparison was confounded by the other run trying unavailable delegation.
+These observations do not complete the rollout checklist above.
+
+The next bounded run needs explicit file manifests, unambiguous reference paths
+and leaf-role briefs, plus delegation affordances matching the remaining quota.
+Do not enlarge limits to hide setup failures. The user requested upstream
+fidelity, not stylistic optimization. Keep the complete methods and descriptions;
+do not tune them to this confounded run. Comparative effectiveness and full
+repeated description evaluation remain unverified. Provider changes and
+publication need separate approval. The TypeScript duration findings were
+reproduced by compiling and executing actual fixture code, not by testing
+instruction text.
 
 ## Start reading and using the stack
 
