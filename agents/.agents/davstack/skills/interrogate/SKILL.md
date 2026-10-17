@@ -61,22 +61,29 @@ You are the lead reviewer, a pragmatic senior engineer, not a neutral aggregator
 ## Output Format
 
 ### Intent
+
 > [The stated intent paragraph from Step 2]
 
 ### Reviewers
+
 - Reviewer [label]: [model name], [N findings] (one bullet per reviewer)
 
 ### Act On
+
 [Each: description, which models raised it, why it matters.]
 
 ### Consider
+
 [Each: description, which models raised it, the tradeoff.]
 
 ### Noted
+
 [Brief list.]
 
 ### Dismissed
+
 [Each with a brief rationale.]
 
 ### Agreement Map
+
 [Where models agreed and diverged, and what that pattern tells us.]

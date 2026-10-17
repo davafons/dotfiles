@@ -48,7 +48,7 @@ Do not restate what the code does without identifying a problem. Do not praise t
 
 Return your findings as a structured list:
 
-```
+```markdown
 ## Findings
 
 ### 1. [Severity] Short title

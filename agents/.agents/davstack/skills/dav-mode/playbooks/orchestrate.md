@@ -12,7 +12,7 @@ Three rules carry the rest.
 - Every spawn and every resume carries the standing orders verbatim.
 - The brief is the product. A vague brief fails quietly, because a worker cannot ask you a question.
 
-#### Roles and placement
+## Roles and placement
 
 - **Coordinator (this chat).** Local. Frames, authors briefs, drains the inbox, owns the human report, makes judgment calls. It never authors or edits code. Conflicted merges, restacks, and code changes are always tasks. Mechanically landing a verified unit (advance the owned bookmark or apply a worker's verified change with `jj duplicate`, verify the resulting patch, then push through `jj push`) is bookkeeping the coordinator may do itself on repos where local jj operations are cheap. Queueing finished work behind an idle stacker is how a deadline harvests nothing. The loop is agentic end to end. Agents are spawned, resumed, and drained only through the current harness's native child API. State reads and writes go through `~/.agents/skills/dav-mode/scripts/orch/orch.ts` at drain points, one command in and one line out. The CLI never spawns, waits, or wakes anything.
 - **Sub-coordinator.** Always local, durable, one per track, and only when the program exceeds what one coordinator's drains can manage. A track the coordinator can drain itself needs no middle layer. Each nested layer re-pays a full orientation preamble, and a blocking sub-coordinator hides its children while the parent idles. Owns its track's units and boards, authors its workers' briefs, spawns its own workers and verifiers (the runtime must support the required depth, up to coordinator, track, and worker; an unavailable depth is a capability gap). Rolls up aggregates at wave boundaries. Never forwards raw child reports. Cap in-flight children at what one drain can process, roughly ten, as a rolling window. Never as blocking batches, which cost the slowest child of every batch.
@@ -20,7 +20,7 @@ Three rules carry the rest.
 
 Depth stays at coordinator, track, worker. Author the track decomposition per project (build, landing, and verification are common cuts, not a required shape). Hard-coded swarm trees were tried and parked as too rigid.
 
-#### Store layout
+## Store layout
 
 Create `orchestrate/<project-slug>/` in the operator's named program-state directory or the project's ignored state directory; record the chosen path. Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `bun ~/.agents/skills/dav-mode/scripts/orch/orch.ts` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI.
 
@@ -33,11 +33,11 @@ Create `orchestrate/<project-slug>/` in the operator's named program-state direc
 - `decisions.tsv` is the trail via the [show-me-your-work skill](../../show-me-your-work/SKILL.md).
 - `status.md` is derived from `units.tsv` and `ledger.tsv` at each drain, never hand-maintained. Regenerate it from the tables instead of narrating events into it.
 
-#### The brief
+## The brief
 
 Your prompts to agents are your only product, and a sloppy brief compounds into slop across the whole tree. Every spawn carries all of it. A field you cannot fill is a unit you have not scoped yet.
 
-```
+```text
 GOAL         one sentence, the outcome, executable by a stranger with no chat access
 SCOPE        paths this unit may write; paths it may not; its exclusive jj workspace or bookmark
 CONTEXT      pointers to files and PRs; upstream reports pasted in full when this unit
@@ -57,7 +57,7 @@ A sub-coordinator brief adds its track boundary and unit list, its spawn budget 
 
 A dependency is a context relay, not just ordering. Undeclared upstream context makes the worker guess. Missing fields are a refuse-to-spawn condition. Audit one sampled worker brief per sub-coordinator per wave, concurrently with the wave it samples, never as a gate in front of it. A failing brief stops that track and fixes the sub-coordinator's instructions, not just the worker, because brief quality decays late in a run. Never resume-chain a brief. Respawn fresh with consolidated scope.
 
-#### Steps
+## Steps
 
 1. **Frame.** State the done predicate as something countable ("all 126 units merged, each ledger-verified `unit-test-verified` or better"). Quantify scope: units, rough effort, expected stacks, and the wall-clock budget. If one agent could finish inside that budget, stop here and run Autonomous run instead. Collapsing must not depend on another document being present. It means do the work directly in this session, plain workers where they help, verification inline, landing as you go, and none of the store, register, or pilot machinery below. Schedule landing against the budget. By roughly 70% of it, stop spawning and land what is verified. Name the tracks per project. A contested decomposition or one-way door goes through the [arena protocol](../../arena/SKILL.md) before the pilot. Present the framing once. Reversible prep proceeds without waiting.
 2. **Install the runtime.** Run `orch init`. Open the trail via the [show-me-your-work skill](../../show-me-your-work/SKILL.md), write the standing orders before any spawn, and seed `frontier.json` from existing PRs with `orch frontier set --repo <repo-dir> --prs <bottom-to-top PR ids>`.
@@ -67,7 +67,7 @@ A dependency is a context relay, not just ordering. Undeclared upstream context 
 6. **Land.** Landing is continuous, never a terminal phase. Integration starts with the first verified unit and runs alongside the remaining waves. On heavy repos the stacker is a standing role from wave one, integrating as units verify. On repos where local jj operations are cheap, the coordinator lands verified units itself per Roles. Keep the frontier green before upper-stack work. Stack safety governs. Advance `frontier.json` only on merge or reported new head SHAs.
 7. **Close.** Drain the final inbox, reconcile every spawned agent to a terminal row (done, abandoned, zombie-reconciled), confirm the predicate on the real artifact, confirm every landed PR has a verdict for its current head SHA, audit the trail per show-me-your-work including its cross-model review, encode recurring corrections into `preferences.md` or the brief template. Leave the store intact. It is the postmortem.
 
-#### Queue and drain
+## Queue and drain
 
 - On a completion notification, run `orch inbox push <agent> <unit> <status> [--report PATH]` and return to what you were doing. Never deep-review inline. A completion that needs review becomes a verifier unit. Never review a diff inside a drain.
 - Drain in batches at four points: the end of a critical section, a track rollup, a frontier watcher wake (arm it via the installed [loop skill](../../loop/SKILL.md), with a long heartbeat fallback), and before a human report. Begin each batch with `orch inbox drain`. Arrivals during a drain wait for the next one.
@@ -76,7 +76,7 @@ A dependency is a context relay, not just ordering. Undeclared upstream context 
 - Account for every spawned child at its track's rollup: arrived, respawned, or its scope explicitly absorbed. Silently redoing a missing child's work hides both the wasted spend and the coverage gap its result existed to close.
 - A drain turn ends with the three lines from `orch status`: counts against the states, what changed, gates open. Detail lives in `status.md`. The full reply contract applies at checkpoints and close.
 
-#### Stack safety
+## Stack safety
 
 - The frontier is a computed object, never narrative. Recompute `frontier.json` with `orch frontier set --repo <repo-dir> --prs <bottom-to-top PR ids>` after every merge or stack mutation. The first refresh requires the complete program scope; later refreshes can reuse the recorded scope. Update the scope when a recorded merge retires a base or a new PR enters the stack. jj bookmark tips and ancestry are authoritative for topology. The forge supplies PR identity, state, and head SHA, not a guess from drifting base refs. The native helper currently supports GitHub; an unsupported forge is an open runtime-installation gate. Missing, stale, omitted tracked members, forks, or mismatched order fail rather than guess.
 - Exactly one stacker per stack may change its jj bookmarks and ancestry, serialized within its stack. Record the holder in the standing orders. Restacks run in an available isolated environment with enough resources; do not overload the shared laptop.
@@ -84,7 +84,7 @@ A dependency is a context relay, not just ordering. Undeclared upstream context 
 - PR closes and retargets go through the stacker only. Closing a base PR orphans every chain above it. Merges and stack surgery are units with briefs like any other.
 - One retro watcher follows merged PRs for reverts, post-merge CI breaks, and orphaned follow-ups.
 
-#### Verification
+## Verification
 
 Scale verification to the unit. When VERIFY is a single cheap command, the worker runs it and reports the output, and the coordinator spot-checks receipts. A dedicated verifier agent (on a different model family than the worker) is for units whose verification is expensive, judgment-laden, or high-blast-radius. A verifier agent whose entire product would be rerunning one command is ceremony, not verification.
 
@@ -92,7 +92,7 @@ Write ledger rows with `orch ledger record`. Check the current PR and head SHA w
 
 A unit is not done until its output is externalized the moment it lands, never batched to the end of the run. A worker pushes its branch, a verifier writes its ledger row, receipts land in the store. Work that exists only on one VM when that VM dies was never done.
 
-#### Liveness and failure
+## Liveness and failure
 
 - Never resume an agent to check on it. A resume restarts an idle agent. Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, the runtime's read-only agent/session status API. Transcript mtime is not liveness.
 - A silent death gets a synthetic postmortem row in the inbox (unit, failure mode, last evidence, options). Replan on evidence as it arrives. Never wait for full quiescence.
@@ -102,7 +102,7 @@ A unit is not done until its output is externalized the moment it lands, never b
 - Bound your own infra retries the same way you bound a child's. After a few consecutive tool aborts, stop retrying. Write a terminal handoff to durable state (what is done, where it lives, the exact command to resume) and end the run.
 - After a runtime restart: reconcile which local and remote workers actually survived; never assume survival. Re-read the standing orders and `units.tsv`, recompute the frontier, reattach surviving remote work by PR and branch rather than agent id, respawn one sub-coordinator per track from its stored brief plus current state, drain, resume. The dead session's store lock clears itself on the next write. `orch` replaces a lock whose holder pid is gone.
 
-#### Escalation
+## Escalation
 
 Reaches the human, batched into the status page rather than per item: irreversible actions (force-push to shared branches, deploys, deletions, closing someone else's PR), genuine product or preference calls no experiment settles, a standing order that contradicts observed reality, a program-level dead end that survived a replan. Park each as a `gates.md` entry before asking, and route work around it.
 

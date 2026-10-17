@@ -17,6 +17,52 @@ list. Both documents are repository-only documentation, not installed skills or
 global agent instructions. Current environment facts and the resume state are in
 the dotfiles project context and the linked review task in `/work`.
 
+## Current result and remaining work
+
+The curated stack has **25 global development skills**, **23 playbooks**, and
+**three project verification skills**. Against the reviewed pstack catalogue at
+`1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, it represents 20 of 28 workflows,
+with `poteto-mode` adapted as `dav-mode`. Five additional global skills are
+Comment Sicko, Control CLI, Deslop, Loop, and the public Anthropic Skill Creator.
+The 24 principle leaves remain linked references. They are not missing playbooks
+or automatically approved imports.
+
+The source installation is complete for the approved set. Actual model-driven
+workflow behavior is not fully verified. These are separate completion checks:
+
+- [x] Preserve approved methods, supporting files, source pins, and licenses.
+- [x] Register canonical links for Yuke/Codex and Claude without overwriting user files.
+- [x] Prove cold native Yuke discovery of 25 global and three project skills.
+- [x] Fix the five import-audit defects and minor recall dependency wording.
+- [x] Clear the 17 known Markdownlint findings in coordination templates and existing mode formatting without changing their wording or requirements.
+- [ ] Exercise native fan-out, queue/drain/cancel behavior, missing receipts, and worker dropouts on representative tasks.
+- [ ] Prove actual writer roots, parent/sibling artifact isolation, and blinded judging.
+- [ ] Run distinct-model reviews with accepted-model receipts and real findings, not scripted replies.
+- [ ] Supply a different-family judge for workflows that require one, including Eval. Same-family Interrogate does not close this gate.
+- [ ] Complete the authoring feedback and description-evaluation campaign under a new bounded grant. The earlier eight-session grant is exhausted.
+- [ ] Refresh active sessions after saving drafts and finishing active turns.
+- [ ] Publish the local changes only when requested.
+
+The remaining workflow names were reviewed from their complete pinned sources.
+A candidate recommendation is not an installation or execution authorization.
+
+| Uninstalled workflow | Decision | Reason |
+| --- | --- | --- |
+| `correct` | Candidate for a scoped native adaptation. | Turns demonstrated repeat mistakes into structural checks. Require real repeated evidence and limit edits to the requested repository scope. |
+| `ketchup` | Optional candidate with `bro`. | Recaps only the current chat and separates user decisions from work the agent can finish. This is distinct from cross-chat `recall`. |
+| `bro` | Optional small dependency, not a core gap. | Restates the last reply plainly. General writing rules already cover much of this behavior. |
+| `typescript-best-practices` | Defer pending semantic review. | Useful rules and examples, but its plain-number duration model still accepts negative values despite claiming otherwise. Do not promote the examples to global policy unchanged. |
+| `automate-me` | Defer until a personal-mode request. | Requires authorized history mining and a preference interview. Existing `dav-mode`, `reflect`, and `skill-creator` already cover current working conventions. |
+| `setup-pstack` | Skip the unchanged Cursor workflow. | Writes a Cursor model-role rule that does not configure Yuke. Native roles belong at the actual profile/tool boundary. |
+| `poteto-help` | Skip the duplicate router. | Assumes Cursor setup, Custom Modes, and commands not installed here. This guide and native skill discovery describe the actual stack. |
+| `make-bot-ui` | Skip for this development stack. | Requires Cursor/Grok Bot routines, secret cards, webhook infrastructure, and network exposure that are not part of the native runtime. |
+
+The recommended priority is verification of the installed set, not completing a
+catalogue for its own sake. New imports, model/delegate trials, provider changes,
+and publication keep their separate approval gates. The TypeScript duration
+finding was reproduced by compiling the exact upstream type with a negative
+value and inspecting the resulting runtime value, not by testing instruction text.
+
 ## Skills
 
 | Skill | Purpose | Main dependency |
@@ -375,7 +421,9 @@ agent adapters keep their existing model inheritance; this reviewer role is Yuke
 The approved October 17 imports add `swarm`, `arena`, `architect`, and
 `interrogate` at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`. All 11 upstream main
 and reference files are retained, with the pstack MIT license in each directory.
-Only source attribution, runtime, workspace, and authority passages are adapted.
+The initial import adapted only source attribution, runtime, workspace, and
+authority passages. A later formatting-only cleanup added missing blank lines and
+fence languages and repaired heading levels without changing method wording.
 The [native coordination contract](skills/dav-mode/references/playbook-runtime.md#design-and-coordination)
 owns shared model, lifecycle, output-root, and review restrictions.
 
