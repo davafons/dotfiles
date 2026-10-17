@@ -157,6 +157,20 @@ class NativeBoundaries(unittest.TestCase):
         self.assertEqual(list(self.root.rglob("SKILL.md")), [], "invalid names must not create any skill file")
         self.assertEqual(json.loads(self.budget.read_text())["used"], 0)
 
+    def test_unwritable_evidence_does_not_consume_a_reservation(self):
+        original_mkdir = Path.mkdir
+
+        def refuse_trial(path, *args, **kwargs):
+            if path.parent == self.root and path.name.startswith("run-"):
+                raise PermissionError("fixture evidence directory refused")
+            return original_mkdir(path, *args, **kwargs)
+
+        with patch.object(Path, "mkdir", refuse_trial), patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(native.NativeRunError, "fixture evidence directory refused"):
+                native.run_trial("Never sent", "fixture/model")
+            launch.assert_not_called()
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 0)
+
     def test_launch_failure_retains_receipt_and_consumes_reservation(self):
         with patch.object(native.subprocess, "Popen", side_effect=OSError("fixture launch refused")):
             with self.assertRaisesRegex(native.NativeRunError, "fixture launch refused.*evidence:"):
