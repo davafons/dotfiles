@@ -7,7 +7,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "agents/.agents/davstack/skills"
-SELECTED = ("how", "why", "teach", "recall", "create-verification-skill", "maintain-verification-skill", "control-cli", "skill-creator")
+SELECTED = ("how", "why", "teach", "recall", "create-verification-skill", "maintain-verification-skill", "control-cli", "skill-creator", "swarm", "arena", "architect", "interrogate")
 DAVSTACK = SELECTED + ("dav-mode", "blast-radius", "comment-sicko", "no-comments", "reflect", "tdd", "unslop", "technical-writing", "deslop", "loop", "figure-it-out", "benchmark-checklist", "show-me-your-work")
 
 

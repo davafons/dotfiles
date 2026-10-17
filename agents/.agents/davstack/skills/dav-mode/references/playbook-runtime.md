@@ -30,12 +30,12 @@ results. The parent owns the workflow, not merely the delegates' summaries.
 
 ## Workflow dependencies
 
-Links to upstream `architect`, `arena`, `swarm`, `interrogate`, and
-`principle-*` files are protocol
-references, not installed skills. Read the relevant source when its method is
-required. Apply that method through available tools and the shared rules.
-Do not invent an invocation, silently install a dependency, or claim that reading
-its instructions executed it.
+[Swarm](../../swarm/SKILL.md), [arena](../../arena/SKILL.md),
+[architect](../../architect/SKILL.md), and [interrogate](../../interrogate/SKILL.md)
+are installed with their complete pinned methods and supporting files. Use those
+local sources when a playbook names the protocol. The `principle-*` leaves remain
+pinned upstream references, not additional installed skills. Read a relevant leaf
+before applying or citing it. Reading or installing a method is not executing it.
 
 Preserve the method's required outputs: distinct design candidates and synthesis,
 blinded judging, lane coverage, measurement vetting, and decision evidence.
@@ -53,6 +53,51 @@ The installed execution playbooks include [Autonomous run](../playbooks/autonomo
 [Autopilot-full](../playbooks/autopilot-full.md), [Autopilot-stack](../playbooks/autopilot-stack.md),
 [Orchestrate](../playbooks/orchestrate.md), and [Babysit](../playbooks/babysit.md).
 Name the supported execution workflow and its gaps before asking to start it.
+
+## Design and coordination
+
+Use the current harness's exposed roles and engine model receipts. In Yuke,
+`general` has its configured model, `dav-agent` inherits the parent's model and
+reasoning, and `reviewer` is a non-author review role with its configured model.
+Use authorized `dav-agent` writers or configured runners for generation and fresh
+review-only sessions for judging. Confirm required model differences from the
+receipts, not role names, personas, or reasoning levels. Do not substitute a new
+provider or guess a model slug when a seat is unavailable.
+
+Interrogate requires distinct models, not necessarily distinct families. Arena
+prefers a cross-judge from a different family. A caller such as Eval can require
+a different family; preserve that stronger gate. Same-family review must be
+labeled as such. A reused model with another persona is not model diversity.
+
+Plan the total workers, model budget, output paths, and terminal evidence before
+launch. Use only supported fan-out calls, then follow the harness's wait/report
+lifecycle. Yuke's spawn tool accepts `agent` and `message`, starts or queues a
+child, and requires the parent to end its turn. Resume coordination when reports
+arrive. Do not add Cursor's model, cloud, or background fields, poll during that
+wait, or fabricate concurrency by running workers sequentially. If the available
+dispatch cannot supply the required fan-out, report it blocked. Started or queued
+is not completed. Track child IDs and every required slice until terminal results
+or explicit gaps. Retry only within the authorized worker and model allowance.
+Use owned stop semantics; do not assume stopping a child produces a final report.
+
+Give every writer an owned output location outside shared working changes.
+Use isolated jj workspaces for code candidates when available, or distinct
+artifact directories when no checkout is needed. Yuke's exposed spawn tool roots
+children at the parent's workspace; naming another directory in a brief does not
+change that root. Require absolute output paths and explicit command directories,
+and verify the resulting artifacts and parent/sibling state before accepting
+isolation. If the task needs a different tool root or enforced isolation that the
+harness cannot supply, leave that lane blocked. Do not extend the tool API or
+create, move, or publish another worker's branch merely to complete a phase.
+
+Yuke's reviewer is read-only by assignment, not an enforced sandbox. Every review
+brief prohibits edits, history changes, and publication and carries the shared
+desktop restrictions. The parent verifies the named artifacts and checks that
+writers are finished before judging. Give the judge only the rubric and artifacts
+under neutral labels, not candidate model receipts. Keep those receipts for the
+parent's audit. Independent judgment, blinding, safe roots, and multiworker
+completion need real evidence; cold discovery and scripted replies do not prove
+that models followed the method.
 
 ## Control surfaces and loops
 

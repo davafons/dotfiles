@@ -16,7 +16,7 @@ Read [Playbook runtime](../references/playbook-runtime.md) before executing thes
    7. Do it cheaper.
 
    When an earlier mantra meets the target, stop.
-3. Plan the fix from the trace. If it crosses a function boundary, [architect protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/architect/SKILL.md) first. Delegate implementation to a subagent using your configured perf-issue model. Review the diff. Capture a post-fix trace.
+3. Plan the fix from the trace. If it crosses a function boundary, [architect protocol](../../architect/SKILL.md) first. Delegate implementation to a subagent using your configured perf-issue model. Review the diff. Capture a post-fix trace.
    Apply the [sequence-verifiable-units principle](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-sequence-verifiable-units/SKILL.md), verifying each attempt before trying the next.
 4. Parse and compare the artifacts (JSON to sqlite, diff). "Inconclusive" or wrong-surface is not a pass. Flag it.
 5. Cite the measurement in the PR.

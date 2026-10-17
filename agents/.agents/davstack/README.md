@@ -42,6 +42,10 @@ the dotfiles project context and the linked review task in `/work`.
 | `maintain-verification-skill` | Audit every mapped feature from source and live behavior | Project verification skill, authorized source readers, and coordinator-owned driving |
 | `control-cli` | Drive, inspect, and profile an interactive terminal app | Existing project harness or isolated PTY/private tmux |
 | `skill-creator` | Full authoring, paired evals, human review, iteration, and description optimization | Authorized bounded native model runs, feedback, and its full helpers/templates |
+| `swarm` | Parallel coverage, races, and consolidated evidence with explicit gaps | Authorized native workers and owned outputs |
+| `arena` | Independent candidates, cross-judging, base selection, and synthesis | Configured candidate/judge seats and verified output isolation |
+| `architect` | Usage-first designs, distinct sketches, and implementation against synthesis | `how`, `why`, `arena`, and its three design templates |
+| `interrogate` | Distinct-model adversarial review with lead judgment and no automatic edits | Fresh review-only sessions, complete reviewer templates, and engine model receipts |
 
 The 23 playbooks are references, not additional registered skills. Their ordered
 methods now come from the selected upstream copies, not the abbreviated Shirabe
@@ -50,9 +54,10 @@ records their source revision and the tool, permission, and dependency adaptatio
 
 The restoration keeps plan authoring, characterization-first refactoring,
 feature decomposition, live forensic evidence, and exact-patch stack shipping.
-Upstream design, judging, coverage, and principle protocols remain linked
-references rather than additional installed skills. Missing capabilities keep
-the affected gates open; they do not count as successful verification.
+Design, judging, and coverage methods now use the installed `swarm`, `arena`,
+`architect`, and `interrogate` skills. Principle leaves remain linked upstream
+references, not additional registered skills. Missing capabilities keep the
+affected gates open; they do not count as successful verification.
 
 ## Personal skills outside davstack
 
@@ -123,6 +128,10 @@ agents/.agents/
 │       ├── teach/{SKILL.md,LICENSE}
 │       ├── recall/{SKILL.md,LICENSE}
 │       ├── skill-creator/{SKILL.md,LICENSE.txt,NOTICE.md,agents/,assets/,eval-viewer/,references/,scripts/}
+│       ├── swarm/{SKILL.md,LICENSE}
+│       ├── arena/{SKILL.md,LICENSE}
+│       ├── architect/{SKILL.md,LICENSE,references/}
+│       ├── interrogate/{SKILL.md,LICENSE,references/}
 │       ├── control-cli/{SKILL.md,LICENSE}
 │       ├── maintain-verification-skill/{SKILL.md,LICENSE}
 │       └── create-verification-skill/{SKILL.md,LICENSE,references/feature-map-example/}
@@ -151,7 +160,7 @@ bin/bin/agent-skills check
 make check
 ```
 
-The installer explicitly lists all 21 davstack names. It links their complete
+The installer explicitly lists all 25 davstack names. It links their complete
 directories into `~/.agents/skills/` for Yuke/Codex and `~/.claude/skills/` for
 Claude Code. It also links the `comment-sicko` and `dav-agent` adapters into
 `~/.claude/agents/` and `~/.codex/agents/`. The adapters inherit configured models.
@@ -190,6 +199,10 @@ or start a new chat after installation, then:
 /skill:skill-creator
 /skill:maintain-verification-skill
 /skill:create-verification-skill
+/skill:swarm
+/skill:arena
+/skill:architect
+/skill:interrogate
 ```
 
 Claude uses the matching global skill names; Codex can select/request the skills
@@ -356,3 +369,32 @@ limits, and project skill discovery. Scripted provider replies prove plumbing,
 not LLM judgment, authentication, a read-only sandbox, or model-family diversity.
 Codex-only review cannot close different-family gates. Claude/Codex standalone
 agent adapters keep their existing model inheritance; this reviewer role is Yuke-specific.
+
+## Design and coordination batch
+
+The approved October 17 imports add `swarm`, `arena`, `architect`, and
+`interrogate` at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`. All 11 upstream main
+and reference files are retained, with the pstack MIT license in each directory.
+Only source attribution, runtime, workspace, and authority passages are adapted.
+The [native coordination contract](skills/dav-mode/references/playbook-runtime.md#design-and-coordination)
+owns shared model, lifecycle, output-root, and review restrictions.
+
+Architect retains arena as a dependency and requires two distinct usage-first
+designs before synthesis. Arena retains its held-back rubric, fresh cross-judge,
+base selection, grafts, and verification. Interrogate keeps the complete reviewer
+prompt, rubric, code-quality lens, and lead judgment framework. It returns
+findings, not automatic edits. Swarm keeps upfront coverage or race rules,
+exact-revision receipts, and explicit gaps when workers fail or drop out.
+
+Distinct-model review is not different-family review. Existing configured Luna
+and Sol roles can support the former. Arena prefers a different-family judge;
+Eval requires one. The latter gate remains open with the current Codex-only seats.
+Yuke's spawn tool keeps the parent workspace root and does not enforce read-only
+access. An output directory in a brief is not proof of tool-root isolation.
+
+Installer checks and cold native catalog discovery validate registration only.
+No model-backed candidate, reviewer, multiworker dispatch, isolation, or blinding
+trial is implied by these imports. Those checks need separate authorization and
+retained actual artifacts. No provider, child-tool API, or active session is
+changed to install these skills. Save drafts and refresh skills only after active
+turns finish. The earlier eight-session authoring grant remains exhausted.
