@@ -99,6 +99,14 @@ parent's audit. Independent judgment, blinding, safe roots, and multiworker
 completion need real evidence; cold discovery and scripted replies do not prove
 that models followed the method.
 
+## Corrections and current-chat recaps
+
+Use [correct](../../correct/SKILL.md) for requested, demonstrated repeat mistakes
+within the named repository scope. It does not authorize unrelated refactors.
+Use [ketchup](../../ketchup/SKILL.md) for a read-only recap since the user's last
+message in this chat, not cross-chat recall. Its plain-language dependency is
+[bro](../../bro/SKILL.md), which restates the last assistant reply.
+
 ## Control surfaces and loops
 
 The installed [control-cli](../../control-cli/SKILL.md) owns generic terminal
