@@ -2,6 +2,8 @@
 
 Read [Playbook runtime](../references/playbook-runtime.md) before executing these steps.
 
+Select each delegate's reasoning level and speed per [dav-mode's Subagents rules](../SKILL.md#subagents), using only controls the current harness actually supports.
+
 Invoked at the end of every other playbook.
 
 **Workspace.** Work on a jj change based on `main`. Give concurrent writers an isolated `jj workspace add -r main <path>` or a separate jj clone. Delegates inherit the assigned workspace, not the user's unrelated changes. Preserve unrelated work as its existing change. Use `jj new main` only in the owned workspace after inspecting state. Never reset or discard a shared workspace to make it clean.
@@ -27,7 +29,7 @@ After the sections, attach videos or screenshots when they prove a claim. Full S
 
 **Built-in PR tool.** When the run provides a built-in PR tool, create, edit, retarget, and mark ready through it, never through a forge CLI. A CLI-made PR misses what the tool tracks. Use the resolved forge for everything the tool does not cover, and for every PR operation when the run has no such tool.
 
-**Size and stacks.** Prefer five narrow PRs to one large PR. A stack is a base-branch chain. The root PR targets trunk. Each child branch rebases onto its parent's exact tip and its PR targets the parent branch. Without a built-in PR tool, per the resolved forge, create a child with `origin pr create --status open --base <parent-branch>` or `gh pr create --base <parent-branch>`, and retarget one with `origin pr edit <pr> --base <parent-branch>` or `gh pr edit <pr> --base <parent-branch>`. Branch from trunk only for independent work. Rebase on trunk before substantial stack work.
+**Size and stacks.** Prefer five narrow PRs to one large PR. A stack is a base-branch chain. The root PR targets trunk. Each child branch rebases onto its parent's exact tip and its PR targets the parent branch. As a parent merges, move its child onto trunk per [Shipping](shipping.md) step 4. Without a built-in PR tool, per the resolved forge, create a child with `origin pr create --status open --base <parent-branch>` or `gh pr create --base <parent-branch>`, and retarget one with `origin pr edit <pr> --base <parent-branch>` or `gh pr edit <pr> --base <parent-branch>`. Branch from trunk only for independent work. Rebase on trunk before substantial stack work.
 
 **Readiness.** Open every PR ready, never as a draft. A built-in PR tool can default to draft, so set `draft: false` on every creation call through it. With Origin, pass `--status open`. With `gh`, omit `--draft`. If a PR still opens as a draft, mark it ready through the PR tool, or run `origin pr ready <number>` or `gh pr ready <number>` according to the resolved forge. Run `origin pr view <number>` or `gh pr view <number>` before you refer to PR status.
 

@@ -1,18 +1,18 @@
 # Datadog Telemetry
 
+Read [the native runtime contract](../../../dav-mode/references/playbook-runtime.md). Vendor tools below are source examples, not assumed services or permission to configure them. Use only available, authorized, read-only evidence tools.
+
 ## What this source contains
 
 Datadog holds the runtime record, what actually happened in production, as opposed to what was planned or discussed.
 
-- **Metrics.** Counters, gauges, histograms instrumented by the team. A metric's *presence* is itself evidence. Someone thought this number worth watching.
+- **Metrics.** Counters, gauges, histograms instrumented by the team. A metric's *presence* is itself evidence that someone thought the number worth watching.
 - **Monitors & alerts.** Conditions the team decided warranted waking someone up. A monitor firing on `rate_limit_hit > 10/min` is direct evidence the team worried about that threshold.
-- **Dashboards.** Curated views. The charts tell you what the team considers important for a subsystem.
-- **APM traces & spans.** Request-level runtime data. Useful for "why is this slow" / "why is there a timeout here" questions.
-- **Logs.** High-volume event records. Often contain the error conditions that motivated defensive code.
+- **Dashboards.** Curated views of what the team considers important for a subsystem.
+- **APM traces & spans.** Request-level runtime data, for "why is this slow" / "why is there a timeout here" questions.
+- **Logs.** High-volume event records, often holding the error conditions that motivated defensive code.
 - **Incidents.** Formal incident records with timelines and linked postmortems.
-- **Notebooks.** Exploratory investigations. Often contain hypotheses and analyses.
-
-Datadog answers "what was the production reality around the time this code was written?", which often explains the code's shape.
+- **Notebooks.** The team's exploratory investigations, often with hypotheses and analyses.
 
 ## How to search it
 
@@ -20,14 +20,14 @@ Use the Datadog MCP. Start broad, then narrow.
 
 1. **Identify the owning service(s).**
 
-   ```
+   ```text
    search_datadog_services (filter by name or team)
    search_datadog_service_dependencies (see upstream/downstream)
    ```
 
-2. **Dashboards and monitors first. They tell you what the team cares about.**
+2. **Dashboards and monitors first.**
 
-   ```
+   ```text
    search_datadog_dashboards (query: feature name, service name, symbol)
    search_datadog_monitors   (same queries)
    ```
@@ -36,7 +36,7 @@ Use the Datadog MCP. Start broad, then narrow.
 
 3. **Metrics around the target.**
 
-   ```
+   ```text
    search_datadog_metrics (by name pattern, e.g., the feature or symbol)
    get_datadog_metric_context (metadata: description, units, tags)
    get_datadog_metric (timeseries; "was there a spike around the PR date?")
@@ -46,16 +46,16 @@ Use the Datadog MCP. Start broad, then narrow.
 
 4. **Logs. Narrow, don't dump.**
 
-   ```
+   ```text
    search_datadog_logs (raw log patterns near the target, set use_log_patterns=true)
    analyze_datadog_logs (SQL-style aggregations, only when you need counts)
    ```
 
-   Search with symbols, error strings, or feature names. **Strongly prefer time-bounded queries** (e.g., 30 days before/after the change). Log volume is huge. Unconstrained searches waste time and may time out.
+   Search with symbols, error strings, or feature names. **Strongly prefer time-bounded queries** (e.g., 30 days before/after the change).
 
 5. **APM spans and traces.**
 
-   ```
+   ```text
    aggregate_spans    (stats: "how often does this endpoint fail?")
    search_datadog_spans (inspect individual spans)
    get_datadog_trace  (a specific trace ID)
@@ -65,7 +65,7 @@ Use the Datadog MCP. Start broad, then narrow.
 
 6. **Incidents.**
 
-   ```
+   ```text
    search_datadog_incidents (by title, team, date range)
    get_datadog_incident     (full detail for a specific incident)
    ```
@@ -82,15 +82,16 @@ Use the Datadog MCP. Start broad, then narrow.
 
 ## Common pitfalls
 
-- **Correlation is not causation.** A spike before a PR and stabilization after is suggestive, not definitive. Other changes may have landed in the same window. Check neighboring PRs.
-- **Overfitting to the chart you found.** Datadog visualizations are *made* by humans and reflect that human's framing. A chart named "retry success rate" is evidence the team cared about retry success, not that it's why a specific line of code exists.
+- **Correlation is not causation.** A spike before a PR and stabilization after is suggestive, not definitive, since other changes may have landed in the same window. Check neighboring PRs.
+- **Overfitting to the chart you found.** A chart reflects its maker's framing. A chart named "retry success rate" is evidence the team cared about retry success, not that it's why a specific line of code exists.
 - **Vanished telemetry.** Metrics can be renamed, deleted, or have short retention. If you can't find data from the relevant window, that's a gap, not a null result.
-- **Noise at scale.** Searching logs for a common string returns thousands of matches. Narrow by service, tag, and time aggressively. Use `analyze_datadog_logs` to aggregate rather than dumping raw logs.
-- **Instrumented != caused.** A metric's existence tells you someone cared enough to measure something, not that the code was added *because* of it. Cross-reference with commit/PR dates.
+- **Noise at scale.** Narrow log searches by service, tag, and time window aggressively. Use `analyze_datadog_logs` to aggregate rather than dumping raw logs.
+- **Instrumented != caused.** A metric shows someone cared enough to measure something, not that the code was added *because* of it. Cross-reference with commit/PR dates.
 
 ## What to return
 
 For each relevant item:
+
 - Type (dashboard / monitor / metric / log pattern / trace / incident / notebook)
 - Title or name
 - Link or identifier (dashboard ID, monitor ID, metric name, incident ID)

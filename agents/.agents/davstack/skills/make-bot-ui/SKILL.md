@@ -10,7 +10,8 @@ metadata:
   upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/make-bot-ui
   revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
-# How to make a bot UI
+
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -30,6 +31,8 @@ Check the actual operating system. The upstream Linux install example is not a
 macOS command to run unchanged. Any privileged command needs the native approval
 mechanism; never request a password in chat. If the bot or secret infrastructure
 is unavailable, report that blocker rather than install unrelated services.
+
+# How to make a bot UI
 
 Build a page the user clicks. A server on this computer POSTs JSON to a webhook routine. The bot wakes with that JSON. Keep the sender key on the server. Do not put the sender key in the browser, in chat, or in this skill.
 
@@ -108,13 +111,13 @@ Use HTTP. Do not add HTTPS unless the user asks.
 
 If Tailscale is not installed, install it:
 
-```sh
+```text
 curl -fsSL https://tailscale.com/install.sh | sudo sh
 ```
 
 Then start the node with a short hostname:
 
-```sh
+```text
 sudo tailscale up --hostname=<short-name> --accept-dns=false --ssh=false
 ```
 

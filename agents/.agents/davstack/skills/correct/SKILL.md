@@ -4,11 +4,11 @@ description: "Find the mistakes agents keep repeating in this repo and make each
 disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/correct
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/correct
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Correct
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -25,6 +25,8 @@ and current-chat material; do not search unrelated chats or credentials.
 Human-approved exceptions still require actual approval. Do not invent approval,
 change global agent rules, publish, or perform destructive actions under this skill.
 
+# Correct
+
 The operator keeps correcting agents in this repo for the same mistakes. Change the repo so the next agent can't make them.
 
 Assume every contributor is an agent that sees only the files it opened, copies the nearest example, and takes the shortest path that compiles. Design the repo so a change that looks right from one file is right for the whole repo.
@@ -37,7 +39,7 @@ First, read recent commits, reverts, review comments, agent instruction files, a
 
 1. **Eliminate it with architecture.** Give each piece of state one owner and each task one supported way. Hide internals so the wrong import fails. Replace hand-synced lists with one source of truth. Delete old ways and dead code an agent would copy.
 2. **Enforce it with types so the bad state can't be written.** If bad code still compiles, add a lint or CI check whose error names the file, type, or function to use instead. If the pattern is already common, fail only when a change adds more.
-3. **Test the behavior.** Fix or delete any test that would still pass if every function it calls returned nothing.
+3. **Test the behavior.** Fix or delete any test that still passes when the behavior it checks breaks, or that fails when only the internals change.
 4. **Write docs or agent rules last, only for judgment calls.** Nothing fails when an agent skips them.
 
 ## Fix and prove

@@ -4,20 +4,13 @@ description: "Keep a reviewable decision trail for long-running or unattended wo
 disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/show-me-your-work
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/show-me-your-work
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Show me your work
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
-Read the [shared working rules](../dav-mode/references/working-rules.md) and
-[playbook runtime](../dav-mode/references/playbook-runtime.md).
-Use jj for revisions, workspaces, and history. A local artifact or reviewer can
-run on this computer. Local does not mean model-free or unavailable computer use.
-Delegation and native desktop actions still need their applicable permission.
-Use configured native reviewer roles and the actual child lifecycle. A missing
-independent model family leaves the review gate open. Never substitute self-review
-or a simulated reviewer verdict for that gate.
+# Show me your work
 
 Keep one canonical log.
 
@@ -36,19 +29,19 @@ Copy `references/decision-log-template.tsv` (the header row) to start a clean lo
 
 An example, plain-spoken so a reviewer reads it at a glance.
 
-```
-ts	phase	decision	why	evidence	result
-2026-05-24T09:02:00Z	frame	counted the work first, about 100 components and roughly 75 hours	wanted to know the size before starting a long run	commit 3a9f1c2	found 5 things to sort out before starting
-2026-05-24T09:40:00Z	harness	took screenshots of the old version before changing anything	so we can compare old against new and catch any visual change	scripts/snapshot.sh, baseline/	saved 120 reference screenshots
-2026-05-24T11:15:00Z	widget	moved the widget styles over without changing how it looks	keep the change small and the result identical	commit 7c21e0a, pixel-diff 0	looks identical, tests pass
-2026-05-24T12:30:00Z	widget	threw out a helper's work because its screenshots were blank	checked the real files instead of trusting its summary	discarded the helper's owned change	reverted, tightened the instructions for next time
+```text
+ts phase decision why evidence result
+2026-05-24T09:02:00Z frame counted the work first, about 100 components and roughly 75 hours wanted to know the size before starting a long run commit 3a9f1c2 found 5 things to sort out before starting
+2026-05-24T09:40:00Z harness took screenshots of the old version before changing anything so we can compare old against new and catch any visual change scripts/snapshot.sh, baseline/ saved 120 reference screenshots
+2026-05-24T11:15:00Z widget moved the widget styles over without changing how it looks keep the change small and the result identical commit 7c21e0a, pixel-diff 0 looks identical, tests pass
+2026-05-24T12:30:00Z widget threw out a helper's work because its screenshots were blank checked the real files instead of trusting its summary worktree reset reverted, tightened the instructions for next time
 ```
 
 ## Logging a row
 
 Write each entry the way you'd tell a teammate what you did. Plain words, concrete actions, no AI speak or abstract jargon (the **unslop** skill applies to log text too).
 
-Use the installed helper `~/.agents/skills/show-me-your-work/scripts/log.sh <logfile> <phase> <decision> <why> <evidence> <result>`. It stamps `ts`, writes the header on first use, strips stray tabs/newlines, and prefixes any cell starting with `=`, `+`, `-`, or `@` with a single quote. A bare `printf` appending a row works too, but mind those same bytes if cells come from generated or user-supplied text.
+Use the helper `scripts/log.sh <logfile> <phase> <decision> <why> <evidence> <result>`. It stamps `ts`, writes the header on first use, strips stray tabs/newlines, and prefixes any cell starting with `=`, `+`, `-`, or `@` with a single quote. A bare `printf` appending a row works too, but mind those same bytes if cells come from generated or user-supplied text.
 
 Log decision points and checkpoints, not every action: a fork chosen, a unit completed with its verification result, a pivot or revert with its trigger, a blocker surfaced, a gate fixed. For loop runs, one row per iteration. Skip the trivial and self-evident.
 
@@ -56,9 +49,9 @@ A run is one agent conversation, including its later turns and any summary of it
 
 ## Where it lives
 
-By default the log is a working artifact outside the jj snapshot. Keep it in the project's verified ignored state directory or an external per-run directory such as `~/.cache/davstack/runs/<task-slug>/decisions.tsv`. Record the chosen path. Every ordinary file change in a jj workspace is snapshotted, so an uncommitted log is not a separate state.
+By default the log is a working artifact, not committed. Keep it at `decisions.tsv` in the work dir, or `.audit/<task-slug>.tsv` when several efforts run at once, and leave it out of git.
 
-Include the log in an owned jj change only when the work is ambitious enough that a reviewer needs the trail to trust the result.
+Commit it only when the work is ambitious enough that a reviewer needs the trail to trust the result.
 
 ## Rules
 
@@ -67,7 +60,7 @@ Include the log in an owned jj change only when the work is ambitious enough tha
 
 ## Audit the log against the transcript
 
-At the end of the run, before handing back, check the log told the truth. Read only this run's transcript through the current harness's authorized history API or export. Do not assume Cursor transcript paths or search other workspaces. If the runtime exposes no export, audit against the available conversation and mark that evidence as partial, not a recovered transcript. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
+At the end of the run, before handing back, check the log told the truth. Read this run's transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path). Don't glob across `~/.cursor/projects/*/`. That reads unrelated private chats. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
 
 - Check that every row maps to a real decision or action.
 - Check that each row's evidence resolves and shows what the row claims.
@@ -77,14 +70,14 @@ Correct the log, not the story. The audit never edits or removes a row, even an 
 
 ## Cross-model review of the trail
 
-Before handing back, when delegation is authorized, spawn a native subagent on a configured different model family from the one that did the work. If permission or that family is unavailable, report the independent review as not run and leave the gate open. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky.
+Before handing back, spawn a subagent on a different model family from the one that did the work. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill.
 
 - Decisions logged with weak or absent evidence.
 - Verification steps skipped or claimed without proof in the transcript.
 - Choices that look risky in hindsight (premature, scope-creeping, papering over a symptom).
 - Gaps the user would otherwise miss on a casual skim.
 
-Every reply for a run that produced a trail ends with an "Attention" section. Lead with the reviewer's model on its own line (`reviewed by <model>`), then list each flag pointing to specific rows or moments. "No flags" is a valid value. The model name is not. When no authorized reviewer ran, write `independent review not run` instead of a model name and list the missing gate. Do not write `No flags` for an unperformed review.
+Every reply for a run that produced a trail ends with an "Attention" section. Lead with the reviewer's model on its own line (`reviewed by <model>`), then list each flag pointing to specific rows or moments. "No flags" is a valid value. The model name is not.
 
 ## Reviewing the trail
 

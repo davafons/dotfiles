@@ -2,12 +2,15 @@
 name: technical-writing
 description: "Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax. Use for /technical-writing or when writing or reviewing docs, RFCs, readmes, PR descriptions, or commit messages."
 disable-model-invocation: true
+license: MIT
+metadata:
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/technical-writing
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Technical writing
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-Source: [cursor/plugins `1b6d44ff`](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/technical-writing/SKILL.md).
+# Technical writing
 
 Write so a tired engineer understands on the first read. Apply all four layers.
 

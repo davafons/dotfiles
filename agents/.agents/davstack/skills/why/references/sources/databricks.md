@@ -1,5 +1,7 @@
 # Databricks Analytics & System Tables
 
+Read [the native runtime contract](../../../dav-mode/references/playbook-runtime.md). Vendor tools below are source examples, not assumed services or permission to configure them. Use only available, authorized, read-only evidence tools.
+
 ## What this source contains
 
 Databricks is the product-analytics, data-pipeline, and warehouse-telemetry layer. It complements Datadog. Datadog is the *infra/runtime* view, Databricks is the *product/data* view (what users did, which experiments ran, how feature usage evolved, where a threshold constant came from).
@@ -62,6 +64,7 @@ Beyond the pattern shapes above:
 ## What to return
 
 For each relevant finding:
+
 - Type (product event / experiment exposure / usage or billing event / system-table row / dbt model)
 - Fully-qualified table name and the exact query you ran
 - Time window queried

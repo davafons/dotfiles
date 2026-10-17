@@ -3,8 +3,8 @@ name: control-cli
 description: Build or adapt a local harness to drive, inspect, and profile an interactive CLI or TUI without external services. Use for CLI UX checks, startup regressions, memory leaks, hangs, prompt flows, or terminal demos.
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/cursor-team-kit/skills/control-cli
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/cursor-team-kit/skills/control-cli
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
 # Control CLI

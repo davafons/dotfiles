@@ -1,69 +1,48 @@
 ---
 name: tdd
-description: Make a bug executable before changing production code. Use when fixing a bug with a cheap local test path, or when a failing test or regression test is asked for. Skip when the test path is unclear, expensive, or integration-heavy.
+description: "Use only when the user explicitly asks for TDD, a failing test, or a regression test, OR when the bug has an obvious cheap local test target. Skip when the test path is unclear, expensive, integration-heavy, or not requested."
+disable-model-invocation: true
+license: MIT
 metadata:
-  origin: shirabe
-  origin-path: docs/agents/tdd.md
-  origin-revision: 968e24d69837e3efecca31487f7d8e8508e803c8
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/tdd
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-Read the [shared working rules](../dav-mode/references/working-rules.md) before applying this skill.
-Project instructions supply the commands and conventions; examples are not prerequisites.
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
-# TDD bug fix
+# TDD Bug Fix
 
-When fixing a bug with a clear, cheap test path, make the broken behaviour
-executable before changing production code. The goal is a focused regression
-test that fails before the fix and passes after it.
+When fixing a bug with a clear, cheap test path, make the broken behavior executable before changing production code. The goal is a focused regression test that fails before the fix and passes after it.
 
-Do not force a test where it would be impractical: broad harness setup, brittle
-mocks, production-only state, vague reproduction steps, or large unrelated
-fixture churn. Use the closest useful verification instead, and say why.
+Do not force a test when it would be impractical. If the available test would require broad harness setup, brittle mocks, slow end-to-end infrastructure, production-only state, vague reproduction steps, or large unrelated fixture churn, skip adding a new test and use the closest useful verification instead.
 
 ## Workflow
 
-1. **Understand the bug.** Intended behaviour, current behaviour, the affected
-   path, and the smallest observable reproduction.
-2. **Choose the narrowest executable check.** Prefer the test file that already
-   covers that codepath. If no practical path is obvious, do not invent one to
-   satisfy the workflow.
-3. **Write the failing test first.** The smallest test that would have caught
-   the bug. It encodes intended behaviour, never the current implementation.
-4. **Run it before fixing, and watch it fail for the intended reason.** If it
-   passes, or fails for an unrelated reason, the test or the reproduction is
-   wrong. Fix that before touching the implementation.
-5. **Fix the bug.** The smallest production change that satisfies the intended
-   behaviour while preserving nearby contracts.
-6. **Rerun it.** Confirm it passes.
-7. **Run nearby validation.** Adjacent tests, the ratchets guarding what you
-   touched, and the project's linters when the change has wider reach.
+1. **Understand the bug.** Identify the intended behavior, current behavior, affected path, and smallest observable reproduction.
+2. **Choose the narrowest executable check.** Prefer the closest unit, component, integration, or regression test already used for that codepath. If no practical test path is obvious, do not create one from scratch just to satisfy the workflow.
+3. **Write the failing test first.** Add the smallest focused test that would have caught the bug. The test should encode intended behavior, not mirror the current implementation.
+4. **Run the new test before fixing.** Confirm it fails for the intended reason. If it passes or fails for an unrelated reason, correct the test or reproduction before editing the implementation.
+5. **Fix the bug.** Make the smallest production change that satisfies the intended behavior while preserving nearby contracts.
+6. **Rerun the regression test.** Confirm the test now passes.
 
-## When a failing test is impractical
+## If a Failing Test Is Impractical
 
-Do not silently skip the regression step. Say why it is impossible or not worth
-the cost, then pick the closest executable check: a targeted script, a project
-task, a reproduction command, a log assertion, a focused integration check.
+Use the closest executable regression check instead: a targeted script, manual reproduction command, browser automation, snapshot comparison, log assertion, or focused integration check.
 
-**Prefer no new test over a bad test.** A bad test is one that mostly tests
-mocks, encodes implementation details, depends on timing or global state, needs
-expensive infrastructure for a small fix, or would be deleted the moment it has
-proved the fix.
+Prefer no new test over a bad test. A bad test is one that mostly tests mocks, encodes current implementation details, depends on timing or unrelated global state, needs expensive infrastructure for a small fix, or would be deleted immediately after proving the fix.
 
 ## Guardrails
 
-- Do not change a test to match a wrong implementation.
-- Do not weaken an existing assertion unless the expected behaviour genuinely
-  changed and the reason is clear.
-- Keep the test focused on the bug. No unrelated coverage expansion.
-- If the bug is flaky, make the test deterministic and say what signal is being
-  locked down.
-- If the bug exposes a whole class, land the focused regression first, then ask
-  whether a lever catches the rest (the shared working rules, "Where a rule lives").
+- Do not change tests merely to match a wrong implementation.
+- Do not weaken existing assertions unless the expected behavior has genuinely changed and the reason is clear.
+- Keep the regression test focused on the bug. Avoid broad fixture churn or unrelated coverage expansion.
+- If the bug is flaky, make the test deterministic where possible and document the signal being locked down.
+- If the bug exposes a broader class of failures, first land the focused regression path, then consider additional sibling coverage.
 
-## Report
+## Final Response
 
-The evidence, not the outcome:
+Report the evidence, not just the outcome:
 
-- The failing-before test and **the failure it produced**.
-- The passing-after run, and any nearby validation.
-- If failing-before could not be shown, why, and what was used instead.
+- Name the failing-before test or executable check and the failure it produced.
+- Name the passing-after test run and any nearby validation performed.
+- If failing-before evidence could not be demonstrated, state why and describe the closest regression check used instead.

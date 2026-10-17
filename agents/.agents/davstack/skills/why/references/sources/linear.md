@@ -1,5 +1,7 @@
 # Linear Tickets
 
+Read [the native runtime contract](../../../dav-mode/references/playbook-runtime.md). Vendor tools below are source examples, not assumed services or permission to configure them. Use only available, authorized, read-only evidence tools.
+
 ## What this source contains
 
 - Issues describing features, bugs, and their motivation
@@ -41,6 +43,7 @@ Use the Linear MCP.
 ## What to return
 
 For each relevant ticket:
+
 - Ticket ID and title
 - The problem/motivation quoted from the description or comments (not paraphrased. The synthesizer needs the exact text to cite)
 - Labels, parent issue, project

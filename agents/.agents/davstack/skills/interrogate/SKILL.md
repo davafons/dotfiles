@@ -4,11 +4,11 @@ description: "Use for \"interrogate\", \"adversarial review\", \"multi-model rev
 disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/interrogate
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/interrogate
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Interrogate
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -19,6 +19,8 @@ this method. Preserve every phase and required output. Missing independent
 workers, a judge, or safe output isolation leaves that gate open, not passed.
 Installing this skill does not authorize delegation, model trials, or publication.
 
+# Interrogate
+
 Spawn one reviewer per configured model to adversarially review code changes. The adversarial signal comes from model diversity, not assigned personas. The deliverable is a synthesized verdict. Do NOT auto-apply changes.
 
 ## Step 1, Scope
@@ -26,7 +28,7 @@ Spawn one reviewer per configured model to adversarially review code changes. Th
 Identify what to review from context:
 
 - If the user points at specific files or a diff, use that.
-- For an owned jj change or stack, run `jj diff --git --from <owned-base> --to <owned-head>`. Resolve the exact scope first; do not include unrelated shared working-copy changes merely because they are above main.
+- If on a feature branch, run `jj diff --git --from main --to @` (or the appropriate base branch) for the full changeset.
 - If the user's message references recent work, gather the relevant files.
 
 Package the diff or file contents with any surrounding context files the reviewers need to understand the code.
@@ -37,13 +39,18 @@ Before spawning reviewers, state the intent in one clear paragraph from the user
 
 ## Step 3, Spawn Reviewers
 
-Choose one fresh reviewer session per configured model under the native coordination contract, labeled Reviewer A, B, and so on. Use distinct models, not personas or reasoning levels of the same model. Existing `general` and `reviewer` roles may supply different models; verify engine receipts rather than assuming the role names prove it. Same-family models are allowed by this method, but do not claim different-family review or weaken a stronger caller gate.
+Launch all reviewers in a single message with the Task tool, one per entry on the `interrogate reviewers` line in `~/.cursor/rules/pstack-models.mdc`, labeled Reviewer A, B, and so on to match the entry count. If the rule or that line is missing, use the table defaults.
 
-Dispatch the authorized reviewers through supported native fan-out calls, then end the turn and wait for reports as required. Give every reviewer the same intent and complete template below, with an explicit read-only assignment. Yuke does not enforce a read-only sandbox for these roles. Do not auto-apply changes, including structural changes proposed by the code-quality lens.
+| Subagent | Default model |
+| ---------- | --------------- |
+| Reviewer A | `claude-opus-5-5-xhigh` |
+| Reviewer B | `grok-4.7-xhigh-fast` |
 
-A complete multi-model verdict needs at least two completed reviews from distinct models. If a required reviewer drops out, return only partial findings and name the gap. If a required distinct model or parallel dispatch is unavailable, report that gap and withhold the complete multi-model verdict. Do not silently replace a model, add a provider, open a PR, or present serial self-review as the missing reviewers.
+Each reviewer gets `subagent_type: generalPurpose`, `readonly: true`, and `model` set to its configured entry, or its table default when there is no configured line. Omit `model` for an `auto` or `inherit-parent` entry, so that reviewer runs on the parent model.
 
-Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`.
+If the Task tool rejects a configured entry, run that reviewer on its family's table default and say so. Families go by prefix: `claude-*`, and `grok-*` with `cursor-grok-*` and `composer-*`. A refused `composer-*` entry runs on Reviewer B's default. With no family match, use Reviewer A's default. If it rejects a table default, spawn with the closest equivalent from the valid slugs in its error message (prefer the same family and reasoning tier), and open a separate PR to update the default table. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug or apply either fallback to it.
+
+Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill.
 
 ## Step 4, Synthesize
 
@@ -61,7 +68,7 @@ You are the lead reviewer, a pragmatic senior engineer, not a neutral aggregator
 ## Output Format
 
 ### Intent
-
+>
 > [The stated intent paragraph from Step 2]
 
 ### Reviewers

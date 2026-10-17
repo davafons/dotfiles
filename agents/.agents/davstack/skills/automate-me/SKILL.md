@@ -8,7 +8,7 @@ metadata:
   revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Automate me
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -31,6 +31,8 @@ Without it, apply the same slices serially and do not claim independent mining.
 Creating or updating a personal mode requires that request, not merely importing
 this skill. Follow the native PR handoff; no publication without authorization.
 
+# Automate me
+
 A guided flow for turning the user's working conventions into a skill agents will follow. The output is one `-mode` skill tailored to them (e.g. `jay-mode`, `priya-mode`).
 
 This skill orchestrates three others: an inline mining pass (see step 1), Cursor's built-in `create-skill` (authoring), and the **unslop** skill (prose discipline). It sequences them. It doesn't replace them.
@@ -46,7 +48,7 @@ Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*
 
 Update mode changes the rest of the flow:
 
-- Step 1 mines only history since the skill was last edited (`git log -1 --format=%cI <path>`).
+- Step 1 mines only history since the skill was last edited (`jj log --no-graph --limit 1 -T committer.timestamp <path>`).
 - Step 2 asks what's changed or missing, not what to capture from zero.
 - Step 4 edits the existing file in place. Preserve sections the user hasn't contradicted. Revise ones with new evidence. Add new sections only for genuinely new rules.
 
@@ -54,7 +56,7 @@ Update mode changes the rest of the flow:
 
 Locate the active workspace's transcripts before fanning out. The system prompt names the workspace's `agent-transcripts/` directory. Use only that path. Don't glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
 
-Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
+Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
 
 - Response preferences (length, tone, format, "dumb it down" corrections)
 - Delegation habits (subagents, models, specialized workflows, parallelism)
@@ -83,10 +85,10 @@ Group the combined signals into sections. Common ones (use only what applies):
 - **Subagents**: default, parallelism, model-to-task, specialized workflows.
 - **Prose / code discipline**: principles, lint tools, style guides.
 - **Review and verify**: repro posture, verification skills, live-testing tools.
-- **Process**: git worktrees, commits, PRs, review/merge tooling.
+- **Process**: isolated jj workspaces, commits, PRs, review/merge tooling.
 - **Skills**: skill-authoring habits, fix-the-skill-first, proposing new skills.
 
-The **poteto-mode** skill shows the shape. Read it for granularity. Don't copy its content. The user's rules are not the same as poteto-mode's.
+The **dav-mode** skill shows the shape. Read it for granularity. Don't copy its content. The user's rules are not the same as dav-mode's.
 
 ### 4. Draft the skill
 

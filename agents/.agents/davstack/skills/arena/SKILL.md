@@ -4,11 +4,11 @@ description: "Spawn N parallel candidates at the same task, pick a base, graft t
 disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/arena
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/arena
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Arena
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -19,6 +19,8 @@ this method. Preserve every phase and required output. Missing independent
 workers, a judge, or safe output isolation leaves that gate open, not passed.
 Installing this skill does not authorize delegation, model trials, or publication.
 
+# Arena
+
 Open a todolist with one entry per phase (Frame, Fan out, Cross-judge, Pick, Graft, Verify) before launching anything.
 
 ## Phase A: Frame
@@ -27,18 +29,18 @@ Every candidate gets the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric, 3-6 concrete gradeable criteria for what success looks like on *this* task. It is the picker's tool in Phase D. Candidates only see the task.
-3. Pick the runners from the current harness's configured roles under the native coordination contract. Record intended and engine-accepted models. Honor actual role inheritance rather than passing unsupported model arguments. A missing required seat is a gap, not permission to add a provider or guess a fallback. Spawn more runners when the arena covers multiple design directions. Use the same model N times when the work is generation-bound rather than judgment-sensitive.
-4. Give each candidate its own output location (an isolated jj workspace where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
+3. Pick the runners. Use the `arena runners` line in `~/.cursor/rules/pstack-models.mdc`. If the rule or that line is missing, default to one each on `claude-opus-5-5-xhigh` and `grok-4.7-xhigh-fast`. An `auto` or `inherit-parent` entry in this line or the cross-judge line means the parent model, so omit `model` for it. If the Task tool rejects a configured entry, run that seat on its family's default and say so. Families go by prefix: `claude-*`, and `grok-*` with `cursor-grok-*` and `composer-*`. A refused `composer-*` entry runs on `grok-4.7-xhigh-fast`. With no family match, use `claude-opus-5-5-xhigh`. If it rejects a default, use the closest valid slug of the same family from its error message. Spawn more runners when the arena covers multiple design directions. Use the same model N times when the work is generation-bound rather than judgment-sensitive. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill.
+4. Give each candidate its own output location (a isolated jj workspace where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
 
 ## Phase B: Fan out
 
-Dispatch all N authorized candidates through the supported native fan-out lifecycle, each with the task, the path to the shared grounding, its own output path, and instructions to produce the artifact and a short rationale naming the alternatives it considered and what it rejected. End the turn when the harness requires waiting. Do not claim parallel candidates when the dispatch cannot provide them.
+Spawn all N subagents in one message with `run_in_background: true`, each with the task, the path to the shared grounding, its own output path, and instructions to produce the artifact and a short rationale naming the alternatives it considered and what it rejected.
 
 If a candidate produces no output, proceed with N-1 and note the dropout.
 
 ## Phase C: Cross-judge
 
-After all Phase B candidates complete, choose an available configured judge under the native coordination contract. Prefer a different model family from the parent's; if a caller requires one, an unavailable family blocks that gate. Spawn one fresh review-only judge session. It sees the rubric and the candidates by neutral path label without model identities, scores each criterion, and recommends a base with rationale. Its work can overlap your Phase D reading only when the harness permits that work after dispatch. Otherwise resume your reading when the report arrives. Do not spawn it while candidates are still writing.
+After all Phase B candidates complete, choose one model from the `arena cross-judge pool` line in `~/.cursor/rules/pstack-models.mdc`. If the rule or that line is missing, choose from `claude-opus-5-5-xhigh` and `grok-4.7-xhigh-fast`. Prefer a different model family from the parent's. Spawn one readonly judge subagent on that model. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with your reading in Phase D. Don't spawn it while candidates are still writing.
 
 ## Phase D: Pick a base
 

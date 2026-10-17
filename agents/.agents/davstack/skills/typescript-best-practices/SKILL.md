@@ -9,15 +9,15 @@ metadata:
   revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# TypeScript best practices
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
 Read the [shared working rules](../dav-mode/references/working-rules.md).
 Project conventions and validated domain requirements take precedence over an
 illustrative example. The referenced principle sources remain pinned references:
-[type-system discipline](https://github.com/cursor/plugins/blob/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/principle-type-system-discipline/SKILL.md)
-and [boundary discipline](https://github.com/cursor/plugins/blob/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/principle-boundary-discipline/SKILL.md).
+[type-system discipline](../principle-type-system-discipline/SKILL.md)
+and [boundary discipline](../principle-boundary-discipline/SKILL.md).
 
 Known upstream erratum: the plain-number `TimeRange` in `references/patterns.md`
 does not prevent negative or nonfinite durations, invalid dates, or Date-range
@@ -25,6 +25,8 @@ overflow. Its negative-range comment is not a proven invariant. Keep the complet
 example as source material, but enforce the actual domain requirements at the
 boundary instead of claiming that `number` proves them. This limitation was
 reproduced with compiled code; the upstream examples below are not rewritten.
+
+# TypeScript best practices
 
 Apply the **type-system-discipline** principle skill first.
 

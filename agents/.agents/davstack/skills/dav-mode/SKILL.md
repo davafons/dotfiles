@@ -2,6 +2,8 @@
 name: dav-mode
 description: The working mode. Names the playbook it matched, commits to its steps before starting, and carries the rules that hold whatever the task is. Read it at the start of any multi-step task.
 metadata:
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/poteto-mode
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
   origin: shirabe
   origin-path: docs/agents/dav-mode.md
   origin-revision: 968e24d69837e3efecca31487f7d8e8508e803c8
@@ -12,9 +14,11 @@ metadata:
 Read [Playbook runtime](references/playbook-runtime.md) and the [shared working rules](references/working-rules.md).
 These adapt tools and authority, not the upstream task methods. Project-specific facts belong in `AGENTS.md`.
 
+Bundled skills live at `../<name>/SKILL.md` from this file. Put this file's absolute path in every `dav-agent` brief.
+
 ## Non-negotiables
 
-The Principles section below grounds every trigger. Its pinned leaf protocols are source references, not additional installed skills. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
+The Principles section below grounds every trigger. All 24 leaf protocols are installed locally. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
 
 Remaining triggers:
 
@@ -43,42 +47,42 @@ Read the leaf skill in full for any principle you apply. Each entry names when i
 
 ### Core
 
-- **[Laziness Protocol](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-laziness-protocol/SKILL.md).** Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem.
-- **[Foundational Thinking](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-foundational-thinking/SKILL.md).** Before writing logic: core types and data structures, scaffold-vs-feature sequencing, what concurrent actors share.
-- **[Redesign from First Principles](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-redesign-from-first-principles/SKILL.md).** Integrating a new requirement into an existing design. Redesign as if it had been foundational from day one.
-- **[Attack the Premise](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-attack-the-premise/SKILL.md).** Two or more fixes that share one premise have failed the same gate. Take a census of which actors hold the imbalance before the next fix, then question the premise instead of writing another fix that assumes it.
-- **[Subtract Before You Add](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-subtract-before-you-add/SKILL.md).** Sequencing an addition, refactor, or rewrite. Remove dead weight first, then build on the simpler base.
-- **[Minimize Reader Load](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-minimize-reader-load/SKILL.md).** Reviewing or shaping code that's hard to trace. Count layers and hidden state, collapse one-caller wrappers, shrink mutable scope.
-- **[Outcome-Oriented Execution](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-outcome-oriented-execution/SKILL.md).** Planned rewrites and migrations with explicit phase boundaries. Converge on the target architecture, don't preserve throwaway compatibility states.
-- **[Experience First](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-experience-first/SKILL.md).** Product, UX, or feature-scope tradeoffs. Choose user delight over implementation convenience.
-- **[Exhaust the Design Space](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-exhaust-the-design-space/SKILL.md).** A novel interaction or architectural decision with no precedent. Build 2-3 competing prototypes and compare before committing.
-- **[Build the Lever](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-build-the-lever/SKILL.md).** Any non-trivial work. Build the tool that does or proves it (codemod, script, generator), not by hand. The tool is the artifact a reviewer reruns.
+- **[Laziness Protocol](../principle-laziness-protocol/SKILL.md).** Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem.
+- **[Foundational Thinking](../principle-foundational-thinking/SKILL.md).** Before writing logic: core types and data structures, scaffold-vs-feature sequencing, what concurrent actors share.
+- **[Redesign from First Principles](../principle-redesign-from-first-principles/SKILL.md).** Integrating a new requirement into an existing design. Redesign as if it had been foundational from day one.
+- **[Attack the Premise](../principle-attack-the-premise/SKILL.md).** Two or more fixes that share one premise have failed the same gate. Write the premise down and test it directly before you write another fix that assumes it.
+- **[Subtract Before You Add](../principle-subtract-before-you-add/SKILL.md).** Sequencing an addition, refactor, or rewrite. Remove dead weight first, then build on the simpler base.
+- **[Minimize Reader Load](../principle-minimize-reader-load/SKILL.md).** Reviewing or shaping code that's hard to trace. Count layers and hidden state, collapse one-caller wrappers, shrink mutable scope.
+- **[Outcome-Oriented Execution](../principle-outcome-oriented-execution/SKILL.md).** Planned rewrites and migrations with explicit phase boundaries. Converge on the target architecture, don't preserve throwaway compatibility states.
+- **[Experience First](../principle-experience-first/SKILL.md).** Product, UX, or feature-scope tradeoffs. Choose user delight over implementation convenience.
+- **[Exhaust the Design Space](../principle-exhaust-the-design-space/SKILL.md).** A novel interaction or architectural decision with no precedent. Build 2-3 competing prototypes and compare before committing.
+- **[Build the Lever](../principle-build-the-lever/SKILL.md).** Any non-trivial work. Build the tool that does or proves it (codemod, script, generator), not by hand. The tool is the artifact a reviewer reruns.
 
 ### Architecture
 
-- **[Model the Domain](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-model-the-domain/SKILL.md).** Writing stateful logic, or code that branches a lot or repeats a shape assumption across files. Encode the domain in a structure (state machine, typed model, table or registry, reducer, boundary, the right collection) instead of scattered conditionals.
-- **[Boundary Discipline](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-boundary-discipline/SKILL.md).** Wiring validation, error handling, or framework adapters. Guards at system boundaries, trust internal types, keep business logic pure.
-- **[Type System Discipline](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-type-system-discipline/SKILL.md).** Designing types or a signature in any typed language. Make illegal states unrepresentable, brand primitives, parse external data at boundaries.
-- **[Make Operations Idempotent](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-make-operations-idempotent/SKILL.md).** Designing commands, lifecycle steps, or loops that run amid crashes and retries. Converge to the same end state.
-- **[Migrate Callers Then Delete Legacy APIs](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md).** Introducing a new internal API while old callers exist. Migrate and delete in one wave.
-- **[Separate Before Serializing Shared State](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md).** Concurrent actors might write the same file, branch, key, or object. Eliminate the sharing first.
+- **[Model the Domain](../principle-model-the-domain/SKILL.md).** Writing stateful logic, or code that branches a lot or repeats a shape assumption across files. Encode the domain in a structure (state machine, typed model, table or registry, reducer, boundary, the right collection) instead of scattered conditionals.
+- **[Boundary Discipline](../principle-boundary-discipline/SKILL.md).** Wiring validation, error handling, or framework adapters. Guards at system boundaries, trust internal types, keep business logic pure.
+- **[Type System Discipline](../principle-type-system-discipline/SKILL.md).** Designing types or a signature in any typed language. Make illegal states unrepresentable, brand primitives, parse external data at boundaries.
+- **[Make Operations Idempotent](../principle-make-operations-idempotent/SKILL.md).** Designing commands, lifecycle steps, or loops that run amid crashes and retries. Converge to the same end state.
+- **[Migrate Callers Then Delete Legacy APIs](../principle-migrate-callers-then-delete-legacy-apis/SKILL.md).** Introducing a new internal API while old callers exist. Migrate and delete in one wave.
+- **[Separate Before Serializing Shared State](../principle-separate-before-serializing-shared-state/SKILL.md).** Concurrent actors might write the same file, branch, key, or object. Eliminate the sharing first.
 
 ### Verification
 
-- **[Prove It Works](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-prove-it-works/SKILL.md).** After a task, before declaring done. Verify against the real artifact, not a proxy or "it compiles".
-- **[Fix Root Causes](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-fix-root-causes/SKILL.md).** Debugging. Trace each symptom to its root cause, reproduce first, ask why until you reach it.
+- **[Prove It Works](../principle-prove-it-works/SKILL.md).** After a task, before declaring done. Verify against the real artifact, not a proxy or "it compiles".
+- **[Fix Root Causes](../principle-fix-root-causes/SKILL.md).** Debugging. Trace each symptom back to the first place the system went wrong and fix it there. A guard is a fix only when the state it handles is legitimate.
 - **Sequence Work into Verifiable Units** (**principle-sequence-verifiable-units**). Multi-step work (sweeps, migrations, runs of similar edits) and how you stack commits and PRs. Break work into small units that each end in a check, verify each before the next, and order delivery so the sequence proves itself.
-- **[Test Behavior, Not Implementation](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-test-behavior-not-implementation/SKILL.md).** Writing, changing, or keeping a test. Call the code the way its users do and assert the result against a literal expected value. If the test would still pass when every imported function returns `undefined`, rewrite the assertion or delete the test.
-- **[Explain the Number](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-explain-the-number/SKILL.md).** Before you trust, report, or act on a number you measured (a speedup, a regression, a throughput, a latency, or an eval result). Find what limits it, and rule out that it measured something other than the work you think.
+- **[Test Behavior, Not Implementation](../principle-test-behavior-not-implementation/SKILL.md).** Writing, changing, or keeping a test. Assert what the code's users can observe, so the test fails when that behavior breaks and keeps passing when only the internals change.
+- **[Explain the Number](../principle-explain-the-number/SKILL.md).** Before you trust, report, or act on a number you measured (a speedup, a regression, a throughput, a latency, or an eval result). Find what limits it, and rule out that it measured something other than the work you think.
 
 ### Delegation
 
-- **[Guard the Context Window](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-guard-the-context-window/SKILL.md).** Context fills up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents, keep summaries in the main thread.
-- **[Never Block on the Human](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-never-block-on-the-human/SKILL.md).** Tempted to ask "should I do X?" on reversible work. Proceed, present the result, let the human course-correct.
+- **[Guard the Context Window](../principle-guard-the-context-window/SKILL.md).** Context fills up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents, keep summaries in the main thread.
+- **[Never Block on the Human](../principle-never-block-on-the-human/SKILL.md).** Tempted to ask "should I do X?" on reversible work. Proceed, present the result, let the human course-correct.
 
 ### Meta
 
-- **[Encode Lessons in Structure](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-encode-lessons-in-structure/SKILL.md).** You catch yourself writing the same instruction a second time. Encode it as a lint, metadata flag, runtime check, or script instead of more text.
+- **[Encode Lessons in Structure](../principle-encode-lessons-in-structure/SKILL.md).** You catch yourself writing the same instruction a second time. Encode it as a lint, metadata flag, runtime check, or script instead of more text.
 
 ## Autonomy
 
@@ -95,6 +99,8 @@ Read the leaf skill in full for any principle you apply. Each entry names when i
 **Use the configured `dav-agent` role for any subagent you spawn inside a playbook step** (code-writing delegates, ad-hoc helpers). The chat that receives `/dav-mode` runs the playbook. Never spawn a `dav-agent` to run the playbook itself. `dav-mode` supplies the parent workflow. The Claude, Codex, and Yuke `dav-agent` adapters read the canonical mode instructions. Routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`, `arena`, `architect`) select their own configured roles for distinct-model work where required. Respect the skill's role contract within the available harness; do not replace distinct-model seats with identical inherited `dav-agent` runs.
 
 **Defaults for every native child call.** Follow the harness's actual start, wait, follow-up, and stop lifecycle. Use configured agent/model roles and inherit defaults when no role-specific model exists. Code delegates tier by difficulty when those roles are available. The hardest changes go to the strongest configured judgment model; trivial mechanical edits go to the fast code model. Prose and judgment use their configured role. Do not invent per-call model fields, cloud environments, or nested depth. Routed workflows keep their own diversity requirements. An unavailable independent role or model family leaves its verification gate open. Delegation requires the user's explicit request.
+
+**Match the model to the job.** Start from the configured role's model, reasoning level and speed. Upstream starts at xhigh by default, raises effort one supported step for the hardest work, lowers it one step for judgment and two or more for routine work, and uses fast speed only when CI or trunk is red or a person is blocked now. Otherwise use standard speed. Verification keeps its configured swarm-worker model and speed. Preserve the role's model family so a diverse panel stays diverse. An inheriting role stays on the parent model. Use only actually supported model, reasoning and speed controls; Yuke's child tool has no per-call overrides. When adjustment is unavailable, keep the configured role defaults and report that limitation. Do not guess slugs, silently switch families, add providers, or retry rejected adjusted selectors. Fall back to the role's configured default and say so.
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 

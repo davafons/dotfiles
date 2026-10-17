@@ -1,5 +1,7 @@
 # Notion Docs
 
+Read [the native runtime contract](../../../dav-mode/references/playbook-runtime.md). Vendor tools below are source examples, not assumed services or permission to configure them. Use only available, authorized, read-only evidence tools.
+
 ## What this source contains
 
 - PRDs (product requirement documents)
@@ -48,6 +50,7 @@ Use the Notion MCP.
 ## What to return
 
 For each relevant doc:
+
 - Title and URL
 - Authors and last-updated date
 - The motivation text (verbatim quote), with page/section location

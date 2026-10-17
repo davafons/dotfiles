@@ -2,6 +2,8 @@
 
 Read [Playbook runtime](../references/playbook-runtime.md) before executing these steps.
 
+Select each delegate's reasoning level and speed per [dav-mode's Subagents rules](../SKILL.md#subagents), using only controls the current harness actually supports.
+
 **You own the merge frontier. Declare a mode, clear one PR at a time, stop where the human's call begins.** This playbook replaces Cursor's built-in babysit skill for these requests, so do not route there even though its description matches the same words. A request to land or ship is [Shipping](shipping.md), which begins where this playbook ends.
 
 Babysitting starts when the user asks for it, which is normally once a phase or a whole stack is built, not when a PR opens. Finish the stack, get it green here, then land it through Shipping.

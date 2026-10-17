@@ -2,10 +2,12 @@
 
 Read [Playbook runtime](../references/playbook-runtime.md) before executing these steps.
 
+Select each delegate's reasoning level and speed per [dav-mode's Subagents rules](../SKILL.md#subagents), using only controls the current harness actually supports.
+
 **You own the diagnosis. Instrument the live process, don't theorize from source.** The deliverable is a cited diagnosis, not a fix.
 
 1. Capture the live signal on the matching surface through the project's matching verification/control workflow: a CPU profile for a spinning process, a heap snapshot for a leak, a CDP trace for a visual glitch. A real artifact, not a guess.
-2. Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input. Parse large artifacts in a subagent (the [guard-the-context-window principle](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/principle-guard-the-context-window/SKILL.md)), keep the reduced finding in the main thread.
+2. Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input. Parse large artifacts in a subagent (the [guard-the-context-window principle](../../principle-guard-the-context-window/SKILL.md)), keep the reduced finding in the main thread.
 3. Prove the mechanism before believing it. Inject instrumentation through the runtime's supported debugging API (for example, CDP eval for a browser), or apply an authorized live-code hotfix without reloading, to confirm the hypothesis cheaply.
 4. Map the finding back to source: file, symbol, the line that allocates or schedules.
 5. Throughput checkpoint stays one line: `throughput checkpoint: n/a, read-only forensics`.

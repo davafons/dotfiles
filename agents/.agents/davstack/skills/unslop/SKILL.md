@@ -2,12 +2,17 @@
 name: unslop
 description: Cut AI tells from any writing.
 disable-model-invocation: true
+license: MIT
+metadata:
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/unslop
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Unslop
+<!-- markdownlint-disable MD029 -->
 
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-Source: [cursor/plugins `1b6d44ff`](https://github.com/cursor/plugins/blob/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/unslop/SKILL.md).
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
+
+# Unslop
 
 Edit text to remove AI patterns. Scan for the patterns below, then rewrite. Preserve meaning and match the intended tone.
 

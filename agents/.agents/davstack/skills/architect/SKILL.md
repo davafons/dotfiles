@@ -4,11 +4,11 @@ description: "Sketch types, signatures, and module structure before code, then s
 disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/architect
-  revision: 1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/architect
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Architect
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -18,6 +18,8 @@ They govern tools, model roles, workspace ownership, and authority throughout
 this method. Preserve every phase and required output. Missing independent
 workers, a judge, or safe output isolation leaves that gate open, not passed.
 Installing this skill does not authorize delegation, model trials, or publication.
+
+# Architect
 
 Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch.
 
@@ -41,7 +43,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt.
 
-Choose the design runners from available configured roles under the native coordination contract and **arena** Phase A. Use distinct models for the design perspectives and verify them from engine receipts. Do not infer a model from a role label or silently add a provider to fill a missing seat.
+Take the runners from the `architect runners` line in the `pstack-models.mdc` rule, in place of the `arena runners` line. If the rule or that line is missing, use `claude-opus-5-5-xhigh` and `grok-4.7-xhigh-fast`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
@@ -53,7 +55,7 @@ Arena returns one synthesized design package. Its synthesis decision fills the r
 
 ## Phase C: Agree (opt-in)
 
-Default: proceed directly to implementation with the synthesized design within the authorized task. No extra human checkpoint. A design-only or review request does not authorize implementation.
+Default: proceed directly to implementation with the synthesized design. No human checkpoint.
 
 Opt in to a checkpoint when the invoker explicitly asks: "/architect with checkpoint," "stop and show me before implementing," or similar. Then surface the synthesized design and pause for sign-off.
 

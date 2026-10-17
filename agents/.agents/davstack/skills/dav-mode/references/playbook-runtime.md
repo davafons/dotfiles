@@ -6,10 +6,10 @@ not its purpose. A missing capability is a reported gap, not a passing result.
 
 ## Source
 
-The 23 selected playbooks are adapted from
-[cursor/plugins pstack at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`](https://github.com/cursor/plugins/tree/1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def/pstack/skills/poteto-mode/playbooks).
+All 30 workflow skills, 23 playbooks and 24 principle skills use
+[cursor/plugins pstack at `101b274dd991f694e1f7024be2157e5f3adf07de`](https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills).
 The upstream [MIT license](../LICENSE) accompanies them. Source URLs identify
-upstream; they do not require its editor or install its other workflows.
+upstream; they do not require its editor or grant execution authority.
 
 ## Delegation and models
 
@@ -33,9 +33,9 @@ results. The parent owns the workflow, not merely the delegates' summaries.
 [Swarm](../../swarm/SKILL.md), [arena](../../arena/SKILL.md),
 [architect](../../architect/SKILL.md), and [interrogate](../../interrogate/SKILL.md)
 are installed with their complete pinned methods and supporting files. Use those
-local sources when a playbook names the protocol. The `principle-*` leaves remain
-pinned upstream references, not additional installed skills. Read a relevant leaf
-before applying or citing it. Reading or installing a method is not executing it.
+local sources when a playbook names the protocol. All 24 `principle-*` leaves
+are installed locally with the same source pin and MIT notices. Read a relevant
+leaf in full before applying or citing it. Reading or installing a method is not executing it.
 
 Preserve the method's required outputs: distinct design candidates and synthesis,
 blinded judging, lane coverage, measurement vetting, and decision evidence.
@@ -54,24 +54,30 @@ The installed execution playbooks include [Autonomous run](../playbooks/autonomo
 [Orchestrate](../playbooks/orchestrate.md), and [Babysit](../playbooks/babysit.md).
 Name the supported execution workflow and its gaps before asking to start it.
 
-## Remaining workflow imports
+## Reading upstream runtime examples
 
-All 30 upstream workflow names are represented locally. The final seven imports
-retain their full sources at `101b274dd991f694e1f7024be2157e5f3adf07de`:
-[automate-me](../../automate-me/SKILL.md),
-[typescript-best-practices](../../typescript-best-practices/SKILL.md),
-[setup-pstack](../../setup-pstack/SKILL.md),
-[poteto-help](../../poteto-help/SKILL.md),
-[make-bot-ui](../../make-bot-ui/SKILL.md),
-[in-your-own-words](../../in-your-own-words/SKILL.md), and
-[sharpen](../../sharpen/SKILL.md).
+The full upstream bodies retain their logical role labels, Cursor model examples,
+configuration recipes, and platform-specific reference APIs. These are source
+examples, not native calls. `Task`, `TaskOutput`, `AskQuestion`, `readonly`,
+`environment`, and `run_in_background` do not add fields to this harness. Use its
+actual child, follow-up, stop, clarification, job and scheduling tools. Never
+run a Cursor transcript search on native history or create `.mdc` rules expecting
+them to configure native roles. `create-skill` maps to the installed public
+[skill-creator](../../skill-creator/SKILL.md), not a recovered Cursor built-in.
 
-Their runtime sections govern native placement, history scope, questions, model
-configuration and unavailable bot APIs. Setup and bot imports do not configure
-providers or deploy services. Help remains read-only. The TypeScript examples
-retain the documented duration erratum. Framing a task does not loosen explicit
-user constraints or permission gates. Other installed workflows retain their own
-recorded source pins; name coverage is not a claim that every file is latest.
+Resolve each named logical model role to an available configured native role.
+The upstream model tables are not provider configuration or permission to guess
+slugs. An unavailable independent role leaves the gate open. Apply the updated
+[model-effort and speed policy](../SKILL.md#subagents) only through supported
+controls. In Yuke, model and reasoning are separate configuration values, and
+its exposed child tool cannot override either per call.
+
+All 30 workflows and 24 principles now have complete current source bodies.
+Native adapters govern placement, history scope, questions, model configuration,
+and unavailable bot APIs. Setup and bot imports do not configure providers,
+request secrets or deploy services. Help remains read-only. The TypeScript
+examples keep their visible factual duration erratum. Framing a task does not
+loosen explicit user constraints or permission gates.
 
 ## Design and coordination
 

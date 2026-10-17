@@ -1,13 +1,14 @@
 ---
 name: teach
 description: "Explain a body of work plainly so a person actually understands it. Runs the `how` and `why` skills and weaves what they find into one clear explanation. Use for 'teach me this', 'help me really understand X', 'explain this change or subsystem to me'."
+disable-model-invocation: true
 license: MIT
 metadata:
-  upstream: https://github.com/cursor/plugins/tree/d73344bee8cf22e53b9d5f4cf5749d38ba38c174/pstack/skills/teach
-  revision: d73344bee8cf22e53b9d5f4cf5749d38ba38c174
+  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/teach
+  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Teach
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -19,6 +20,8 @@ not open native GUI apps without permission. Read the installed
 [unslop](../unslop/SKILL.md) skill; if unavailable in another environment,
 apply the plain-writing instructions below directly.
 This skill explains; it does not change code or external state.
+
+# Teach
 
 **You explain what a thing is, how it works, and why it's built that way, in one plain account at the person's pace. The goal is that they understand it, not that you change anything.**
 

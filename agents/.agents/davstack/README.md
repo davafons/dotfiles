@@ -15,49 +15,65 @@ The [upstream review](PSTACK-REVIEW.md) records the separate reference snapshot,
 organization, and individual skill reviews. It is a reading queue, not an import
 list. Both documents are repository-only documentation, not installed skills or
 global agent instructions. Current environment facts and the resume state are in
-the dotfiles project context and the linked review task in `/work`.
+the linked task notes in `/work`.
 
-## Current result and remaining work
+## Current source set
 
-Davstack now contains **35 global development skills**, **23 playbooks**, and
-**three project verification skills**. All **30 workflow names** in pstack
-0.15.25 are represented, with `poteto-mode` adapted as `dav-mode`. Five additional
-global skills are Comment Sicko, Control CLI, Deslop, Loop, and the public
-Anthropic Skill Creator.
+Davstack contains **59 global development skills**, **23 playbooks**, and
+**three project verification skills**. The global set includes all **30 workflow
+skills** and all **24 principle skills** registered by pstack 0.15.25, with
+`poteto-mode` adapted as `dav-mode`. Principles are local skills, not remote-only
+references, and are linked from the mode's index.
 
-The final seven workflow imports are `automate-me`, `typescript-best-practices`,
-`setup-pstack`, `poteto-help`, `make-bot-ui`, `in-your-own-words`, and `sharpen`.
-Their complete methods, supporting references and MIT notices come from
-`101b274dd991f694e1f7024be2157e5f3adf07de`. Other installed workflows retain their
-recorded source pins. Complete name coverage does not mean every older file was
-updated to the latest upstream revision in this import.
+The complete pstack methods and supporting references use
+[`101b274dd991f694e1f7024be2157e5f3adf07de`](https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack),
+confirmed as upstream main on October 17, 2026. The sync restores full upstream
+bodies where older Shirabe migrations had rewritten or shortened them. It also
+updates Ketchup, the principle definitions, model-effort guidance, lead judgment,
+autopilot and shipping policies, and the watcher's owner-approval classification.
+Every imported pstack skill carries the exact upstream MIT notice.
 
-Runtime adaptations do not replace the methods:
+The five additional skills have separate sources:
 
-- `automate-me` uses authorized native history, skill placement, questions and jj.
-  Importing it does not scan personal history or create a new personal mode.
-- `setup-pstack` preserves the full detect, budget, confirm and role-map method.
-  Native configuration must affect actual roles; a Cursor `.mdc` file would not.
-  Unsupported independent role seats remain explicit gaps.
-- `poteto-help` keeps its full router and two references. Native names and actual
-  configuration govern local advice. Upstream guide links are pinned public URLs.
-- `make-bot-ui` keeps the complete webhook and secret-handling procedure. Its
-  Cursor/Grok Bot APIs are not supplied by this native adapter. No infrastructure,
-  secret request, installation or network exposure is authorized by the import.
-- The TypeScript examples remain intact with a visible erratum. A plain-number
-  duration does not prove nonnegativity, finiteness or Date-range validity.
-- `in-your-own-words` and `sharpen` retain their exact small upstream methods.
-  Framing a task never overrides explicit user constraints or permission gates.
+- Comment Sicko exposes the complete pstack agent method at the same pin through
+  a report-only native skill and agents.
+- Control CLI and Deslop come from `cursor-team-kit` at that pin. Their source
+  bodies have not changed since the prior pin; native adapters and exact Cursor
+  MIT notices remain.
+- Loop maps the upstream built-in to the actual native scheduler.
+- The complete public Anthropic Skill Creator stays at its independent approved
+  pin `dbd4588f9e1033efb41dad4bef2f7947c8993d44`, under Apache-2.0. This pstack sync
+  does not claim it is Cursor's built-in or refresh an unrelated upstream.
 
-The 24 principle leaves remain linked references, not additional registered
-skills. The dormant Benny automation pack is not ported. These imports complete
-workflow source coverage, not byte-for-byte packaging or full runtime parity.
+Runtime differences remain explicit in
+[Playbook runtime](skills/dav-mode/references/playbook-runtime.md). Cursor tools,
+model tables, configuration recipes and bot APIs retained in source bodies are
+upstream examples, not native capabilities. Actual native roles, lifecycle,
+permissions and jj commands govern execution. Missing independent seats,
+cloud placements, or bot/secret APIs leave their execution gates open.
 
-Source and installation checks are separate from optional model evaluations.
-The operator stopped the earlier campaign; it will not resume as part of copying
-skills. Its partial results and remaining gates are recorded in `/work`, not
-prerequisites for reading the installed methods. Save drafts and finish active
-turns before refreshing a frontend. Publication still requires a request.
+The program store deliberately retains jj ancestry, explicit program scope and
+forge-head checks rather than adopting upstream's Git/base-chain resolver. It
+currently supports GitHub, not the new Origin frontier selector. Workspace cleanup
+uses the read-only jj auditor instead of the upstream Git/transcript scanner.
+These are runtime adapters, not claims of complete helper-platform parity.
+
+Two local additions are not upstream method changes. The user explicitly approved
+"execute the smallest useful case first" in shared working rules. The TypeScript
+adapter records a demonstrated source erratum: a plain-number duration does not
+prove nonnegativity, finiteness or Date-range validity. The source example remains
+intact. Other engineering summaries in shared rules now defer to the local
+upstream principle leaves instead of overriding them.
+
+The dormant Benny automation pack and generated Claude plugin tree are not
+installed. Their complete source remains in the separate upstream checkout.
+This is complete registered-method coverage, not byte-for-byte plugin packaging.
+
+Source, license, link, installation and helper checks are distinct from model
+workflow efficacy. The earlier model campaign remains stopped. No source copy
+resumes it, configures providers, scans personal history, installs bot services,
+reloads active sessions, publishes, or merges. Save drafts and finish active turns
+before refreshing a frontend.
 
 ## Start reading and using the stack
 
@@ -71,10 +87,9 @@ works, ask for a regression before a bug fix, ask Architect to design an API,
 or ask Interrogate to challenge a change. Delegated workflows still need explicit
 delegation permission. Read-only review does not authorize applying its findings.
 
-All upstream workflow names now have local sources. This is not a full upstream
-mirror: source pins vary, principle leaves remain references, and Cursor-only
-capabilities require actual native equivalents. Those distinctions do not prevent
-reading the installed methods.
+All registered upstream workflows and principles now have local sources at the
+same pin. Cursor-only capabilities still require actual native equivalents;
+reading and copying the method do not execute it.
 
 ## Skills
 
@@ -239,7 +254,7 @@ bin/bin/agent-skills check
 make check
 ```
 
-The installer explicitly lists all 35 davstack names. It links their complete
+The installer explicitly lists all 59 davstack names. It links their complete
 directories into `~/.agents/skills/` for Yuke/Codex and `~/.claude/skills/` for
 Claude Code. It also links the `comment-sicko` and `dav-agent` adapters into
 `~/.claude/agents/` and `~/.codex/agents/`. The adapters inherit configured models.
@@ -366,27 +381,24 @@ Portability changes are explicit:
   Codex reapplies the parent's live permission overrides, so the adapter does
   not guarantee isolation from a parent running with broader permissions.
   Other harnesses use the same report-only skill without enforced tool isolation.
-- A load-bearing comment constraint is retained until encoded or disproved;
-  blind deletion must not lose a contract. Encodings and reflection still wait
-  for approval where their workflows require it.
+- Comment constraints follow the complete upstream keep-list and No Comments
+  procedure, including its explicit encoding approvals. Reflection still waits
+  for approval before applying proposed edits.
 - jj and shared-desktop restrictions apply throughout. Production access and
   deployment require applicable authority, regardless of a playbook's wording.
 
-## Selected upstream skills
+## Upstream workflow sources
 
-The five investigation/verification skills were selected from
-[cursor/plugins pstack](https://github.com/cursor/plugins/tree/d73344bee8cf22e53b9d5f4cf5749d38ba38c174/pstack)
-at `d73344bee8cf22e53b9d5f4cf5749d38ba38c174`, with their MIT licenses and
-upstream attribution. `how` and the formerly migrated `reflect` now follow
-`1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, including their full supporting
-templates. The follow-up report records the runtime adaptations. Each skill has
-an explicit Runtime adaptation covering actual tools/models, user authority,
-read-only evidence, jj, privacy, and desktop safety.
+All registered pstack workflows and principles now use the source pin in
+**Current source set** above. Earlier import pins and campaign results in the
+repository-only reports are historical evidence, not the current inventory.
+Runtime adapters cover actual tools/models, authority, jj, privacy and desktop
+safety without substituting shorter methods.
 
 `teach` uses Mermaid/ASCII when image generation is absent. `recall` uses only
-authorised current-harness history, not unrelated chats or invented session IDs.
-Optional upstream `session-pickup` and `automate-me` remain uninstalled. The session-pickup *playbook*
-is an adapted upstream playbook, not an installation of that separate skill.
+authorized current-harness history, not unrelated chats or invented session IDs.
+`automate-me` is installed; use it only for a requested personal-mode workflow.
+Session pickup is the installed `dav-mode` playbook, not a separate global skill.
 
 `create-verification-skill` writes `.agents/skills/verify-<app>/` for Yuke/Codex
 or `.claude/skills/verify-<app>/` for Claude, in the project, not dotfiles. Improve
@@ -404,7 +416,7 @@ review and approval.
 ## Verification and control batch
 
 `control-cli` and `maintain-verification-skill` retain their complete methods
-from `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, with MIT licenses. Control CLI
+from `101b274dd991f694e1f7024be2157e5f3adf07de`, with MIT licenses. Control CLI
 comes from `cursor-team-kit`; maintenance comes from pstack. Runtime changes
 use private terminal sessions, retained proof, native delegation, jj, and
 explicit desktop/publication authority. The maintenance method still requires
@@ -451,7 +463,7 @@ agent adapters keep their existing model inheritance; this reviewer role is Yuke
 
 ## Design and coordination batch
 
-The approved October 17 imports add `swarm`, `arena`, `architect`, and
+The initial October 17 imports added `swarm`, `arena`, `architect`, and
 `interrogate` at `1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`. All 11 upstream main
 and reference files are retained, with the pstack MIT license in each directory.
 The initial import adapted only source attribution, runtime, workspace, and
@@ -469,7 +481,8 @@ exact-revision receipts, and explicit gaps when workers fail or drop out.
 
 Distinct-model review is not different-family review. Existing configured Luna
 and Sol roles can support the former. Arena prefers a different-family judge;
-Eval requires one. The latter gate remains open with the current Codex-only seats.
+Eval requires one. Existing Grok availability was observed later, but no completed
+auditable different-family verdict was produced; the earlier campaign is stopped.
 Yuke's spawn tool keeps the parent workspace root and does not enforce read-only
 access. An output directory in a brief is not proof of tool-root isolation.
 

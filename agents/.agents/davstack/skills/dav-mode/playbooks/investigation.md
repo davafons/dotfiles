@@ -2,6 +2,8 @@
 
 Read [Playbook runtime](../references/playbook-runtime.md) before executing these steps.
 
+Select each delegate's reasoning level and speed per [dav-mode's Subagents rules](../SKILL.md#subagents), using only controls the current harness actually supports.
+
 **You own the answer. Plan, route, write.**
 
 Investigation requests are read-only. They produce a cited explanation or a recommendation, not a code change.

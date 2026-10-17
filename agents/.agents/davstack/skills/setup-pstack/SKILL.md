@@ -7,7 +7,7 @@ metadata:
   revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-# Setup pstack
+Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
 
 ## Runtime adaptation
 
@@ -36,6 +36,8 @@ The examples below keep the full upstream role map. Importing this skill does
 not apply it. Only confirm activation that actually occurred; an active-session
 reload needs separate coordination after drafts are saved and runs finish.
 Verification-skill creation remains an optional, separately accepted action.
+
+# Setup pstack
 
 Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack's model per role.
 
@@ -68,7 +70,7 @@ Every real slug written must be in the detected set. `inherit-parent` and `auto`
 
 ### 5. Write the rule
 
-Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true`, a `# budget` line with the chosen label and its target effort, and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true`, a `# budget` line with the chosen label and its target effort, and one line per role, using the same labels dav-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
 
 ```text
 ---

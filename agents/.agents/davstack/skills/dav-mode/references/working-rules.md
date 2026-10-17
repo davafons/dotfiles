@@ -33,19 +33,10 @@ Shirabe's Rails tools or plan format exist in another project.
   work exceeds five minutes without exercising the target behavior, report the
   blocker and remaining work. Never relax safety or permission gates to meet a
   timebox.
-- **The best part is no part.** Subtract before adding. Build the simplest thing
-  that works, then let reality push; do not speculate. Extract on the fourth
-  occurrence, not the first, unless a real boundary already earns its place.
-- **Fix root causes, not symptoms.** Read the surrounding code first. Rename,
-  extract, or reshape our own confusing code rather than explain it with prose.
-- **Minimise reader load.** A new reader should be able to tell where a value
-  comes from and what can change it. Name the invariant at its owning boundary.
-- **Prove it works.** Run the real artifact and inspect the actual value. Watch
-  a regression check fail without the fix when practical. Compilation, a proxy,
-  and your own summary are not evidence. Report gaps and inconclusive results.
-- **Build the lever.** For substantial repeatable work, build the script, task,
-  or check instead of doing it by hand. It must exist and be rerunnable before
-  you claim to have built it.
+The locally installed [principle leaves](../SKILL.md#principles) own the
+engineering methods. Read the relevant leaf rather than substituting a local
+summary. The execution rule above is an explicit local user-approved addition.
+
 - **Preserve shared work.** Inspect the current diff and file state before a
   sweep or history edit. Give each mutable plan/file one owner. Revert only your
   own changes, never reset another worker's edits. In a shared jj checkout the
@@ -59,20 +50,11 @@ Shirabe's Rails tools or plan format exist in another project.
 
 ## Where a rule lives
 
-A rule you have to remember is the weakest guard. Put it on the strongest rung
-available:
-
-1. **Impossible to express:** no such API, or a database constraint rejecting it.
-2. **Fails CI:** a lint, test, or behaviour ratchet.
-3. **A canonical helper:** one implementation all callers use.
-4. **A runtime check:** refuses to proceed with a broken precondition.
-5. **Prose:** judgment a machine cannot make, or a measured dead end worth not
-   repeating. Explain why a stronger rung does not apply.
-
-A rule has one owner. Project facts stay with their project; reusable personal
-workflows stay in davstack. A plan is a current resume snapshot, not a second
-permanent home or a diary. Promote durable facts, then retire the plan according
-to the project's conventions. Version control is the archive.
+Upstream owns the reusable methods; the [principles index](../SKILL.md#principles)
+links their complete local sources. Native runtime and authority mappings live
+in [Playbook runtime](playbook-runtime.md). Project architecture, commands,
+state locations and ownership facts stay in the project's instructions. Keep
+one canonical source instead of copying a second policy here.
 
 ## Writing agent instructions
 
