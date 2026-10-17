@@ -48,3 +48,24 @@ into the copied profile. Wait for active runs to finish, save the typed draft,
 and perform an idle `/reload` or restart before expecting the new tool role.
 Starting another chat inside an old process does not reload the plugin. Do not
 reload the user's current session just to verify this change.
+
+## Bounded private campaigns
+
+The native authoring runner can opt a fresh process into a prepaid quota through
+`DAVSTACK_CAMPAIGN`. Ordinary sessions without that variable keep their existing
+behavior. The public child-tool arguments and configured roles do not change.
+The runner reserves the entire process quota, including its root, before launch.
+Failed and unused reservations remain consumed.
+
+In campaign mode, child creation takes a slot before calling the engine and sets
+`max_rounds=8`. A session map also caps requests across resumed turns. Only one
+root and one child level are allowed. The guard restricts tools to private-workspace
+file operations, child dispatch, follow-up and stop. Shell and MCP tools are absent
+and refused. The runner owns the process deadline and teardown. This is not a
+general sandbox against malicious profile plugins or arbitrary untrusted prompts.
+
+After registering the tools and hooks, the guard writes a nonce acknowledgment
+into the private cache. The runner refuses to send input unless it matches the
+grant. A missing or failed plugin therefore cannot silently start an uncapped run.
+The native application reads its existing provider account; no provider files or
+credentials are copied. Installing this source does not reload an active session.

@@ -72,6 +72,23 @@ remains exhausted. Provider changes and publication need separate approval.
 The TypeScript duration finding was reproduced by compiling the exact upstream
 type with a negative value and inspecting the runtime result.
 
+## Start reading and using the stack
+
+Start with [dav-mode](skills/dav-mode/SKILL.md), then read the playbook matching
+your task under `skills/dav-mode/playbooks/`. A skill's `SKILL.md` gives its trigger,
+method and output. Read its supporting references when the method names them.
+The files here are the canonical sources linked into `~/.agents/skills/`.
+
+You can request skills in ordinary language. For example, ask how a subsystem
+works, ask for a regression before a bug fix, ask Architect to design an API,
+or ask Interrogate to challenge a change. Delegated workflows still need explicit
+delegation permission. Read-only review does not authorize applying its findings.
+
+The curated sources are complete for the approved scope. This is not a full
+upstream mirror. The five deliberate exclusions above and the pinned principle
+references do not prevent reading the installed methods. Runtime checks and human
+feedback remain separate from source completeness.
+
 ## Skills
 
 | Skill | Purpose | Main dependency |

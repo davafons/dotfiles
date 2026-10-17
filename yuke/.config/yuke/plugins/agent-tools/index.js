@@ -1,5 +1,5 @@
 //! Profile-owned child tools over native sessions. The engine owns runs and reports.
-import { client, children } from "yuke";
+import { client, children, env, fs } from "yuke";
 import { davAgent } from "./dav-agent.js";
 /** @typedef {{ description: string, model?: string, reasoning?: string, prompt?: string }} AgentRow */
 /** @type {Record<string, AgentRow>} */
@@ -27,8 +27,74 @@ function required(args, name) {
   if (typeof value !== "string" || !value.trim()) throw Error(name + " must be nonempty text.");
   return value;
 }
+/** @param {import("yuke").Context} ctx */
+function campaignGuard(ctx) {
+  const raw = env.get("DAVSTACK_CAMPAIGN");
+  if (raw === undefined) return null;
+  const grant = JSON.parse(raw);
+  if (!Number.isInteger(grant.slots) || grant.slots < 1 || grant.slots > 12 ||
+      !Number.isInteger(grant.deadline_ms) || grant.deadline_ms <= Date.now() || grant.deadline_ms > Date.now() + 60000 ||
+      typeof grant.nonce !== "string" || !/^[a-f0-9]{32}$/.test(grant.nonce) ||
+      typeof grant.workspace !== "string" || !grant.workspace.startsWith("/") ||
+      typeof grant.home !== "string" || !grant.home.startsWith("/") ||
+      !Number.isInteger(grant.max_concurrent) || grant.max_concurrent < 1 || grant.max_concurrent > 12) throw Error("Invalid campaign grant.");
+  let reserved = 1;
+  /** @type {string | null} */
+  let root = null;
+  /** @type {Map<string, number>} */
+  const rounds = new Map();
+  const allowed = new Set(["read", "write", "edit", "spawn_agent", "send_agent_input", "stop"]);
+  const deadline = () => { if (Date.now() >= grant.deadline_ms) throw Error("Campaign deadline reached."); };
+  ctx.effect(() => children.limits({ maxDepth: 1, maxConcurrent: grant.max_concurrent }));
+  ctx.advise(client, "sessionCreate", "around", (next, params) => {
+    deadline();
+    if (reserved >= grant.slots) throw Error("Campaign session quota exhausted.");
+    reserved += 1;
+    return next({ ...params, max_rounds: 8 });
+  });
+  ctx.hook("request.build", build => {
+    deadline();
+    const context = build.context;
+    if (context.workspace !== grant.workspace || context.depth > 1) return { block: "Campaign workspace or depth mismatch." };
+    if (!rounds.has(context.session_id)) {
+      if (context.parent_id === null) {
+        if (root !== null) return { block: "Only one prepaid root session is allowed." };
+        root = context.session_id;
+      } else if (context.parent_id !== root || rounds.size >= reserved) return { block: "Session has no prepaid campaign slot." };
+      rounds.set(context.session_id, 0);
+    }
+    const count = (rounds.get(context.session_id) ?? 0) + 1;
+    if (count > 8) return { block: "Campaign session round quota exhausted." };
+    rounds.set(context.session_id, count);
+    ctx.print("CAMPAIGN_REQUEST", JSON.stringify({ session: context.session_id, count, reserved }));
+    return { replace: { model: build.model, system: build.system, max_output_tokens: build.max_output_tokens,
+      tools: build.tools.filter(tool => allowed.has(tool.name)) } };
+  });
+  ctx.hook("tool.before", call => {
+    deadline();
+    if (!allowed.has(call.name)) return { block: "Tool is not allowed in a bounded campaign." };
+    if (call.context.depth > 0 && call.name === "spawn_agent") return { block: "Nested campaign delegation is not allowed." };
+    if (["read", "write", "edit"].includes(call.name)) {
+      const args = JSON.parse(call.arguments);
+      if (typeof args.path !== "string" || args.path.includes("\0")) return { block: "Campaign tool requires a workspace path." };
+      let input = args.path;
+      if (input.startsWith("~/")) input = grant.home + input.slice(1);
+      if (call.name === "read" && input.startsWith(grant.home + "/.agents/skills/")) input = grant.workspace + input.slice(grant.home.length);
+      if (!input.startsWith("/")) input = grant.workspace + "/" + input;
+      const parts = [];
+      for (const part of input.split("/")) {
+        if (part === "..") parts.pop();
+        else if (part && part !== ".") parts.push(part);
+      }
+      const path = "/" + parts.join("/");
+      if (path !== grant.workspace && !path.startsWith(grant.workspace + "/")) return { block: "Campaign file access must stay in the private workspace." };
+    }
+  });
+  return grant;
+}
 /** Register both child tools in every frontend. No TUI is needed. Invalid host registrations throw. @param {import("yuke").Context} ctx */
-export default function(ctx) {
+export default async function(ctx) {
+  const grant = campaignGuard(ctx);
   ctx.hook("request.build", build => {
     if (build.context.parent_id !== null) ctx.print("CHILD_REQUEST_MODEL", JSON.stringify({ session_id: build.context.session_id, agent: build.context.agent_name, model: build.model }));
     if (build.context.depth < build.context.max_agent_depth) return;
@@ -86,4 +152,5 @@ export default function(ctx) {
       return result.type === "queued" ? "Queued for " + id + " after its current run." : "Sent to " + id + ".";
     },
   });
+  if (grant) await fs.writeFile(env.get("XDG_CACHE_HOME") + "/campaign-ready.json", JSON.stringify(grant));
 }

@@ -44,6 +44,36 @@ sandbox support, model authorization, or budget fails closed. If authentication
 requires a refresh write outside the private root, report it blocked; do not
 change credentials or weaken isolation to get a pass.
 
+## Bounded coordination campaigns
+
+`run_trial(..., campaign_slots=N)` reserves a whole private process quota,
+including its root and any children, before launch. Its fresh budget must contain
+`{"limit": 12, "used": 0, "campaign_seconds": 900}` or smaller authorized limits.
+The locked ledger records the first start on wall and monotonic clocks. Later
+reservations cannot restart it or overbook it. Failed and unused slots stay
+consumed. A campaign ledger cannot be used through the ordinary single-run path.
+
+The installed child adapter must acknowledge the nonce before the runner sends
+any input. Its opt-in guard limits session creation, blocks a second root and
+nested delegation, and counts at most eight requests per session across turns.
+Only private-workspace file tools and the child lifecycle tools are allowed.
+The runner drains terminal root and child state and retains child histories,
+including cancellation outcomes for workers that send no final report.
+
+Each process works for at most 55 seconds, leaving up to five seconds for forced
+termination within the authorized 60-second session ceiling. Late children share
+that earlier deadline. The monotonic campaign deadline also reserves cleanup
+time. The runner reaps its owned engine process. No shell or background-job tool
+is available to a campaign model. Trusted profile plugins remain outside this
+model-tool restriction; this is not a general malicious-plugin sandbox.
+
+Use the existing transport concurrently for independent root writers when their
+outputs need separate roots. Prepay each root separately under the same locked
+ledger. Keep rubric and receipt files outside writer roots, and give judges only
+neutral artifact copies. The generic runner does not authorize new models or
+providers. Obtain the model, family, session and time approval first. One bounded
+paired case is not the full repeated description campaign or human feedback.
+
 ## Run paired content trials
 
 From the skill-creator directory, use `scripts.native_model.run_trial`. Pass the
