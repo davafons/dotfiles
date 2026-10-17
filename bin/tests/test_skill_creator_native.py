@@ -12,6 +12,7 @@ import sys
 import tempfile
 import textwrap
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -53,7 +54,9 @@ class NativeAuthoring(unittest.TestCase):
                 self.send_header("Content-Type", "text/event-stream")
                 self.end_headers()
                 text = json.dumps(body["messages"])
-                if "OBSERVE_READ" in text:
+                if hasattr(test, "respond"):
+                    delta, finish = test.respond(body)
+                elif "OBSERVE_READ" in text:
                     path = re.search(r"(/[^\s\"<>]+/SKILL\.md)", text).group(1)
                     delta = {"tool_calls": [{"index": 0, "id": "fixture-read", "type": "function", "function": {
                         "name": "read", "arguments": json.dumps({"path": path})}}]}
@@ -118,6 +121,219 @@ class NativeAuthoring(unittest.TestCase):
         self.assertEqual(json.loads(self.budget.read_text())["used"], 1)
 
 
+    def enable_campaign(self):
+        profile = self.root / "config/yuke"
+        shutil.copytree(ROOT / "yuke/.config/yuke/plugins/agent-tools", profile / "agent-tools")
+        (profile / "config.json").write_text('{"plugins":["./agent-tools"]}')
+        path = profile / "providers.json"
+        config = json.loads(path.read_text())
+        config["providers"].append({"id": "openai-codex", "base_url": f"http://127.0.0.1:{self.server.server_port}/v1",
+            "api_key": "fixture-only", "endpoints": [{"protocol": "openai_chat", "credential_header": "authorization_bearer"},
+                {"protocol": "openai_responses", "credential_header": "authorization_bearer"}],
+            "models": [{"id": name, "upstream_id": name, "protocol": "openai_chat", "reasoning_levels": ["medium", "high", "xhigh"],
+                "flags": {"supports_tools": True, "thinking_format": "openai"}} for name in ("gpt-6-luna", "gpt-6.1-sol")]})
+        path.write_text(json.dumps(config))
+        self.budget.write_text('{"limit":12,"used":0,"campaign_seconds":900}')
+
+    def tool_delta(self, name, arguments, index=0):
+        return {"index": index, "id": name + "-" + str(len(self.requests)) + "-" + str(index), "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)}}
+
+    def test_campaign_requires_bootstrap_before_any_provider_request(self):
+        self.budget.write_text('{"limit":2,"used":0,"campaign_seconds":900}')
+        with self.assertRaisesRegex(native.NativeRunError, "guard"):
+            native.run_trial("Never sent", "fixture/model", campaign_slots=2, timeout=5)
+        self.assertEqual(self.requests, [])
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 2)
+
+    def test_campaign_caps_actual_child_requests_and_records_terminal_history(self):
+        self.enable_campaign()
+        def respond(body):
+            calls = [r for r in self.requests if r["model"] == body["model"]]
+            if body["model"] == "model":
+                if len(calls) == 1:
+                    return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Read nonce.txt until finished."})]}, "tool_calls"
+                return {"content": "Parent finished."}, "stop"
+            return {"tool_calls": [self.tool_delta("read", {"path": "nonce.txt"})]}, "tool_calls"
+        self.respond = respond
+        result = native.run_trial("Coordinate the worker.", "fixture/model", campaign_slots=2, timeout=15, files={"nonce.txt": "private"})
+        child_calls = [r for r in self.requests if r["model"] == "gpt-6-luna"]
+        self.assertEqual(len(child_calls), 8)
+        self.assertEqual(len(result["children"]), 1)
+        child = result["children"][0]
+        self.assertEqual(child["session"]["max_rounds"], 8)
+        self.assertEqual(child["last_run"]["type"], "failed")
+        self.assertEqual(child["last_run"]["code"], "max_rounds")
+        history = json.loads((Path(result["artifact_dir"]) / (child["session"]["id"] + "-history.json")).read_text())
+        self.assertEqual(len([m for m in history["messages"] if m["type"] == "assistant"]), 8)
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 2)
+        self.assertIs(result["native_process_stopped"], True)
+
+    def test_campaign_rejects_unfunded_child_before_creation(self):
+        self.enable_campaign()
+        def respond(body):
+            calls = [r for r in self.requests if r["model"] == body["model"]]
+            if body["model"] == "model" and len(calls) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Report only."}, i) for i in range(2)]}, "tool_calls"
+            return {"content": "Done."}, "stop"
+        self.respond = respond
+        result = native.run_trial("Coordinate both workers.", "fixture/model", campaign_slots=2, timeout=10)
+        self.assertEqual(len(result["children"]), 1)
+        self.assertEqual(len([r for r in self.requests if r["model"] == "gpt-6-luna"]), 1)
+        history = json.loads((Path(result["artifact_dir"]) / "history.json").read_text())
+        failures = [p["state"] for m in history["messages"] if m["type"] == "assistant" for p in m["content"]
+                    if p["type"] == "tool" and p["name"] == "spawn_agent" and p["state"]["type"] == "error"]
+        self.assertEqual(len(failures), 1)
+        self.assertIn("quota", json.dumps(failures).lower())
+
+    def test_campaign_round_count_survives_parent_resumption(self):
+        self.enable_campaign()
+        release = threading.Event()
+        def respond(body):
+            calls = [r for r in self.requests if r["model"] == body["model"]]
+            if body["model"] != "model":
+                release.wait(3)
+                time.sleep(.1)
+                return {"content": "Child finished."}, "stop"
+            if len(calls) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Report when finished."})]}, "tool_calls"
+            if len(calls) < 8:
+                return {"tool_calls": [self.tool_delta("read", {"path": "nonce.txt"})]}, "tool_calls"
+            release.set()
+            return {"content": "Parent stopped."}, "stop"
+        self.respond = respond
+        with self.assertRaises(native.NativeRunError):
+            native.run_trial("Coordinate the worker.", "fixture/model", campaign_slots=2, timeout=10, files={"nonce.txt": "private"})
+        self.assertEqual(len([r for r in self.requests if r["model"] == "model"]), 8)
+        result = json.loads(next(self.root.glob("run-*/result.json")).read_text())
+        self.assertIn('"code": "runtime"', result["error"])
+        self.assertIs(result["native_process_stopped"], True)
+
+    def test_campaign_drains_queued_children_before_returning(self):
+        self.enable_campaign()
+        def respond(body):
+            calls = [r for r in self.requests if r["model"] == body["model"]]
+            if body["model"] == "model" and len(calls) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Report only."}, i) for i in range(2)]}, "tool_calls"
+            if body["model"] != "model":
+                time.sleep(.15)
+            return {"content": "Done."}, "stop"
+        self.respond = respond
+        result = native.run_trial("Coordinate both workers.", "fixture/model", campaign_slots=3, max_concurrent=1, timeout=10)
+        self.assertEqual(len(result["children"]), 2)
+        self.assertTrue(all(c["last_run"]["type"] == "turn" for c in result["children"]))
+        self.assertEqual(len([r for r in self.requests if r["model"] == "gpt-6-luna"]), 2)
+        history = json.loads((Path(result["artifact_dir"]) / "history.json").read_text())
+        outputs = [p["state"].get("output", "") for m in history["messages"] if m["type"] == "assistant"
+                   for p in m["content"] if p["type"] == "tool" and p["name"] == "spawn_agent"]
+        self.assertTrue(any(text.startswith("Queued ") for text in outputs), outputs)
+
+    def test_campaign_stop_is_terminal_without_inventing_a_child_report(self):
+        self.enable_campaign()
+        def respond(body):
+            if body["model"] != "model":
+                return {"tool_calls": [self.tool_delta("read", {"path": "nonce.txt"})]}, "tool_calls"
+            calls = [r for r in self.requests if r["model"] == "model"]
+            if len(calls) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Read nonce.txt repeatedly."})]}, "tool_calls"
+            if len(calls) == 2:
+                child = re.search(r"general-[a-f0-9]{8}", json.dumps(body)).group(0)
+                return {"tool_calls": [self.tool_delta("stop", {"id": child})]}, "tool_calls"
+            return {"content": "Worker stopped; its slice has no report."}, "stop"
+        self.respond = respond
+        result = native.run_trial("Start then cancel the worker.", "fixture/model", campaign_slots=2, timeout=10, files={"nonce.txt": "private"})
+        self.assertEqual(len(result["children"]), 1)
+        child = result["children"][0]
+        self.assertEqual(child["terminal_outcome"]["type"], "canceled")
+        self.assertLessEqual(len([r for r in self.requests if r["model"] == "gpt-6-luna"]), 8)
+        self.assertIn("no report", result["text"])
+
+    def test_campaign_failed_creation_keeps_its_slot_consumed(self):
+        self.enable_campaign()
+        p = self.root / "config/yuke/providers.json"
+        config = json.loads(p.read_text())
+        config["providers"][1]["models"][1]["reasoning_levels"] = ["high"]
+        p.write_text(json.dumps(config))
+        def respond(body):
+            if len(self.requests) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"agent": role, "message": "Report only."}, i)
+                        for i, role in enumerate(("reviewer", "general"))]}, "tool_calls"
+            return {"content": "Done."}, "stop"
+        self.respond = respond
+        result = native.run_trial("Coordinate both workers.", "fixture/model", campaign_slots=2, timeout=10)
+        self.assertEqual(result["children"], [])
+        self.assertFalse(any(r["model"] != "model" for r in self.requests))
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 2)
+
+    def test_campaign_deadline_stops_an_inflight_child_and_reaps_the_process(self):
+        self.enable_campaign()
+        started, release = threading.Event(), threading.Event()
+        def respond(body):
+            if body["model"] != "model":
+                started.set()
+                release.wait(5)
+                return {"content": "Too late."}, "stop"
+            if len([r for r in self.requests if r["model"] == "model"]) == 1:
+                return {"tool_calls": [self.tool_delta("spawn_agent", {"message": "Wait for the result."})]}, "tool_calls"
+            return {"content": "Waiting."}, "stop"
+        self.respond = respond
+        begin = time.monotonic()
+        try:
+            with self.assertRaisesRegex(native.NativeRunError, "deadline"):
+                native.run_trial("Coordinate the worker.", "fixture/model", campaign_slots=2, timeout=2)
+            self.assertTrue(started.is_set())
+            self.assertLess(time.monotonic() - begin, 4)
+            result = json.loads(next(self.root.glob("run-*/result.json")).read_text())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(result["native_process_pid"], 0)
+            self.assertEqual(json.loads(self.budget.read_text())["used"], 2)
+        finally:
+            release.set()
+
+    def test_global_campaign_deadline_also_stops_an_active_root(self):
+        self.enable_campaign()
+        self.budget.write_text('{"limit":12,"used":0,"campaign_seconds":6}')
+        self.respond = lambda body: (time.sleep(2) or {"content": "Too late."}, "stop")
+        begin = time.monotonic()
+        with self.assertRaisesRegex(native.NativeRunError, "deadline"):
+            native.run_trial("Wait for the result.", "fixture/model", campaign_slots=1, timeout=20)
+        self.assertLess(time.monotonic() - begin, 3)
+        result = json.loads(next(self.root.glob("run-*/result.json")).read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(result["native_process_pid"], 0)
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 1)
+
+    def test_campaign_judge_uses_the_approved_existing_family_selector(self):
+        self.enable_campaign()
+        p = self.root / "config/yuke/providers.json"
+        config = json.loads(p.read_text())
+        config["providers"].append({"id": "xai-grok", "base_url": f"http://127.0.0.1:{self.server.server_port}/v1",
+            "api_key": "fixture-only", "endpoints": [{"protocol": "openai_chat", "credential_header": "authorization_bearer"},
+                {"protocol": "openai_responses", "credential_header": "authorization_bearer"}],
+            "models": [{"id": "grok-4.7", "upstream_id": "grok-4.7", "protocol": "openai_chat", "reasoning_levels": ["medium", "high"],
+                "flags": {"supports_tools": True, "thinking_format": "openai"}}]})
+        p.write_text(json.dumps(config))
+        self.respond = lambda body: ({"content": "Judgment complete."}, "stop")
+        result = native.run_trial("Judge artifacts A and B only.", "xai-grok/grok-4.7", campaign_slots=1, timeout=10)
+        self.assertEqual((result["session"]["model"], result["session"]["max_rounds"]), ("xai-grok/grok-4.7", 8))
+        self.assertEqual(result["children"], [])
+        self.assertEqual(len([r for r in self.requests if r["model"] == "grok-4.7"]), 1)
+
+    def test_campaign_refuses_tools_outside_the_private_workspace(self):
+        self.enable_campaign()
+        protected = self.root / "protected.txt"
+        protected.write_text("unchanged")
+        def respond(body):
+            if len(self.requests) == 1:
+                return {"tool_calls": [self.tool_delta("write", {"path": str(protected), "content": "modified"})]}, "tool_calls"
+            return {"content": "Done."}, "stop"
+        self.respond = respond
+        native.run_trial("Write the requested artifact.", "fixture/model", campaign_slots=1, timeout=10)
+        self.assertEqual(protected.read_text(), "unchanged")
+        self.assertTrue(all(t["function"]["name"] in {"read", "write", "edit", "spawn_agent", "send_agent_input", "stop"}
+                            for r in self.requests for t in r.get("tools", [])))
+
+
 class NativeBoundaries(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="authoring-boundaries-")
@@ -144,6 +360,51 @@ class NativeBoundaries(unittest.TestCase):
         self.assertIs(result["native_process_stopped"], True)
         self.assertEqual(json.loads(self.budget.read_text())["used"], 1)
         return result
+
+    def test_group_reservation_is_atomic_and_never_refunded(self):
+        self.budget.write_text('{"limit":4,"used":0}')
+        self.assertEqual(native.reserve_run(3), 3)
+        with self.assertRaisesRegex(native.NativeRunError, "exhausted"):
+            native.reserve_run(2)
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 3)
+
+    def test_processes_cannot_overbook_the_shared_reservation_ledger(self):
+        self.budget.write_text('{"limit":4,"used":0}')
+        code = f"import runpy; n=runpy.run_path({str(SCRIPT)!r}); n['reserve_run'](3)"
+        workers = [subprocess.Popen([sys.executable, "-B", "-c", code], stdout=subprocess.PIPE, stderr=subprocess.PIPE) for _ in range(2)]
+        try:
+            for worker in workers:
+                worker.communicate(timeout=5)
+            self.assertEqual(sorted(w.returncode for w in workers), [0, 1])
+            self.assertEqual(json.loads(self.budget.read_text())["used"], 3)
+        finally:
+            for worker in workers:
+                if worker.poll() is None:
+                    worker.kill()
+                    worker.wait()
+
+    def test_expired_campaign_cannot_launch_or_extend_its_deadline(self):
+        budget = {"limit": 12, "used": 2, "campaign_seconds": 900, "started_epoch": time.time() - 901, "started_monotonic": time.monotonic() - 901}
+        self.budget.write_text(json.dumps(budget))
+        with patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(native.NativeRunError, "campaign deadline"):
+                native.run_trial("Never sent", "fixture/model", campaign_slots=2)
+            launch.assert_not_called()
+        self.assertEqual(json.loads(self.budget.read_text()), budget)
+
+    def test_reserved_campaign_preparation_failure_does_not_refund_slots(self):
+        self.budget.write_text('{"limit":12,"used":0,"campaign_seconds":900}')
+        with patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaises(native.NativeRunError):
+                native.run_trial("Never sent", "fixture/model", campaign_slots=3, files={"../escaped": "no"})
+            launch.assert_not_called()
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 3)
+
+    def test_campaign_budget_requires_bounded_expiry_before_launch(self):
+        with patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(native.NativeRunError, "campaign"):
+                native.run_trial("Never sent", "fixture/model", campaign_slots=2)
+            launch.assert_not_called()
 
     def test_skill_names_cannot_write_paths_or_inject_frontmatter(self):
         names = ["../escape", "../../../../escaped", str(self.root / "absolute"),
