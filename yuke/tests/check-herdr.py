@@ -20,12 +20,43 @@ import { currentPane } from "yuke:session";
 export default async function(ctx) {
   const tui = ctx.get("tui");
   if (!tui) return;
+  tui.command.add("link-fixture", {desc: "Render a file reference fixture", slash: true, args: true, run: async (index) => {
+    const fixture = JSON.parse(await fs.readFile(ctx.root + "/fixtures.json"))[Number(index)];
+    const view = currentPane();
+    const message = 100 + Number(index);
+    view.transcript.partsOf = () => [fixture.part || {type: "text", id: 11, text: fixture.text}];
+    view.transcript.setOutline([{id: message, type: "assistant"}], null);
+    tui.root.invalidate();
+    setTimeout(async () => {
+      const header = fixture.part && view.transcript.partHeader(message, fixture.part.id);
+      const text = header ? view.transcript.rowTextAt(message, header.row) : "";
+      const column = text.indexOf(fixture.label);
+      const position = header ? {...header, col: column + 1} : view.transcript.posAtSource(message, fixture.at);
+      const screen = view.transcript.screenAt(position);
+      await fs.writeFile(ctx.root + "/click.json", JSON.stringify({index: Number(index), screen,
+        anchor: view.transcript.anchorAt(position), hit: view.transcript.partAt(position),
+        headerText: text, column, rows: view.transcript.rowCountOf(message)}));
+    }, 150);
+  }});
   const marker = ctx.root + "/generation.json";
   const generation = await fs.stat(marker) ? JSON.parse(await fs.readFile(marker)) + 1 : 1;
-  tui.keymap.add({ "ctrl+g": "reload", "ctrl+q": () => quit(), "ctrl+b": () => {
+  const fileRequests = [];
+  ctx.on("vim-mode:open-file", (_view, position) => fileRequests.push(position));
+  tui.keymap.add({ "f12": () => {
+    const view = currentPane();
+    void fs.writeFile(ctx.root + "/cursor.json", JSON.stringify({caret: view.transcript.caret,
+      selected: view.transcript.selectedText(), selection: view.transcript.selection,
+      focus: view.focus, draft: view.composer.text, fileRequests: fileRequests.length,
+      rows: view.transcript.messageCount() ? view.transcript.rowCountOf(view.transcript.messageIdAt(0)) : 0}));
+  }, "ctrl+f": () => {
+    const view = currentPane();
+    view.focusRegion("composer");
+    ctx.get("composer-vim")?.setMode(view.composer, "insert");
+  }, "ctrl+g": "reload", "ctrl+q": () => quit(), "ctrl+b": () => {
     ctx.interaction.confirm("Herdr regression approval").catch(error => ctx.print(String(error)));
   } });
   ctx.once("ui.started", async () => {
+    await fs.writeFile(ctx.root + "/commands.json", JSON.stringify(tui.command.list()));
     const pane = currentPane();
     const catalog = await client.catalogList(null);
     if (!pane.session.sessionId) pane.session.setModel(catalog.models.find(model => model.provider === "fixture"), "");
@@ -38,11 +69,238 @@ export default async function(ctx) {
 '''
 
 
+def code_checks(root, probe, api, cli, key, wait, run, captures):
+    work = root / 'work'
+    first = work / 'sample file.txt'
+    first.write_text('first line\nsecond line\nthird line\n')
+    second = work / "quote'|file.txt"
+    second.write_text('safe file content\nsecond line\nthird line\n')
+    nested = work / 'nested/inside/sample.txt'
+    nested.parent.mkdir(parents=True)
+    nested.write_text('nested first\nnested second\n')
+    fixtures = [
+        {'text': '[Review the sample](sample%20file.txt#L2)', 'at': 4},
+        {'text': "`quote'|file.txt:1:4`", 'at': 5},
+        {'text': 'sample file is not a link.\n[Web](https://example.com/sample.txt)', 'at': 31},
+        {'text': 'See `missing.txt` for the next step.', 'at': 7},
+        {'text': 'sample%20file.txt is not decoded outside a URL.', 'at': 4},
+        {'text': '[A deliberately long label ' + 'review this source file across wrapped rows ' * 6 + 'ends here](sample%20file.txt#L3)', 'at': 145},
+        {'text': '`sample file.txt:2:3`', 'at': 6},
+        {'part': {'type': 'tool', 'id': 11, 'name': 'edit', 'arguments': json.dumps({'path': 'sample file.txt', 'old_string': 'first', 'new_string': 'after'}),
+                  'state': {'type': 'completed', 'output': '\n'.join('tool output line ' + str(n) for n in range(20)), 'duration_ms': 100}}, 'label': 'sample file.txt'},
+        {'part': {'type': 'tool', 'id': 11, 'name': 'read', 'arguments': json.dumps({'path': str(second), 'start': 2}),
+                  'state': {'type': 'completed', 'output': 'safe file content\n', 'duration_ms': 100}}, 'label': second.name},
+        {'part': {'type': 'tool', 'id': 11, 'name': 'write', 'arguments': json.dumps({'path': 'sample file.txt', 'content': 'not written'}),
+                  'state': {'type': 'completed', 'output': 'File saved', 'duration_ms': 100}}, 'label': 'sample file.txt'},
+        {'part': {'type': 'tool', 'id': 11, 'name': 'exec', 'arguments': json.dumps({'command': 'echo sample file.txt', 'path': 'sample file.txt'}),
+                  'state': {'type': 'completed', 'output': 'not a file link', 'duration_ms': 100}}, 'label': 'sample file.txt'},
+        {'text': '`nested/inside/sample.txt:2`', 'at': 5},
+        {'text': '`sample file.txt:3:2`', 'at': 6},
+    ]
+    (probe / 'fixtures.json').write_text(json.dumps(fixtures))
+    pane_id = api('agent.list')['agents'][0]['pane_id']
+    nvim = shutil.which('nvim')
+
+    def lua(record, body):
+        expression = 'luaeval(' + json.dumps('(function() ' + body + ' end)()') + ')'
+        return run([nvim, '--headless', '--server', record['nvim_socket'], '--remote-expr', expression]).stdout.strip()
+
+    def revealed(current, path):
+        wait(lambda: lua(current, "local api=require('nvim-tree.api'); local node=api.tree.get_node_under_cursor(); return api.tree.is_visible() and node and node.absolute_path or ''") == str(path), 'opened file highlighted in tree: ' + path.name)
+        assert lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(path), 'tree reveal stole focus from the opened file'
+
+    def record():
+        found = list((root / 'state/herdr/plugins/david.code').glob('code-*.json'))
+        if not found:
+            return None
+        return json.loads(found[0].read_text())
+
+    def draw(index):
+        key('ctrl+f')
+        cli('pane', 'send-text', pane_id, '/link-fixture ' + str(index))
+        key('enter')
+        path = probe / 'click.json'
+        wait(lambda: path.exists() and json.loads(path.read_text())['index'] == index, 'fixture draw ' + str(index))
+        rendered = json.loads(path.read_text())
+        assert rendered['screen'], rendered
+        if index == 5:
+            assert rendered['screen']['y'] > 0, 'long label did not actually wrap'
+        captures.append('file fixture ' + str(index) + '\n' + cli('pane', 'read', pane_id, '--source', 'visible').stdout)
+        return rendered['screen']
+
+    def click(index):
+        point = draw(index)
+        cli('pane', 'send-text', pane_id, f"\x1b[<0;{point['x'] + 1};{point['y'] + 1}M\x1b[<0;{point['x'] + 1};{point['y'] + 1}m")
+
+    def cursor():
+        path = probe / 'cursor.json'
+        path.unlink(missing_ok=True)
+        key('f12')
+        wait(path.exists, 'transcript cursor snapshot')
+        return json.loads(path.read_text())
+
+    def returned(current):
+        lua(current, "require('herdr-code').return_to_agent(); return true")
+        wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'return to Yuke')
+
+    click(0)
+    wait(lambda: record() and api('session.snapshot')['snapshot']['focused_pane_id'] == record()['editor_pane'], 'Markdown click opens Code')
+    current = record()
+    wait(lambda: lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(first), 'linked file buffer')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[2,0]'
+    assert lua(current, "return require('nvim-tree.api').tree.is_visible()") == 'true'
+    revealed(current, first)
+    lua(current, "vim.api.nvim_buf_set_lines(0,0,1,false,{'unsaved review text'}); require('herdr-nvim.annotations').add(0,0,0,'Keep this tag'); require('nvim-tree.api').tree.close(); return true")
+    returned(current)
+    click(1)
+    wait(lambda: lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(second), 'quoted filename opens without executing a command')
+    revealed(current, second)
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[1,3]'
+    assert record()['editor_pane'] == current['editor_pane']
+    assert len(api('pane.list')['panes']) == 2
+    returned(current)
+    for index in (2, 3, 4):
+        click(index)
+        time.sleep(.3)
+        assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'nonlocal or absent reference stole focus'
+        assert len(api('pane.list')['panes']) == 2
+    click(12)
+    wait(lambda: lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(first), 'file-location click opens modified buffer')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[3,1]'
+    assert lua(current, 'return vim.api.nvim_buf_get_lines(0,0,1,false)[1]') == 'unsaved review text'
+    assert lua(current, 'return vim.bo.modified') == 'true'
+    assert lua(current, "return require('herdr-nvim.annotations').total()") == '1'
+    assert first.read_text() == 'first line\nsecond line\nthird line\n'
+    returned(current)
+    click(5)
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'wrapped label opens Code')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[3,0]'
+    returned(current)
+    key('ctrl+g')
+    wait(lambda: 'HERDR_UI_READY 2' in (root / 'state/yuke/yuke.log').read_text(), 'reload file-link listener')
+    click(6)
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'click after reload')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[2,2]'
+    assert record()['editor_pane'] == current['editor_pane']
+    captures.append('real Code file\n' + cli('pane', 'read', current['editor_pane'], '--source', 'visible').stdout)
+    returned(current)
+    draw(0)
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'ggg')
+    time.sleep(.15)
+    assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'g prefix opened a file before f'
+    key('f')
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'gf opens Markdown link under transcript cursor')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[2,0]'
+    returned(current)
+    assert cursor()['fileRequests'] == 1, 'reload left duplicate gf producers'
+    cli('pane', 'send-text', pane_id, 'ggvlgf')
+    visual = cursor()
+    assert visual['selection'] and visual['fileRequests'] == 1, 'visual gf must not dispatch file opening'
+    key('o')
+    swapped = cursor()
+    assert swapped['selection']['cursor'] == visual['selection']['anchor'], 'visual o no longer swaps selection ends'
+    key('esc')
+    cli('pane', 'send-text', pane_id, 'ygf')
+    assert cursor()['fileRequests'] == 1, 'operator gf dispatched file opening'
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'gf')
+    composer = cursor()
+    assert composer['draft'] == 'gf' and composer['fileRequests'] == 1, 'composer text must not open a file'
+    key('ctrl+u')
+    draw(1)
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'gggf')
+    wait(lambda: lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(second), 'gf opens inline path under transcript cursor')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[1,3]'
+    returned(current)
+    draw(2)
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'gggf')
+    assert cursor()['fileRequests'] == 3
+    assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'gf on ordinary text must not change focus'
+    draw(5)
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'ggjgf')
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'gf opens wrapped Markdown label')
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[3,0]'
+    returned(current)
+    click(7)
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'click on edit tool filename opens Code')
+    assert lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(first)
+    header = json.loads((probe / 'click.json').read_text())
+    assert header['anchor']['kind'] == 'header' and header['hit']['row']['header'], header
+    returned(current)
+    assert cursor()['rows'] == header['rows'], 'file click also toggled the tool fold'
+    point = header['screen']
+    verb_x = point['x'] - header['column']
+    cli('pane', 'send-text', pane_id, f"\x1b[<0;{verb_x + 1};{point['y'] + 1}M\x1b[<0;{verb_x + 1};{point['y'] + 1}m")
+    assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'click on edit verb opened the file'
+    wait(lambda: cursor()['rows'] != header['rows'], 'click on tool verb still folds output')
+    timing_x = point['x'] - header['anchor']['col'] + len(header['headerText']) - 2
+    cli('pane', 'send-text', pane_id, f"\x1b[<0;{timing_x + 1};{point['y'] + 1}M\x1b[<0;{timing_x + 1};{point['y'] + 1}m")
+    wait(lambda: cursor()['rows'] == header['rows'], 'click on tool timing still folds output')
+    assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id
+    draw(8)
+    key('tab')
+    cli('pane', 'send-text', pane_id, 'ggwgf')
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'gf opens read tool filename')
+    assert lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(second)
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[2,0]'
+    returned(current)
+    click(9)
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'click opens write tool filename')
+    assert lua(current, 'return vim.api.nvim_buf_get_name(0)') == str(first)
+    assert lua(current, 'return vim.api.nvim_buf_get_lines(0,0,1,false)[1]') == 'unsaved review text'
+    assert first.read_text() == 'first line\nsecond line\nthird line\n'
+    returned(current)
+    click(10)
+    assert api('session.snapshot')['snapshot']['focused_pane_id'] == pane_id, 'exec heading must not treat command text as a file'
+    print('PASS read/edit/write tool heading click/gf and filename-only fold isolation', flush=True)
+    click(11)
+    wait(lambda: api('session.snapshot')['snapshot']['focused_pane_id'] == current['editor_pane'], 'nested file opens Code')
+    revealed(current, nested)
+    assert lua(current, 'return vim.json.encode(vim.api.nvim_win_get_cursor(0))') == '[2,0]'
+    assert lua(current, 'return vim.fn.getcwd()') == str(work)
+    returned(current)
+    print('PASS chat-opened files reveal in tree with editor focus, hidden-tree reopening and nested parents', flush=True)
+    destination = root / 'other-checkout'
+    run(['jj', 'git', 'init', str(destination)])
+    other_file = destination / 'sample file.txt'
+    other_file.write_text('other checkout\n')
+    api('plugin.action.invoke', {'plugin_id': 'david.code', 'action_id': 'open-file', 'context': {
+        'invocation_source': 'yuke', 'focused_pane_id': pane_id, 'focused_pane_cwd': str(destination), 'clicked_url': other_file.as_uri()}})
+    def other_record():
+        for path in (root / 'state/herdr/plugins/david.code').glob('code-*.json'):
+            saved = json.loads(path.read_text())
+            if saved['root'] == str(destination) and saved.get('editor_pane'):
+                return saved
+        return None
+    wait(lambda: other_record() and api('session.snapshot')['snapshot']['focused_pane_id'] == other_record()['editor_pane'], 'workspace override selects its own checkout editor')
+    independent = other_record()
+    assert independent['editor_pane'] != current['editor_pane']
+    assert lua(independent, 'return vim.api.nvim_buf_get_name(0)') == str(other_file)
+    assert lua(current, 'return vim.api.nvim_buf_get_lines(vim.fn.bufnr(' + json.dumps(str(first)) + '),0,1,false)[1]') == 'unsaved review text'
+    assert lua(current, "return require('herdr-nvim.annotations').total()") == '1'
+    returned(independent)
+    key('ctrl+q')
+    wait(lambda: not api('agent.list')['agents'], 'Yuke quit releases reporter')
+    (root / 'code-result.json').write_text(json.dumps({'markdown_click': True, 'inline_location': True,
+        'wrapped_label': True, 'quoted_path': True, 'no_code_command': True, 'web_untouched': True,
+        'missing_untouched': True, 'shared_editor': True, 'unsaved_and_tags_kept': True, 'reload': True,
+        'workspace_override': True, 'checkout_isolation': True, 'normal_gf': True,
+        'visual_o_and_operator_gates': True, 'composer_text_unchanged': True, 'wrapped_gf': True,
+        'file_tool_headings': True, 'filename_only_fold_isolation': True, 'read_start_line': True,
+        'tree_reveal': True, 'editor_focus': True, 'hidden_tree_reopened': True, 'nested_parents_revealed': True}, indent=2))
+    print('PASS native mouse and Vim gf, exact cursor, shared Code, unsaved buffers/tags, mode gates, checkout isolation and reload', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, default=Path(shutil.which('yuke') or 'yuke'))
     parser.add_argument('--clarify', type=Path, default=Path(__file__).resolve().parents[1] / '.config/yuke/plugins/yuke-clarify')
     parser.add_argument('--plugin', type=Path, default=Path(__file__).resolve().parents[1] / '.config/yuke/plugins/herdr')
+    parser.add_argument('--code', action='store_true', help='Drive file links through the real shared Neovim editor')
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     herdr = shutil.which('herdr')
@@ -65,7 +323,7 @@ def main():
     probe = profile / 'probe'
     probe.mkdir()
     (probe / 'index.js').write_text(PROBE)
-    (probe / 'plugin.json').write_text(json.dumps({'name': 'herdr-probe', 'extensions': {'sh.yuke': {'entry': './index.js', 'uses': ['tui']}}}))
+    (probe / 'plugin.json').write_text(json.dumps({'name': 'herdr-probe', 'extensions': {'sh.yuke': {'entry': './index.js', 'uses': ['tui', 'composer-vim']}}}))
     (profile / 'config.json').write_text(json.dumps({'plugins': ['./herdr', './yuke-clarify', './probe']}))
     config = root / 'config/herdr'
     config.mkdir()
@@ -135,7 +393,24 @@ def main():
     def terminal(extra=None):
         command = shlex.join(['env', '-i', *(f'{key}={value}' for key, value in {**env, **report_env, **(extra or {})}.items()), str(binary)])
         wait(lambda: any(process['name'] in ('sh', 'bash', 'zsh') for process in api('pane.process_info', {'pane_id': pane_id})['process_info']['foreground_processes']), 'private pane shell not ready')
-        cli('pane', 'run', pane_id, command)
+        launcher = root / 'launch-yuke.sh'
+        launcher.write_text('#!/bin/sh\nexec ' + command + '\n')
+        cli('pane', 'run', pane_id, shlex.join(['/bin/sh', str(launcher)]))
+
+    if args.code:
+        shutil.copytree(source / 'vim-mode', profile / 'vim-mode')
+        (profile / 'config.json').write_text(json.dumps({'plugins': ['./vim-mode', './herdr', './yuke-clarify', './probe']}))
+        dotfiles = Path(__file__).resolve().parents[2]
+        runtime = Path(os.environ.get('XDG_DATA_HOME', str(Path.home() / '.local/share'))) / 'nvim/personal'
+        assert shutil.which('nvim') and (runtime / 'lazy/herdr-nvim').exists(), 'Installed Neovim plugins are required'
+        (root / 'config/nvim').symlink_to(dotfiles / 'nvim/.config/nvim', target_is_directory=True)
+        (root / 'data/nvim').mkdir()
+        (root / 'data/nvim/personal').symlink_to(runtime, target_is_directory=True)
+        candidate = config / 'code'
+        shutil.copytree(dotfiles / 'herdr/.config/herdr/local-plugins/code', candidate,
+                        ignore=shutil.ignore_patterns('__pycache__'))
+        cli('plugin', 'link', str(candidate), '--enabled')
+        run(['jj', 'git', 'init', str(root / 'work')])
 
     try:
         with (root / 'server.log').open('w') as output:
@@ -156,6 +431,11 @@ def main():
         assert api('pane.get', {'pane_id': pane_id})['pane']['agent_status'] in ('idle', 'done')
         capture('startup registered in real Herdr')
         print('PASS startup appears in Herdr agent.list', flush=True)
+        commands = json.loads((probe / 'commands.json').read_text())
+        assert not any(row['name'] == 'herdr:code' or row['slash'] == 'code' for row in commands), 'Redundant /code command is still registered'
+        if args.code:
+            code_checks(root, probe, api, cli, key, wait, run, captures)
+            return
         checked = run([str(binary), 'check'], extra=report_env)
         (root / 'check.log').write_text(checked.stdout + checked.stderr)
         assert any(agent.get('agent') == 'yuke' for agent in agents()), 'yuke check released its parent agent'
@@ -228,6 +508,10 @@ def main():
         (root / 'captures.txt').write_text('\n'.join(captures))
         screen = mux('capture-pane', '-p', '-t', 'notifications', check=False)
         (root / 'notification-screen.txt').write_text(screen.stdout + screen.stderr)
+        owned_pids = []
+        for path in (root / 'state/herdr/plugins/david.code').glob('code-*.json'):
+            saved = json.loads(path.read_text())
+            owned_pids.extend(saved[field] for field in ('daemon_pid', 'host_pid') if saved.get(field))
         mux('kill-server', check=False)
         if server:
             cli('server', 'stop', check=False)
@@ -236,6 +520,17 @@ def main():
             except subprocess.TimeoutExpired:
                 server.terminate()
                 server.wait(timeout=5)
+        def stopped():
+            for pid in owned_pids:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    continue
+                return False
+            return True
+        wait(stopped, 'owned Code processes stopped')
+        (root / 'cleanup.json').write_text(json.dumps({'server_stopped': server is None or server.poll() is not None,
+                                                       'owned_code_pids': owned_pids, 'code_stopped': stopped()}))
         print('Herdr regression artifacts:', root, flush=True)
 
 

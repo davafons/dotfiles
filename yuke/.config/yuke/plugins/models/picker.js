@@ -9,7 +9,7 @@ import { ui } from "yuke:ui";
 /** @typedef {{ version: 1, revision: number, presets: ModelPreset[] }} AliasState */
 /** @typedef {{ model: Wire.ModelInfo, aliases: ModelPreset[], display: { text: string, right: string, group: string } }} ModelRow */
 
-const RESERVED = new Set(["model", "models", "effort", "new", "clear", "reload", "exit", "close", "sessions", "resume", "search", "work", "todo", "checkpoint", "questions", "usage", "context", "login", "logout", "reload-providers", "quit"]);
+const RESERVED = new Set(["model", "models", "effort", "new", "clear", "reload", "exit", "close", "sessions", "resume", "search", "work", "todo", "questions", "usage", "context", "login", "logout", "reload-providers", "quit"]);
 
 /** @param {unknown} value @returns {ModelPreset[]} */
 function validatePresets(value) {

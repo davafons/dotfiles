@@ -23,7 +23,8 @@ work with /search followed by Enter. Practice on a scratch file.
 
 | Keys / command | What it does |
 | --- | --- |
-| ,e | Toggle nvim-tree; your only global tree shortcut |
+| ,e | Toggle nvim-tree |
+| ,E | Reveal the current file in nvim-tree and focus it |
 | ,Space / ,ff / ,tt | Find files in the current file's nearest jj/Git project |
 | ,/ / ,sg / ,tg | Search text in that project |
 | ,tb | Find open buffers |

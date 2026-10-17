@@ -1,5 +1,16 @@
 {
   "version": 3,
-  "skills": {},
+  "skills": {
+    "fframes-video": {
+      "source": "fframes.studio",
+      "sourceType": "well-known",
+      "sourceUrl": "https://fframes.studio/.well-known/agent-skills/fframes-video/SKILL.md",
+      "skillFolderHash": "",
+      "sourceBaseUrl": "https://fframes.studio",
+      "wellKnownDigest": "sha256:5983f4e6bffdb0811928335c7e2bcf9e332eb728f723ef25f42d5e00dbbbe64d",
+      "installedAt": "2026-10-19T12:31:21.968Z",
+      "updatedAt": "2026-10-19T12:31:21.968Z"
+    }
+  },
   "dismissed": {}
 }

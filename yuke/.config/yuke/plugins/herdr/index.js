@@ -1,8 +1,9 @@
 //! Manifest entry with context-owned registrations and explicit resource lifetimes.
 // Report this yuke pane as idle, working, or blocked to a local Herdr daemon.
 // Herdr sets HERDR_ENV=1, HERDR_SOCKET_PATH, and HERDR_PANE_ID for the process.
-import { client, env, net, utf8 } from "yuke";
+import { client, env, fs, net, utf8, workspace } from "yuke";
 import { currentEntry, currentPane } from "yuke:session";
+import { fileReferenceAt, fileToolLocation } from "./file-locations.js";
 
 
 const source = "custom:yuke";
@@ -135,6 +136,49 @@ export default function(parent) {
 const tuiBorrow = parent.get("tui");
 if (tuiBorrow) {
 const c = { ctx: parent, tui: tuiBorrow };
+
+      let openingCode = false;
+      /** @param {import("./file-locations.js").FileLocation} location */
+      async function openCode(location) {
+        if (openingCode) return;
+        openingCode = true;
+        try {
+          const file = await fs.stat(location.path);
+          if (!file || file.isDirectory) throw Error("That reference is not an existing file.");
+          const clickedUrl = "file://" + file.path.split("/").map(encodeURIComponent).join("/") +
+            (location.line ? "#L" + location.line + (location.column ? "C" + location.column : "") : "");
+          if (!parent.alive) return;
+          await navigationRequest("plugin.action.invoke", {
+            plugin_id: "david.code", action_id: "open-file",
+            context: { invocation_source: "yuke", focused_pane_id: env.get("HERDR_PANE_ID"), focused_pane_cwd: workspace.path,
+              clicked_url: clickedUrl },
+          }, parent.signal);
+        } catch (error) {
+          if (parent.alive) parent.interaction.notify("Code: " + String(error), "warn");
+        } finally {
+          openingCode = false;
+        }
+      }
+      /** @param {import("yuke:chat").ChatView} view @param {Parameters<import("yuke:chat").Transcript["anchorAt"]>[0]} position */
+      function openReference(view, position) {
+        const transcript = view.transcript;
+        const anchor = transcript.anchorAt(position);
+        let location = anchor?.kind === "source" ? fileReferenceAt(anchor.was, anchor.off) : null;
+        const hit = transcript.partAt(position);
+        if (position && hit?.row.header) {
+          const part = transcript.partsOf(hit.id).find((item) => item.id === hit.partId);
+          location = fileToolLocation(part, hit.row, position.col);
+        }
+        if (!location) return;
+        transcript.clearSelection();
+        void openCode(location);
+        return true;
+      }
+      parent.on("vim-mode:open-file", openReference);
+      parent.on("chat.press", (view, event) => {
+        if (event.mods !== 0) return;
+        return openReference(view, view.transcript.posAt(event.col, event.row, false));
+      });
 
       parent.once("ui.started", () => {
         if (!c.ctx.interaction.interactive) return;

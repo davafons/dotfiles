@@ -5,7 +5,6 @@ local files_tab
 local lifetime
 local owner_closed = false
 local shutdown_deadline
-local recovered_count = 0
 local choosing_target = false
 
 local function notify(message)
@@ -37,26 +36,6 @@ function M.refresh_context()
   context = read_context()
   local target = context.target
   require("herdr-nvim.ask").set_target(target and { pane_id = target.pane_id, agent = target.agent } or nil)
-  local label = "Default agent: choose with ,at"
-  if target then
-    label = "Default: "
-      .. (target.number and "Agent " .. target.number or target.agent)
-      .. " ("
-      .. target.pane_id
-      .. ")"
-    if target.summary then
-      label = label .. " · " .. target.summary:gsub("[\r\n]", " ")
-    end
-  end
-  if recovered_count > 0 then
-    label = label .. " · recovered unsaved buffers"
-  end
-  label = (vim.fn.fnamemodify(context.root, ":t") .. " · " .. label .. " · ,ab return"):gsub("%%", "%%%%")
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_config(win).relative == "" then
-      vim.wo[win].winbar = label
-    end
-  end
 end
 
 function M.return_to_agent()
@@ -74,6 +53,36 @@ function M.files()
   local win = vim.api.nvim_get_current_win()
   require("nvim-tree.api").tree.open({ path = context.root, find_file = true })
   vim.api.nvim_set_current_win(win)
+end
+
+function M.open_file(location)
+  if files_tab and vim.api.nvim_tabpage_is_valid(files_tab) then
+    vim.api.nvim_set_current_tabpage(files_tab)
+  end
+  local target
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.api.nvim_win_get_config(win).relative == "" and vim.bo[buf].buftype == "" then
+      target = win
+      break
+    end
+  end
+  if target then
+    vim.api.nvim_set_current_win(target)
+  else
+    vim.cmd("botright vsplit")
+  end
+  local buf = vim.fn.bufadd(location.path)
+  vim.fn.bufload(buf)
+  vim.api.nvim_win_set_buf(0, buf)
+  if location.line then
+    local line = math.min(location.line, vim.api.nvim_buf_line_count(buf))
+    local text = vim.api.nvim_buf_get_lines(buf, line - 1, line, false)[1] or ""
+    vim.api.nvim_win_set_cursor(0, { line, math.min((location.column or 1) - 1, #text) })
+  end
+  vim.cmd("normal! zvzz")
+  require("nvim-tree.api").tree.find_file({ buf = buf, open = true, focus = false })
+  M.refresh_context()
 end
 
 function M.toggle_changes()
@@ -257,7 +266,7 @@ local function recover()
     vim.bo[buf].filetype = saved.filetype
     vim.bo[buf].modified = true
   end
-  recovered_count = #buffers
+  local recovered_count = #buffers
   if recovered_count > 0 then
     io.stderr:write("Recovered " .. recovered_count .. " unsaved buffer(s); original files were not written.\n")
   end

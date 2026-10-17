@@ -45,6 +45,25 @@ node yuke/tests/check-version-label.mjs
 python3 -B yuke/tests/check-build-status.py --binary "$HOME/.local/bin/yuke"
 ```
 
+## Open files in Herdr Code
+
+Inside Herdr, click a local Markdown link, an inline-code file reference, a plain file path, or a filename in a `read`, `edit`, or `write` tool heading to open it in the checkout's shared Code tab. The tool name and timing area keep their fold behavior. Tool filenames use the original path metadata, including spaces or clipped labels, and `read` headings retain the requested starting line. References can include `src/app.ts:42:5`, `README.md#L12`, or a local `file://` URL. Markdown link labels still work when wrapped. Relative paths use Yuke's current workspace, including after `/cd`. Web links remain outside this integration.
+
+In transcript Normal mode, move onto a file reference or Markdown link label and press `gf` to open it in Code. `Tab` switches between composer and transcript. The gesture uses the same path and line lookup as clicking. It does not open files from the composer or during a visual selection or yank operator.
+
+Press `,ab` in Code to return to the Yuke pane that opened it. The tree reveals and highlights opened checkout files, expanding their parent folders while keyboard focus stays in the editor. A hidden tree reopens for the file. Existing unsaved buffers and review tags stay in the same editor.
+
+The bridge needs the linked Herdr `david.code` plugin with its `open-file` action. Run `herdr server reload-config` once to refresh Herdr's plugin actions. After installing this Yuke plugin update, save any draft and run `/reload` when the session is idle. For a Code tab that was already running before the update, save work and finish queued tags, then close and reopen that Code tab to load its new Lua adapter. Do not restart the Herdr server.
+
+Run the file-reference checks from the dotfiles root:
+
+```sh
+node yuke/tests/check-herdr-file-locations.mjs
+python3 -B yuke/tests/check-herdr.py --code
+```
+
+The native check sends mouse events only to private Yuke terminals. It checks actual Neovim buffers and cursor locations, shared-editor reuse, checkout isolation, unsaved text and tags, return navigation, and reload. It uses installed Neovim plugins without copying credentials or making model calls.
+
 ## Herdr agent reporting
 
 The Herdr plugin starts reporting after `ui.started`, when the interactive frontend is ready. It reports again after native `/reload` and releases the pane on quit. `yuke check` and nested agents do not report over the parent pane.
@@ -86,6 +105,14 @@ python3 -B yuke/tests/check-search-store.py
 ```
 
 These checks cover linked-checkout identity, concurrent version checks, private file modes, invalid-file preservation, clarification claims, index replacement, file boundaries, and bounded matching previews. They do not modify the active store.
+
+### Record task progress without rewriting scope
+
+After claiming a task, reuse the version returned by a read or successful mutation. For routine progress, call `project_work` with `action: "progress"`, `id`, `version`, and a short Markdown `body`. Include `status` when the status changes. The operation appends a task message and updates status in one transaction. It leaves the title and scope notes unchanged. `done` releases ownership.
+
+Only the current owner can record progress. A stale version fails without changing the task or appending a message. Refresh after that conflict. Replaying the same tool call returns its original receipt without repeating the mutation, including after completion. A replay receipt describes that earlier mutation, not necessarily the task's current state.
+
+Use full task edits for scope changes. Do not duplicate ordinary progress in separate checkpoints. These changes reduce required tool round trips; no model-backed time saving has been measured.
 
 `yuke check` runs plugin code and opens a store. Do not use the active profile for an isolated check. The installed guide at `~/.local/lib/yuke/docs/profile.md` gives the isolation recipe.
 

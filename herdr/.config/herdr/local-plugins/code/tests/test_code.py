@@ -14,6 +14,57 @@ spec.loader.exec_module(code)
 
 
 class CodeTests(unittest.TestCase):
+    def test_file_url_is_data_with_exact_location(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            file = Path(temporary).resolve() / "a file'|#.txt"
+            file.write_text("kept\n")
+            self.assertEqual(code.file_location(file.as_uri() + "#L2C4"),
+                             {"path": str(file), "line": 2, "column": 4})
+            self.assertEqual(code.file_location(file.as_uri() + "#L2-L4"),
+                             {"path": str(file), "line": 2, "column": 1})
+            for url in (None, "https://example.com/file.txt", "file://foreign" + file.as_posix(),
+                        file.as_uri() + "#L0", file.as_uri() + "#command", file.as_uri() + "?query",
+                        Path(temporary).as_uri(), (file.parent / "missing.txt").as_uri()):
+                with self.subTest(url=url), self.assertRaises(RuntimeError):
+                    code.file_location(url)
+            self.assertEqual(file.read_text(), "kept\n")
+
+    def test_open_file_uses_yuke_workspace_instead_of_shell_checkout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            file = Path(temporary).resolve() / "sample.txt"
+            file.write_text("kept\n")
+            context = {"invocation_source": "yuke", "focused_pane_id": "source", "focused_pane_cwd": str(file.parent),
+                       "clicked_url": file.as_uri() + "#L2C3"}
+            source = {"pane_id": "source", "foreground_cwd": "/old/shell/checkout"}
+            with patch.dict(os.environ, HERDR_PLUGIN_CONTEXT_JSON=json.dumps(context)), \
+                    patch.object(code, "records", return_value=[]), patch.object(code, "pane", return_value=source), \
+                    patch.object(code, "ensure", return_value=(Path("record.json"), {"nvim_socket": "owned"})) as ensure, \
+                    patch.object(code, "remote") as remote, patch.object(code, "show_tab") as show:
+                code.action("open-file")
+                self.assertEqual(ensure.call_args.args[0]["foreground_cwd"], str(file.parent))
+                payload = json.dumps(json.dumps({"path": str(file), "line": 2, "column": 3}))
+                remote.assert_called_once_with({"nvim_socket": "owned"},
+                    "require('herdr-code').open_file(vim.json.decode(" + payload + ")); return true")
+                show.assert_called_once_with(Path("record.json"))
+
+    def test_regular_code_shortcut_ignores_other_focused_pane_directory(self):
+        context = {"focused_pane_id": "target", "focused_pane_cwd": "/another/focused/editor"}
+        source = {"pane_id": "target", "foreground_cwd": "/requested/checkout"}
+        with patch.dict(os.environ, HERDR_PLUGIN_CONTEXT_JSON=json.dumps(context)), \
+                patch.object(code, "records", return_value=[]), patch.object(code, "pane", return_value=source), \
+                patch.object(code, "ensure", return_value=(Path("record.json"), {})) as ensure, \
+                patch.object(code, "show_tab"):
+            code.action("toggle")
+            self.assertEqual(ensure.call_args.args[0], source)
+
+    def test_invalid_file_link_does_not_create_or_focus_an_editor(self):
+        with patch.dict(os.environ, HERDR_PLUGIN_CONTEXT_JSON=json.dumps({"clicked_url": "https://example.com"})), \
+                patch.object(code, "ensure") as ensure, patch.object(code, "request") as request, \
+                self.assertRaises(RuntimeError):
+            code.action("open-file")
+        ensure.assert_not_called()
+        request.assert_not_called()
+
     def test_pinning_groups_owned_tabs_preserves_other_order_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, HERDR_PLUGIN_STATE_DIR=temporary):
             tabs = [{"tab_id": tab, "workspace_id": workspace, "label": "Code"}

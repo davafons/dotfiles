@@ -102,6 +102,7 @@ def assert_checkout(record, root):
     assert editor["cwd"] == str(root), editor
     assert editor["foreground_cwd"] == str(root), editor
     assert lua(record, "vim.fn.getcwd()") == str(root)
+    assert lua(record, "for _, win in ipairs(vim.api.nvim_list_wins()) do if vim.wo[win].winbar:find(',ab return', 1, true) then return false end end; return true") == "true", "Code still shows its instruction winbar"
 
 
 def text():
@@ -160,6 +161,8 @@ try:
         assert api("tab.list", {"workspace_id": source["workspace_id"]})["tabs"][-1]["tab_id"] == tab["tab_id"], "Code was not placed last"
         evidence["initial_code_tab_is_last"] = True
         assert_checkout(record, root)
+        assert lua(record, "vim.wo.winbar") == "", "Code should not reserve a top line for instructions"
+        evidence["no_code_instruction_winbar"] = True
         evidence["code_host_and_neovim_use_checkout_not_plugin_directory"] = True
         assert api("workspace.get", {"workspace_id": source["workspace_id"]})["workspace"]["label"] == workspace_label, "Pinned Code replaced the workspace name with its plugin directory"
         evidence["pinned_code_preserves_automatic_workspace_name"] = True

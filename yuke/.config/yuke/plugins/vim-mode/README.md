@@ -20,7 +20,7 @@ The editing checklist comes from [davafons' keymap](https://github.com/davafons/
 ## Composer keys
 
 | Group | Keys |
-|---|---|
+| --- | --- |
 | Modes | `Esc`, `Ctrl+[`, `i`, `a`, `I`, `A`, `o`, `O`, `v`, `V` |
 | Character and line motions | `h`, `l`, arrows, `0`, `^`, `$`, `j`, `k`, `gj`, `gk`, `gg`, `G`, `<count>%` |
 | Words | `w`, `b`, `e`, `W`, `B`, `E`, `ge`, `gE` |
@@ -49,7 +49,7 @@ In Insert mode, `Ctrl+W` removes preceding spaces and the preceding word on the 
 Use `i` for the inner range. Use `a` for the surrounding range.
 
 | Objects | Range |
-|---|---|
+| --- | --- |
 | `w`, `W` | Word or whitespace-separated WORD |
 | `"`, `'`, backtick | Quoted text on the current line. Escaped quotes do not close it. |
 | `(`, `)`, `b` | Parentheses |
@@ -84,7 +84,7 @@ Visual put repeat follows the measured native Vim behavior, including its delete
 The transcript stays read-only. It supports the composer's navigation, character finds, literal search, text-object selection, local marks, Visual modes, and yanks. Insert and editing commands do not operate on transcript messages.
 
 | Group | Keys |
-|---|---|
+| --- | --- |
 | Character and row motions | `h`, `l`, arrows, `0`, `^`, `$`, `j`, `k`, `gj`, `gk`, `gg`, `G`, `<count>%` |
 | Words | `w`, `b`, `e`, `W`, `B`, `E`, `ge`, `gE` |
 | Character targets | `f<char>`, `F<char>`, `t<char>`, `T<char>`, `;`, `,` |
@@ -93,7 +93,9 @@ The transcript stays read-only. It supports the composer's navigation, character
 | Selection | `v`, `V`, `o`, `gv`, the same `i`/`a` text objects as the composer |
 | Yanks | `y<motion>`, `y<object>`, `yy`, `Y`, Visual `y`, named registers |
 | Marks | `ma`–`mz`, `'a`–`'z`, exact jumps with backtick |
-| Yuke navigation | `J`, `K` for part stops; `g y` to copy source text |
+| Yuke navigation | `J`, `K` for part stops; `g y` to copy source text; `gf` to request the file under the Normal-mode cursor |
+
+Transcript `gf` emits `vim-mode:open-file` with the current chat view and logical position. Listeners must consume those borrowed arguments synchronously. The Herdr profile plugin opens the local reference in the shared Code editor. Without a file-opening listener, `gf` does nothing. It does not activate during visual selection or a yank operator.
 
 Transcript `j` and `k` keep the existing rendered-row behavior. Counts before and after `y` multiply. Structural motions and text objects use visible message text, not hidden Markdown syntax. Search crosses message boundaries and wraps. The same mixed Latin/CJK keyword-search limitation applies.
 

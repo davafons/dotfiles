@@ -7,12 +7,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import socket
 import subprocess
 import sys
 import time
+from urllib.parse import unquote, urlsplit
 
 PLUGIN = "david.code"
 ROOT = Path(__file__).resolve().parent
@@ -260,14 +262,39 @@ def show_overlay(path):
         raise
 
 
+def file_location(url):
+    parsed = urlsplit(url or "")
+    if parsed.scheme != "file" or parsed.netloc not in ("", "localhost") or parsed.query:
+        raise RuntimeError("Code needs a local file URL.")
+    path = Path(unquote(parsed.path))
+    if not path.is_absolute() or not path.is_file():
+        raise RuntimeError("The linked file does not exist.")
+    location = {"path": str(path.resolve())}
+    if parsed.fragment:
+        position = re.fullmatch(r"L([1-9]\d*)(?:C([1-9]\d*)|-L?[1-9]\d*)?", parsed.fragment)
+        if not position:
+            raise RuntimeError("Invalid Code file location.")
+        location.update(line=int(position[1]), column=int(position[2] or 1))
+    return location
+
+
+def open_file(path, record, location):
+    payload = json.dumps(json.dumps(location))
+    remote(record, "require('herdr-code').open_file(vim.json.decode(" + payload + ")); return true")
+    show_tab(path)
+
+
 def action(command):
     context = json.loads(os.environ.get("HERDR_PLUGIN_CONTEXT_JSON", "{}"))
+    location = file_location(context.get("clicked_url")) if command == "open-file" else None
     source_id = context.get("focused_pane_id") or os.environ.get("HERDR_PANE_ID")
     if not source_id:
         raise RuntimeError("Invoke Code from a specific pane.")
     for path, record in records():
         if record.get("editor_pane") == source_id:
-            if command == "toggle":
+            if location:
+                open_file(path, record, location)
+            elif command == "toggle":
                 return_to_source(path)
             elif command == "overlay":
                 show_overlay(path)
@@ -277,8 +304,12 @@ def action(command):
     source = pane(source_id)
     if not source:
         raise RuntimeError("The source pane has closed.")
-    path, _ = ensure(source)
-    if command == "overlay":
+    if context.get("invocation_source") == "yuke" and context.get("focused_pane_cwd"):
+        source = dict(source, foreground_cwd=context["focused_pane_cwd"])
+    path, record = ensure(source)
+    if location:
+        open_file(path, record, location)
+    elif command == "overlay":
         show_overlay(path)
     else:
         show_tab(path, changes=command == "changes")
@@ -391,7 +422,7 @@ def main():
     if not os.environ.get("HERDR_SOCKET_PATH"):
         raise RuntimeError("Code must run inside Herdr.")
     command = sys.argv[1] if len(sys.argv) > 1 else ""
-    if command in ("toggle", "overlay", "changes"):
+    if command in ("toggle", "overlay", "changes", "open-file"):
         action(command)
     elif command == "sync":
         sync()

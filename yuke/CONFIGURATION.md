@@ -55,6 +55,19 @@ File `plugins/models/settings.json`.
 | `effortStatus` | `true` | Reasoning effort beside the model in the status bar. |
 | `modelKey` | `"ctrl+x m"` | Shortcut for the enhanced picker. An empty string omits this group's binding. |
 | `effortKey` | `"ctrl+x e"` | Shortcut for `/effort`. An empty string omits this group's binding. |
+| `startupModel` | `""` | Model selector used as the default for new TUI chats after startup or reload. Set together with `startupEffort`. |
+| `startupEffort` | `""` | Reasoning effort for `startupModel`. Existing saved chats keep their settings. |
+
+For ordinary work on Sol at medium effort, set both startup options:
+
+```json
+{
+  "startupModel": "openai-codex/gpt-6.1-sol",
+  "startupEffort": "medium"
+}
+```
+
+The model and effort must exist in the loaded catalog. Otherwise, the plugin warns and retains the existing default. An explicit model or effort choice takes precedence, including a choice made while the catalog loads. Startup defaults do not change headless runs or child-agent roles.
 
 For effort controls and status without the enhanced model picker or aliases:
 

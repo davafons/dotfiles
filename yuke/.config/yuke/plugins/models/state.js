@@ -10,6 +10,8 @@ export function modelState(ctx, tui) {
   const accepted = new WeakMap();
   /** @type {WeakMap<Session, string>} */
   const loading = new WeakMap();
+  /** @type {{ selector: string, reasoning: string } | null} */
+  let defaultChoice = null;
   const refresh = (session = currentPane()?.session) => {
     const id = session?.sessionId;
     if (!session || !id || accepted.get(session)?.id === id || loading.get(session) === id) return;
@@ -29,7 +31,10 @@ export function modelState(ctx, tui) {
     if (!session || session.sessionId !== change.sessionId) return;
     const choice = pending.get(session);
     pending.delete(session);
-    if (choice?.selector === change.model.selector) accepted.set(session, { ...choice, id: session.sessionId });
+    if (choice?.selector === change.model.selector) {
+      defaultChoice = choice;
+      accepted.set(session, { ...choice, id: session.sessionId });
+    }
     else { accepted.delete(session); refresh(session); }
     tui.root.invalidatePaint();
   });
@@ -42,11 +47,19 @@ export function modelState(ctx, tui) {
   function reasoning(session) {
     const choice = accepted.get(session);
     if (choice?.id === session.sessionId && choice.selector === session.modelSelector()) return choice.reasoning;
+    if (!session.sessionId && defaultChoice?.selector === session.modelSelector()) return defaultChoice.reasoning;
     const entry = currentEntry();
     return entry?.session.id === session.sessionId ? entry.session.reasoning : "";
   }
   return {
     reasoning,
+    /** Set defaults for future chats without patching a saved session. @param {Wire.ModelInfo} model @param {string} effort */
+    setDefault(model, effort) {
+      const session = currentPane()?.session;
+      const draft = session && !session.sessionId ? session : new Session();
+      defaultChoice = { selector: model.selector, reasoning: effort };
+      draft.setModel(model, effort);
+    },
     /** @param {Session} session */
     async effortOf(session) {
       return session.sessionId ? (await client.sessionGet(session.sessionId)).session.reasoning : reasoning(session);

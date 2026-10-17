@@ -6,6 +6,7 @@ return {
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       { "<leader>e", "<cmd>NvimTreeToggle<cr>", desc = "Toggle file tree" },
+      { "<leader>E", "<cmd>NvimTreeFindFile<cr>", desc = "Reveal current file in tree" },
     },
     init = function()
       vim.g.loaded_netrw = 1

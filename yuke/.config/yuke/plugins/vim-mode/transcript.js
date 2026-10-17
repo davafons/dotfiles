@@ -1,4 +1,5 @@
 //! Read-only transcript commands share Vim navigation with composer editing.
+import { events } from "yuke";
 import { copy } from "yuke:ui";
 import { Navigation, snap, clamp } from "./text.js";
 /** @typedef {import("yuke:chat").ChatView} View */
@@ -97,7 +98,10 @@ export class TranscriptEditor {
     if (this.phase === "object") { this.execute(view, s, t, this.prefix + stroke, count, "", counted); this.cancel(); return true; }
     if (this.phase === "prefix") {
       const prefix = this.prefix; this.phase = "ready";
-      if (prefix === "g" && stroke === "v" && !this.operator) {
+      if (prefix === "g" && stroke === "f" && !this.operator && !s.visual) {
+        const position = this.prepare(view, s, t);
+        if (position) events.emit("vim-mode:open-file", view, position);
+      } else if (prefix === "g" && stroke === "v" && !this.operator) {
         const saved = this.states.get(t)?.visualOwn;
         const a = saved && t.resolveAnchor(saved.a), b = saved && t.resolveAnchor(saved.b);
         if (a && b && saved) { s.anchor = a; s.cursor = b; s.visual = true; s.visualLines = saved.lines; this.hooksBorrow.settleBorrow(view, s, t); }

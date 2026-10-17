@@ -270,9 +270,9 @@ is first, followed by other agents in this workspace. Enter confirms and sends;
 Escape cancels and keeps the queued tags. Empty or failed agent lists also keep
 the tags and allow another attempt.
 
-The default initially comes from the agent that created the editor. The window
-header shows its captured sidebar number, stable pane ID and task summary.
-`,at` changes that default without sending. Direct questions use the default;
+The default initially comes from the agent that created the editor. Code does
+not add an instruction winbar above the file. The recipient picker shows agent
+identity and task details. `,at` changes the default without sending. Direct questions use the default;
 tags always require confirmation, even when a default exists. Each worktree keeps
 its own default. Selecting an agent rechecks the displayed pane, terminal and
 reported conversation identity before saving the choice; delivery checks again,
@@ -292,11 +292,13 @@ The Code tab owns the headless editor. Hiding it keeps the process alive; closin
 its Herdr tab ends it. A lifetime pipe also ends Neovim if its owner disappears.
 Before shutdown it attempts to save unsaved buffer text in a private recovery
 file, not in the original files. Reopening the same checkout/workspace restores
-those buffers as modified and labels them as recovered. This is best-effort crash
+those buffers as modified and reports recovery in the editor log. This is best-effort crash
 recovery, not durable preservation of every editor setting or queued annotation
 across tab closure. If the editor is stuck during shutdown, it exits after three
 seconds; see its `.log` file for recovery failures. Runtime records, logs and
 recovery files live in Herdr's state directory under `plugins/david.code/`.
+
+Yuke file links use the `david.code.open-file` action. Its invocation supplies a local `file://` URL in `clicked_url` and an explicit source pane. Optional `#L42C5` locations select a one-based line and column. The adapter switches to the files view, reuses loaded buffers without saving them, reveals the file in the tree without taking editor focus, and keeps the annotation recipient unchanged. For requests with `invocation_source` set to `yuke`, `focused_pane_cwd` selects Yuke's workspace after `/cd`, even when the pane's shell still reports an older directory. Ordinary Code shortcuts use their source pane's directory. See [Yuke file navigation](../yuke/README.md#open-files-in-herdr-code) for activation and private tests.
 
 Sources and the Lua adapter live in `local-plugins/code`; they do not modify the
 Neovim submodule or install another copy of `herdr-nvim`. The adapter uses the

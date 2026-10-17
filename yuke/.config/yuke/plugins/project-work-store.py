@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Private project work records. SQLite serializes writers across Yuke processes."""
 import contextlib
+import fcntl
+import socket
+import stat
 import json
 import os
 import re
@@ -11,6 +14,7 @@ import time
 import uuid
 
 STATUSES = ("now", "later", "blocked", "review", "done")
+CLOSED_GRACE_MS = 3000
 
 
 def text(value, name, limit, empty=False):
@@ -53,34 +57,113 @@ def project(root):
     return "path:" + str(path), path.name, str(path)
 
 
+def pane_snapshot():
+    if os.environ.get("HERDR_ENV") != "1" or not os.environ.get("HERDR_SOCKET_PATH"):
+        return {}, False
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(1)
+            connection.connect(os.environ["HERDR_SOCKET_PATH"])
+            connection.sendall(b'{"id":"work-presence","method":"pane.list","params":{}}\n')
+            frame = bytearray()
+            deadline = time.monotonic() + 1
+            while b"\n" not in frame:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return {}, False
+                connection.settimeout(remaining)
+                chunk = connection.recv(65536)
+                if not chunk or len(frame) + len(chunk) > 1024 * 1024:
+                    return {}, False
+                frame.extend(chunk)
+            response = json.loads(frame.split(b"\n", 1)[0])
+        result = response.get("result", {})
+        if response.get("id") != "work-presence" or result.get("type") != "pane_list" or not isinstance(result.get("panes"), list):
+            return {}, False
+        panes = {}
+        for pane in result["panes"]:
+            tokens = pane.get("tokens", {})
+            ident = tokens.get("yuke_session_id", "")
+            if not isinstance(ident, str) or not re.fullmatch(r"[0-9a-f]{32}", ident):
+                continue
+            clean = lambda value: " ".join("".join(c for c in str(value) if ord(c) >= 32 and not 127 <= ord(c) <= 159).split())[:200]
+            panes[ident] = {"number": clean(tokens.get("shortcut_number", "")), "title": clean(tokens.get("summary", "")),
+                            "pane": clean(pane.get("pane_id", "")), "workspace": clean(pane.get("workspace_id", "")),
+                            "state": clean(pane.get("agent_status", "unknown")),
+                            "live": pane.get("agent") == "yuke", "uncertain": pane.get("agent") is None}
+        return panes, True
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}, False
+
+
+def tree_presence(ident, guards):
+    try:
+        app = os.environ.get("YUKE_APPNAME", "yuke")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", app) or app in (".", ".."):
+            return "unknown"
+        base = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+        database = (base / app / "yuke.db").resolve(strict=True)
+        if not database.is_file():
+            return "unknown"
+        path = Path(str(database) + ".owners") / (ident + ".lock")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        guards.callback(os.close, descriptor)
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or opened.st_uid != os.getuid() or opened.st_nlink != 1:
+            return "unknown"
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "open"
+        current = path.stat(follow_symlinks=False)
+        if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+            return "unknown"
+        return "closed"
+    except OSError:
+        return "unknown"
+
+
 def operate(database, args):
     if not isinstance(args, dict):
         raise ValueError("work arguments must be an object")
     action = args.get("action")
+    api_version = args.get("api_version", 1)
+    if type(api_version) is not int or api_version not in (1, 2):
+        raise ValueError("unsupported work API version")
     fields = {
         "list": ("offset", "include_done"), "board": ("offsets", "include_done", "query"), "get": ("id",),
         "task": ("id", "version", "title", "status", "notes", "github_url"),
-        "linked": ("github_url",),
+        "linked": ("github_url",), "notes": ("id", "version", "notes"),
         "claim": ("id", "version"), "release": ("id", "version", "force"),
-        "message": ("id", "body"),
+        "message": ("id", "body"), "progress": ("id", "version", "body", "status"), "assigned": (),
         "checkpoint": ("task_id", "summary", "next_step", "verification"),
         "context": ("version", "goal", "notes"),
-        "activity": ("observed_at",),
+        "activity": ("observed_at",), "presence": ("roots", "open_sessions"),
     }
-    if action not in fields:
+    if action not in fields or (api_version == 2 and action in ("context", "checkpoint", "activity")):
         raise ValueError("unknown work action")
-    if set(args) - {"action", "root", "session", "site", *fields[action]}:
+    if set(args) - {"action", "root", "session", "site", "api_version", *fields[action]}:
         raise ValueError("unknown work field")
     key, name, checkout = project(args.get("root"))
     session = text(args.get("session", ""), "session", 200, empty=True)
     site = text(args.get("site", ""), "site", 300, empty=True)
     now = int(time.time() * 1000)
+    roots = args.get("roots", {})
+    if action == "presence" and (not isinstance(roots, dict) or len(roots) > 1000 or any(
+            not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{32}", value)
+            for pair in roots.items() for value in pair)):
+        raise ValueError("presence roots must map session IDs to native tree-root IDs")
+    open_sessions = args.get("open_sessions", [])
+    if action == "presence" and (not isinstance(open_sessions, list) or len(open_sessions) > 1000 or any(
+            not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{32}", value) for value in open_sessions)):
+        raise ValueError("open_sessions must contain native session IDs")
+    panes, inventory_known = pane_snapshot() if action == "presence" else ({}, False)
     os.umask(0o077)
     path = Path(database)
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if path.is_symlink():
         raise ValueError("work database must not be a symlink")
-    with contextlib.closing(sqlite3.connect(path, timeout=10)) as db, db:
+    with contextlib.ExitStack() as guards, contextlib.closing(sqlite3.connect(path, timeout=10)) as db, db:
         db.row_factory = sqlite3.Row
         db.executescript("""
             CREATE TABLE IF NOT EXISTS projects (
@@ -100,6 +183,11 @@ def operate(database, args):
                 session TEXT NOT NULL, root TEXT NOT NULL, body TEXT NOT NULL,
                 updated INTEGER NOT NULL, site TEXT UNIQUE);
             CREATE INDEX IF NOT EXISTS messages_task ON task_messages(project, task_id, updated DESC, id);
+            CREATE TABLE IF NOT EXISTS task_progress (
+                site TEXT PRIMARY KEY, request TEXT NOT NULL, receipt TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS owner_absence (
+                project TEXT NOT NULL, owner_session TEXT NOT NULL, first_seen INTEGER NOT NULL,
+                PRIMARY KEY(project, owner_session));
             CREATE TABLE IF NOT EXISTS activity (
                 project TEXT NOT NULL, session TEXT NOT NULL, started INTEGER NOT NULL,
                 PRIMARY KEY(project, session));
@@ -111,9 +199,56 @@ def operate(database, args):
         for column in ("owner_session", "owner_root"):
             if column not in columns:
                 db.execute(f"ALTER TABLE tasks ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        db.execute("""CREATE TRIGGER IF NOT EXISTS one_task_per_session_insert
+            BEFORE INSERT ON tasks WHEN NEW.owner_session!='' AND EXISTS (
+                SELECT 1 FROM tasks WHERE owner_session=NEW.owner_session AND id!=NEW.id)
+            BEGIN SELECT RAISE(ABORT, 'Session already has an assigned task; complete or unassign it first.'); END""")
+        db.execute("""CREATE TRIGGER IF NOT EXISTS one_task_per_session_update
+            BEFORE UPDATE OF owner_session ON tasks WHEN NEW.owner_session!='' AND NEW.owner_session!=OLD.owner_session AND EXISTS (
+                SELECT 1 FROM tasks WHERE owner_session=NEW.owner_session AND id!=NEW.id)
+            BEGIN SELECT RAISE(ABORT, 'Session already has an assigned task; complete or unassign it first.'); END""")
         db.execute("INSERT OR IGNORE INTO projects(id) VALUES (?)", (key,))
+        if action == "assigned":
+            if not session:
+                raise ValueError("assignment lookup requires a saved session")
+            return {"tasks": [dict(row) for row in db.execute(
+                "SELECT id, title, status, owner_root AS root FROM tasks WHERE owner_session=? ORDER BY updated DESC, id LIMIT 2", (session,))],
+                    "total": db.execute("SELECT COUNT(*) FROM tasks WHERE owner_session=?", (session,)).fetchone()[0]}
+
+        if action == "presence":
+            states, trees, released = {}, {}, []
+            for row in db.execute("SELECT owner_session FROM owner_absence WHERE project=?", (key,)).fetchall():
+                if row["owner_session"] not in roots:
+                    db.execute("DELETE FROM owner_absence WHERE project=? AND owner_session=?", (key, row["owner_session"]))
+            for owner, tree in roots.items():
+                if tree not in trees:
+                    trees[tree] = tree_presence(tree, guards)
+                visible = owner in open_sessions or tree in open_sessions or panes.get(owner, {}).get("live") or panes.get(tree, {}).get("live")
+                states[owner] = "open" if visible else trees[tree]
+                uncertain_pane = panes.get(owner, {}).get("uncertain") or panes.get(tree, {}).get("uncertain")
+                if states[owner] == "closed" and (not inventory_known or uncertain_pane):
+                    states[owner] = "unknown"
+                if states[owner] != "closed":
+                    db.execute("DELETE FROM owner_absence WHERE project=? AND owner_session=?", (key, owner))
+                    continue
+                absence = db.execute("SELECT first_seen FROM owner_absence WHERE project=? AND owner_session=?", (key, owner)).fetchone()
+                if not absence or absence["first_seen"] > now:
+                    db.execute("INSERT OR REPLACE INTO owner_absence VALUES (?, ?, ?)", (key, owner, now))
+                    continue
+                if now - absence["first_seen"] < CLOSED_GRACE_MS:
+                    continue
+                rows = db.execute("SELECT id, version FROM tasks WHERE project=? AND owner_session=?", (key, owner)).fetchall()
+                for row in rows:
+                    changed = db.execute("UPDATE tasks SET owner_session='', owner_root='', version=version+1, updated=? WHERE project=? AND id=? AND version=? AND owner_session=?",
+                                         (now, key, row["id"], row["version"], owner)).rowcount
+                    if not changed:
+                        continue
+                    released.append(row["id"])
+                    db.execute("INSERT INTO task_messages VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
+                               ("m-" + uuid.uuid4().hex[:16], key, row["id"], "System", checkout,
+                                "Assignment released automatically because its assigned session is closed. Previous session: " + owner + ". Task status and notes are unchanged.", now))
+            return {"states": states, "panes": panes, "released": released}
         if action in ("list", "board"):
-            context = dict(db.execute("SELECT goal, notes, version FROM projects WHERE id=?", (key,)).fetchone())
             include_done = args.get("include_done", False)
             if type(include_done) is not bool:
                 raise ValueError("include_done must be boolean")
@@ -145,13 +280,17 @@ def operate(database, args):
                         "SELECT id, title, status, notes, session, root, updated, version, github_url, owner_session, owner_root FROM tasks WHERE project=? AND status=? AND instr(lower(title || ' ' || notes), lower(?))>0 ORDER BY updated DESC, id LIMIT 5 OFFSET ?",
                         (key, status, query, offsets[index])))
                 paging = {"counts": counts, "offsets": offsets, "query": query, "include_done": include_done}
-            checkpoints = [dict(row) for row in db.execute("""
-                SELECT c.*, COALESCE(a.started, 0) > c.updated AS stale FROM checkpoints c
-                LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
-                WHERE c.project=? ORDER BY c.updated DESC, c.session LIMIT 5""", (key,))]
-            return {"project": key, "name": name, "root": checkout, "context": context,
-                    "tasks": tasks, "checkpoints": checkpoints,
-                    "message_revision": db.execute("SELECT COUNT(*) FROM task_messages WHERE project=?", (key,)).fetchone()[0], **paging}
+            owner_counts = {row["owner_session"]: row["count"] for row in db.execute(
+                "SELECT owner_session, COUNT(*) AS count FROM tasks WHERE project=? AND owner_session!='' GROUP BY owner_session", (key,))}
+            result = {"project": key, "name": name, "root": checkout, "tasks": tasks, "owner_counts": owner_counts,
+                      "message_revision": db.execute("SELECT COUNT(*) FROM task_messages WHERE project=?", (key,)).fetchone()[0], **paging}
+            if api_version == 1:
+                result["context"] = dict(db.execute("SELECT goal, notes, version FROM projects WHERE id=?", (key,)).fetchone())
+                result["checkpoints"] = [dict(row) for row in db.execute("""
+                    SELECT c.*, COALESCE(a.started, 0) > c.updated AS stale FROM checkpoints c
+                    LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
+                    WHERE c.project=? ORDER BY c.updated DESC, c.session LIMIT 5""", (key,))]
+            return result
         if action == "linked":
             url = text(args.get("github_url"), "github_url", 500)
             return {"total": db.execute("SELECT COUNT(*) FROM tasks WHERE project=? AND github_url=?", (key, url)).fetchone()[0],
@@ -162,14 +301,51 @@ def operate(database, args):
             row = db.execute("SELECT * FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
             if not row:
                 raise ValueError("task does not belong to this project")
-            checkpoint = db.execute("""SELECT c.*, COALESCE(a.started, 0) > c.updated AS stale
-                FROM checkpoints c LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
-                WHERE c.project=? AND c.task_id=? ORDER BY c.updated DESC LIMIT 1""", (key, ident)).fetchone()
             messages = [dict(message) for message in db.execute(
-                "SELECT id, session, root, body, updated FROM task_messages WHERE project=? AND task_id=? ORDER BY updated DESC, id DESC LIMIT 20", (key, ident))]
-            return {"task": dict(row), "checkpoint": dict(checkpoint) if checkpoint else None,
-                    "messages": list(reversed(messages))}
-        if action in ("claim", "release", "message"):
+                "SELECT id, session, root, body, updated FROM task_messages WHERE project=? AND task_id=? ORDER BY updated DESC, rowid DESC LIMIT 20", (key, ident))]
+            result = {"task": dict(row), "messages": list(reversed(messages))}
+            if api_version == 1:
+                checkpoint = db.execute("""SELECT c.*, COALESCE(a.started, 0) > c.updated AS stale
+                    FROM checkpoints c LEFT JOIN activity a ON a.project=c.project AND a.session=c.session
+                    WHERE c.project=? AND c.task_id=? ORDER BY c.updated DESC LIMIT 1""", (key, ident)).fetchone()
+                result["checkpoint"] = dict(checkpoint) if checkpoint else None
+            return result
+        if action == "progress":
+            ident = text(args.get("id"), "id", 100)
+            if not session or not site:
+                raise ValueError("progress requires a saved session and stable tool site")
+            version = args.get("version")
+            if type(version) is not int or version < 1:
+                raise ValueError("progress requires the version from a read or mutation receipt")
+            body = text(args.get("body"), "body", 2000)
+            status = args.get("status")
+            if "status" in args and status not in STATUSES:
+                raise ValueError("invalid progress status")
+            request = json.dumps([key, ident, session, version, body, status], ensure_ascii=False)
+            previous = db.execute("SELECT request, receipt FROM task_progress WHERE site=?", (site,)).fetchone()
+            if previous:
+                if previous["request"] != request:
+                    raise ValueError("progress replay differs from its original request")
+                return json.loads(previous["receipt"])
+            row = db.execute("SELECT * FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
+            if not row:
+                raise ValueError("task does not belong to this project")
+            if row["owner_session"] != session:
+                raise ValueError("progress requires the current task owner; claim it first")
+            if row["version"] != version:
+                raise ValueError("task changed; refresh before recording progress")
+            status = status or row["status"]
+            message_id = "m-" + uuid.uuid4().hex[:16]
+            db.execute("INSERT INTO task_messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (message_id, key, ident, session, checkout, body, now, site))
+            db.execute("""UPDATE tasks SET status=?, owner_session=?, owner_root=?,
+                       version=version+1, updated=? WHERE project=? AND id=? AND version=?""",
+                       (status, "" if status == "done" else session,
+                        "" if status == "done" else row["owner_root"], now, key, ident, version))
+            receipt = {"id": ident, "version": version + 1, "status": status, "message_id": message_id}
+            db.execute("INSERT INTO task_progress VALUES (?, ?, ?)", (site, request, json.dumps(receipt)))
+            return receipt
+        if action in ("claim", "release", "message", "notes"):
             ident = text(args.get("id"), "id", 100)
             row = db.execute("SELECT * FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
             if not row:
@@ -188,7 +364,13 @@ def operate(database, args):
                 return {"id": message_id}
             version = args.get("version")
             if type(version) is not int or version != row["version"]:
-                raise ValueError("task changed; refresh before changing ownership")
+                raise ValueError("task changed; refresh before changing the assignment")
+            if action == "notes":
+                if row["owner_session"] and row["owner_session"] != session:
+                    raise ValueError("task is assigned to session " + row["owner_session"] + "; use a task message to coordinate")
+                notes = text(args.get("notes"), "notes", 4000, empty=True)
+                db.execute("UPDATE tasks SET notes=?, version=version+1, updated=? WHERE project=? AND id=?", (notes, now, key, ident))
+                return {"id": ident, "version": version + 1}
             force = args.get("force", False)
             if type(force) is not bool:
                 raise ValueError("force must be boolean")
@@ -198,13 +380,14 @@ def operate(database, args):
                 if row["status"] == "done":
                     raise ValueError("reopen the task before claiming it")
                 if row["owner_session"] and row["owner_session"] != session:
-                    raise ValueError("task is owned by session " + row["owner_session"] + "; coordinate in task messages before taking over")
+                    raise ValueError("task is assigned to session " + row["owner_session"] + "; coordinate in task messages before reassigning")
                 owner, owner_root = session, checkout
             else:
                 if row["owner_session"] != session and not force:
-                    raise ValueError("only the owner can release a task; ask the operator to clear an abandoned claim")
+                    raise ValueError("only the assigned session can unassign a task; ask the operator to clear an abandoned assignment")
                 owner, owner_root = "", ""
-            db.execute("UPDATE tasks SET owner_session=?, owner_root=?, version=version+1, updated=? WHERE project=? AND id=?", (owner, owner_root, now, key, ident))
+            status = "now" if action == "claim" else row["status"]
+            db.execute("UPDATE tasks SET owner_session=?, owner_root=?, status=?, version=version+1, updated=? WHERE project=? AND id=?", (owner, owner_root, status, now, key, ident))
             return {"id": ident, "version": version + 1}
         if action == "context":
             goal = text(args.get("goal"), "goal", 2000, empty=True)
@@ -258,7 +441,7 @@ def operate(database, args):
                 raise ValueError("read work first; task updates require its version")
             current = db.execute("SELECT owner_session, owner_root FROM tasks WHERE project=? AND id=?", (key, ident)).fetchone()
             if current and current["owner_session"] and current["owner_session"] != session:
-                raise ValueError("task is owned by session " + current["owner_session"] + "; use a task message to coordinate")
+                raise ValueError("task is assigned to session " + current["owner_session"] + "; use a task message to coordinate")
             owner = current["owner_session"] if current else ""
             owner_root = current["owner_root"] if current else ""
             if status == "now" and not owner and session:

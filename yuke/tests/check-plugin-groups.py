@@ -13,7 +13,7 @@ import uuid
 
 PROBE = r'''
 import { client, env, fs } from "yuke";
-import { currentPane, showSession } from "yuke:session";
+import { Session, currentPane, showSession } from "yuke:session";
 import { quit } from "yuke:ui";
 export default function(ctx) {
   const tui = ctx.get("tui");
@@ -41,6 +41,24 @@ export default function(ctx) {
       const model = catalog.models.find(row => row.selector === "group-test/model");
       if (!model) throw Error("missing fixture model");
       const pane = currentPane();
+      if (expected.startup) {
+        for (let i = 0; i < 100 && !statusText().includes("medium"); i++) await new Promise(done => setTimeout(done, 10));
+        check(statusText().includes("medium"), true, "startup effort shown on draft");
+        const draft = new Session();
+        const id = await draft.startChat(null, pane.composer);
+        check((await client.sessionGet(id)).session.reasoning, "medium", "new chat inherits startup effort");
+        draft.release();
+        const saved = await client.sessionCreate({ workspace_path: (await fs.stat(".")).path, model: model.selector, reasoning: "high" });
+        showSession(pane, saved.session.id);
+        const { modelState } = await import("../plugins/models/state.js");
+        modelState(ctx, tui).setDefault(model, "medium");
+        check((await client.sessionGet(saved.session.id)).session.reasoning, "high", "startup default preserves saved-session effort");
+        const next = new Session();
+        const nextId = await next.startChat(null, pane.composer);
+        check((await client.sessionGet(nextId)).session.reasoning, "medium", "saved pane still sets only new-chat defaults");
+        next.release();
+        showSession(pane, new Session());
+      }
       pane.session.setModel(model, "high");
       await new Promise(done => setTimeout(done, 60));
       check(statusText().includes("high"), expected.effortStatus, "accepted draft effort");
@@ -113,6 +131,7 @@ def main():
     parser.add_argument('--binary', type=Path, default=Path(shutil.which('yuke') or 'yuke'))
     parser.add_argument('--profile', type=Path, default=Path(__file__).resolve().parents[1] / '.config/yuke')
     parser.add_argument('--group', choices=['models', 'controls', 'run-feedback', 'insights', 'step-trace', 'all'], default='all')
+    parser.add_argument('--case', help='run one named case within the selected group')
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     source = args.profile.resolve(strict=True)
@@ -121,6 +140,8 @@ def main():
     print('Artifacts:', root, flush=True)
     cases = {
       'models': [
+        ('startup-default', {'startupModel': 'group-test/model', 'startupEffort': 'medium'}, {'commands': {'models:effort': True}, 'modelOverride': True, 'models': True, 'effortStatus': True, 'effortCommand': True, 'startup': True}),
+        ('startup-user-choice', {'startupModel': 'group-test/model', 'startupEffort': 'medium'}, {'commands': {'models:effort': True}, 'modelOverride': True, 'models': True, 'effortStatus': True, 'effortCommand': True}),
         ('default', {}, {'commands': {'models:effort': True}, 'modelOverride': True, 'models': True, 'effortStatus': True, 'effortCommand': True}),
         ('disabled', {'picker': False, 'effortPicker': False, 'aliases': False, 'effortStatus': False}, {'commands': {'models:effort': False}, 'modelOverride': False}),
         ('effort-only', {'picker': False, 'aliases': False}, {'commands': {'models:effort': True}, 'modelOverride': False, 'models': True, 'effortStatus': True, 'effortCommand': True}),
@@ -150,7 +171,10 @@ def main():
     }
     selected = list(cases) if args.group == 'all' else [args.group]
     for group in selected:
-      for name, settings, expected in cases[group]:
+      selected_cases = [case for case in cases[group] if not args.case or case[0] == args.case]
+      if not selected_cases:
+        parser.error('unknown case for ' + group + ': ' + str(args.case))
+      for name, settings, expected in selected_cases:
         case = root / (group + '-' + name)
         profile = case / 'config/yuke'
         shutil.copytree(source, profile, ignore=shutil.ignore_patterns('providers.json*', '*.key', '.env', 'yuke.d.ts', 'yuke-modules.d.ts', 'yuke.jsconfig.json', '__pycache__'))
@@ -163,7 +187,7 @@ def main():
         (profile / 'config.json').write_text(json.dumps({'plugins': (['./plugins/vim-mode'] if expected.get('vim', True) else []) + ['./probe', './plugins/' + group]}))
         (profile / 'plugins' / group / 'settings.json').write_text(json.dumps(settings))
         (profile / 'model-aliases.json').write_text(json.dumps({'version': 1, 'revision': 0, 'presets': [{'alias': 'fixture', 'model': 'group-test/model', 'effort': 'high', 'key': 'f8'}]}))
-        (profile / 'providers.json').write_text(json.dumps({'providers': [{'id': 'group-test', 'base_url': 'http://127.0.0.1:1/v1', 'api_key': 'fixture-only', 'endpoints': [{'protocol': 'openai_chat', 'credential_header': 'authorization_bearer'}], 'models': [{'id': 'model', 'upstream_id': 'model', 'reasoning_levels': ['low', 'high'], 'flags': {'thinking_format': 'openai'}, 'limits': {'context_window': 100000, 'max_output_tokens': 4096}}]}]}))
+        (profile / 'providers.json').write_text(json.dumps({'providers': [{'id': 'group-test', 'base_url': 'http://127.0.0.1:1/v1', 'api_key': 'fixture-only', 'endpoints': [{'protocol': 'openai_chat', 'credential_header': 'authorization_bearer'}], 'models': [{'id': 'model', 'upstream_id': 'model', 'reasoning_levels': ['low', 'medium', 'high'], 'flags': {'thinking_format': 'openai'}, 'limits': {'context_window': 100000, 'max_output_tokens': 4096}}]}]}))
         (profile / 'providers.json').chmod(0o600)
         env = {'HOME': str(case / 'home'), 'PATH': os.environ['PATH'], 'TERM': 'xterm-256color', 'YUKE_APPNAME': 'yuke', 'GROUP_EXPECTED': json.dumps(expected)}
         for folder in ['config', 'state', 'data', 'cache']:

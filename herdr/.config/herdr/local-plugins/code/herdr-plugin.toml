@@ -32,6 +32,12 @@ title = "Checkout changes in Code"
 contexts = ["pane"]
 command = ["python3", "code.py", "changes"]
 
+[[actions]]
+id = "open-file"
+title = "Open file in Code"
+contexts = ["pane"]
+command = ["python3", "code.py", "open-file"]
+
 [[panes]]
 id = "code"
 title = "Code"

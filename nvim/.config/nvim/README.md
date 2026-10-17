@@ -35,6 +35,7 @@ Open the full [Vim field guide](doc/shortcuts.md) with ,h or :VimShortcuts from 
 | ,Esc / ,bd | Clear search highlights / delete buffer |
 | ,p in visual mode | Replace selection while retaining the yank register |
 | ,e | Toggle nvim-tree |
+| ,E | Reveal the current file in nvim-tree and focus it |
 | ,Space / ,ff / ,tt | Find files using the current file's project root |
 | ,/ / ,sg / ,tg | Search text using the current file's project root |
 | ,tb / ,tr / ,tp | Open buffers / recent files / recent projects |

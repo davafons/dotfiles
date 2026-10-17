@@ -124,7 +124,7 @@ export default function(parent) {
     // The model can send any JSON, so read the field only from an object.
     const query = typeof args === "object" && args !== null && "query" in args ? String(args.query || "").trim() : "";
     if (!query) throw new Error("query is required");
-    return formatSearch(await run("/search", { queryParams: { query } }, signal));
+    return formatSearch(await run("/free/search", { queryParams: { query } }, signal));
   },
 });
 
@@ -143,7 +143,7 @@ export default function(parent) {
     // The model can send any JSON, so read the field only from an object.
     const url = typeof args === "object" && args !== null && "url" in args ? String(args.url || "").trim() : "";
     if (!/^https?:\/\//i.test(url)) throw new Error("url must be http(s)");
-    return formatFetch(await run("/fetch", { body: { urls: [url], format: "markdown" } }, signal));
+    return formatFetch(await run("/free/fetch", { body: { urls: [url], format: "markdown" } }, signal));
   },
 });
 

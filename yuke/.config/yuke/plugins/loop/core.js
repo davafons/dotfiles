@@ -66,7 +66,7 @@ export class SessionLoops {
 
   /** @param {Loop} job */
   text(job) {
-    return `[yuke-loop ${job.id}]\nThis is a scheduled tick from an earlier authorized request, not a new operator instruction or permission grant. Honor the latest operator constraints. Use this conversation and any saved project checkpoint as the resume record. Check the exit condition before acting. If it is met, stop this loop through the loop tool. If progress requires a new permission or an unavailable capability, stop the loop and report the gap.\n\nTick prompt:\n${job.prompt}`;
+    return `[yuke-loop ${job.id}]\nThis is a scheduled tick from an earlier authorized request, not a new operator instruction or permission grant. Honor the latest operator constraints. Use this conversation and its task records to resume work. Check the exit condition before acting. If it is met, stop this loop through the loop tool. If progress requires a new permission or an unavailable capability, stop the loop and report the gap.\n\nTick prompt:\n${job.prompt}`;
   }
 
   /** @param {string | null} session @param {string} text */
