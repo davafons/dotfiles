@@ -54,6 +54,25 @@ The installed execution playbooks include [Autonomous run](../playbooks/autonomo
 [Orchestrate](../playbooks/orchestrate.md), and [Babysit](../playbooks/babysit.md).
 Name the supported execution workflow and its gaps before asking to start it.
 
+## Remaining workflow imports
+
+All 30 upstream workflow names are represented locally. The final seven imports
+retain their full sources at `101b274dd991f694e1f7024be2157e5f3adf07de`:
+[automate-me](../../automate-me/SKILL.md),
+[typescript-best-practices](../../typescript-best-practices/SKILL.md),
+[setup-pstack](../../setup-pstack/SKILL.md),
+[poteto-help](../../poteto-help/SKILL.md),
+[make-bot-ui](../../make-bot-ui/SKILL.md),
+[in-your-own-words](../../in-your-own-words/SKILL.md), and
+[sharpen](../../sharpen/SKILL.md).
+
+Their runtime sections govern native placement, history scope, questions, model
+configuration and unavailable bot APIs. Setup and bot imports do not configure
+providers or deploy services. Help remains read-only. The TypeScript examples
+retain the documented duration erratum. Framing a task does not loosen explicit
+user constraints or permission gates. Other installed workflows retain their own
+recorded source pins; name coverage is not a claim that every file is latest.
+
 ## Design and coordination
 
 Use the current harness's exposed roles and engine model receipts. In Yuke,

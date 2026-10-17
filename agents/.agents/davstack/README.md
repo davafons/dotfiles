@@ -19,74 +19,45 @@ the dotfiles project context and the linked review task in `/work`.
 
 ## Current result and remaining work
 
-The curated stack has **28 global development skills**, **23 playbooks**, and
-**three project verification skills**. Against the reviewed pstack catalogue at
-`1b6d44ff26d4e242f4e8f68c391e6d2f7ca16def`, it represents 23 of 28 workflows,
-with `poteto-mode` adapted as `dav-mode`. Five additional global skills are
-Comment Sicko, Control CLI, Deslop, Loop, and the public Anthropic Skill Creator.
-The 24 principle leaves remain linked references. They are not missing playbooks
-or automatically approved imports.
+Davstack now contains **35 global development skills**, **23 playbooks**, and
+**three project verification skills**. All **30 workflow names** in pstack
+0.15.25 are represented, with `poteto-mode` adapted as `dav-mode`. Five additional
+global skills are Comment Sicko, Control CLI, Deslop, Loop, and the public
+Anthropic Skill Creator.
 
-The source installation is complete for the approved set. Actual model-driven
-workflow behavior is not fully verified. These are separate completion checks:
+The final seven workflow imports are `automate-me`, `typescript-best-practices`,
+`setup-pstack`, `poteto-help`, `make-bot-ui`, `in-your-own-words`, and `sharpen`.
+Their complete methods, supporting references and MIT notices come from
+`101b274dd991f694e1f7024be2157e5f3adf07de`. Other installed workflows retain their
+recorded source pins. Complete name coverage does not mean every older file was
+updated to the latest upstream revision in this import.
 
-- [x] Preserve approved methods, supporting files, source pins, and licenses.
-- [x] Register canonical links for Yuke/Codex and Claude without overwriting user files.
-- [x] Prove cold native Yuke discovery of 28 global and three project skills.
-- [x] Fix the five import-audit defects and minor recall dependency wording.
-- [x] Clear the 17 known Markdownlint findings in coordination templates and existing mode formatting without changing their wording or requirements.
-- [ ] Exercise native fan-out, queue/drain/cancel behavior, missing receipts, and worker dropouts on representative tasks.
-- [ ] Prove actual writer roots, parent/sibling artifact isolation, and blinded judging.
-- [ ] Run distinct-model reviews with accepted-model receipts and real findings, not scripted replies.
-- [ ] Supply a different-family judge for workflows that require one, including Eval. Same-family Interrogate does not close this gate.
-- [ ] Complete the authoring feedback and description-evaluation campaign under a new bounded grant. The earlier eight-session grant is exhausted.
-- [ ] Refresh active sessions after saving drafts and finishing active turns.
-- [ ] Publish the local changes only when requested.
+Runtime adaptations do not replace the methods:
 
-The final three approved additions are `correct`, `ketchup`, and `bro`.
-`correct` addresses demonstrated repeated mistakes within the requested scope.
-`ketchup` gives a read-only current-chat recap and uses `bro` for plain language.
-All three retain their complete pinned methods and MIT notices. Installation is
-not proof of effectiveness or a completed authoring campaign.
+- `automate-me` uses authorized native history, skill placement, questions and jj.
+  Importing it does not scan personal history or create a new personal mode.
+- `setup-pstack` preserves the full detect, budget, confirm and role-map method.
+  Native configuration must affect actual roles; a Cursor `.mdc` file would not.
+  Unsupported independent role seats remain explicit gaps.
+- `poteto-help` keeps its full router and two references. Native names and actual
+  configuration govern local advice. Upstream guide links are pinned public URLs.
+- `make-bot-ui` keeps the complete webhook and secret-handling procedure. Its
+  Cursor/Grok Bot APIs are not supplied by this native adapter. No infrastructure,
+  secret request, installation or network exposure is authorized by the import.
+- The TypeScript examples remain intact with a visible erratum. A plain-number
+  duration does not prove nonnegativity, finiteness or Date-range validity.
+- `in-your-own-words` and `sharpen` retain their exact small upstream methods.
+  Framing a task never overrides explicit user constraints or permission gates.
 
-Five reviewed workflows remain deliberately uninstalled:
+The 24 principle leaves remain linked references, not additional registered
+skills. The dormant Benny automation pack is not ported. These imports complete
+workflow source coverage, not byte-for-byte packaging or full runtime parity.
 
-| Uninstalled workflow | Decision | Reason |
-| --- | --- | --- |
-| `typescript-best-practices` | Defer pending semantic review. | Useful rules and examples, but its plain-number duration model still accepts negative values despite claiming otherwise. Do not promote the examples to global policy unchanged. |
-| `automate-me` | Defer until a personal-mode request. | Requires authorized history mining and a preference interview. Existing `dav-mode`, `reflect`, and `skill-creator` already cover current working conventions. |
-| `setup-pstack` | Skip the unchanged Cursor workflow. | Writes a Cursor model-role rule that does not configure Yuke. Native roles belong at the actual profile/tool boundary. |
-| `poteto-help` | Skip the duplicate router. | Assumes Cursor setup, Custom Modes, and commands not installed here. This guide and native skill discovery describe the actual stack. |
-| `make-bot-ui` | Skip for this development stack. | Requires Cursor/Grok Bot routines, secret cards, webhook infrastructure, and network exposure that are not part of the native runtime. |
-
-The priority is verification of the curated set, not catalogue completion.
-An initial probe showed that a parent's eight-round limit did not constrain its
-children. The existing adapter and runner now have an opt-in campaign guard,
-verified with 67 repository tests plus ShellCheck and native bootstrap checks.
-Ordinary non-campaign sessions keep their existing behavior.
-
-The authorized smoke campaign used 11 of 12 sessions, including parents and
-children, under the unchanged 60-second, eight-round and 15-minute limits.
-Failed sessions counted. All owned engine processes were reaped. The old
-eight-session grant remains exhausted and untouched.
-
-Real Started/Queued receipts, cancellation and explicit coverage gaps were
-observed. The Swarm parent claimed one dispatch batch, but actual receipts showed
-two assistant messages. That check failed. Interrogate did not finish its reviews;
-Architect produced only one partial sketch; the approved existing Grok judge
-exhausted its rounds without a verdict. A useful Ketchup recap was produced, but
-its comparison was confounded by the other run trying unavailable delegation.
-These observations do not complete the rollout checklist above.
-
-The next bounded run needs explicit file manifests, unambiguous reference paths
-and leaf-role briefs, plus delegation affordances matching the remaining quota.
-Do not enlarge limits to hide setup failures. The user requested upstream
-fidelity, not stylistic optimization. Keep the complete methods and descriptions;
-do not tune them to this confounded run. Comparative effectiveness and full
-repeated description evaluation remain unverified. Provider changes and
-publication need separate approval. The TypeScript duration findings were
-reproduced by compiling and executing actual fixture code, not by testing
-instruction text.
+Source and installation checks are separate from optional model evaluations.
+The operator stopped the earlier campaign; it will not resume as part of copying
+skills. Its partial results and remaining gates are recorded in `/work`, not
+prerequisites for reading the installed methods. Save drafts and finish active
+turns before refreshing a frontend. Publication still requires a request.
 
 ## Start reading and using the stack
 
@@ -100,10 +71,10 @@ works, ask for a regression before a bug fix, ask Architect to design an API,
 or ask Interrogate to challenge a change. Delegated workflows still need explicit
 delegation permission. Read-only review does not authorize applying its findings.
 
-The curated sources are complete for the approved scope. This is not a full
-upstream mirror. The five deliberate exclusions above and the pinned principle
-references do not prevent reading the installed methods. Runtime checks and human
-feedback remain separate from source completeness.
+All upstream workflow names now have local sources. This is not a full upstream
+mirror: source pins vary, principle leaves remain references, and Cursor-only
+capabilities require actual native equivalents. Those distinctions do not prevent
+reading the installed methods.
 
 ## Skills
 
@@ -137,6 +108,13 @@ feedback remain separate from source completeness.
 | `correct` | Make demonstrated repeat mistakes structurally impossible within the requested scope | Real repeated evidence, architecture or executable checks, and past-mistake reproduction |
 | `ketchup` | Recap this chat since the user's last message and explain user-only decisions | Read-only current-chat evidence and `bro` |
 | `bro` | Restate the last assistant reply in plain language | The previous reply |
+| `automate-me` | Capture working conventions in a personal mode | Authorized history, `skill-creator`, `unslop` and user feedback |
+| `typescript-best-practices` | Apply the complete TypeScript rules and examples | Referenced principles and the documented duration erratum |
+| `setup-pstack` | Detect, confirm and configure model roles and budgets | Actual native role configuration, not a decorative Cursor rule |
+| `poteto-help` | Explain the skill map and hand back a suitable prompt without starting work | Complete router, prompting/recipe references and native mappings |
+| `make-bot-ui` | Build a UI that wakes a bot through a server-side webhook | Supported bot/secret APIs and separately authorized infrastructure |
+| `in-your-own-words` | Restate the user's goals and underlying problem | The current request |
+| `sharpen` | Frame a task around expert methods and the actual goal | Current context and an appropriate outside check |
 
 The 23 playbooks are references, not additional registered skills. Their ordered
 methods now come from the selected upstream copies, not the abbreviated Shirabe
@@ -226,6 +204,13 @@ agents/.agents/
 │       ├── correct/{SKILL.md,LICENSE}
 │       ├── ketchup/{SKILL.md,LICENSE}
 │       ├── bro/{SKILL.md,LICENSE}
+│       ├── automate-me/{SKILL.md,LICENSE}
+│       ├── typescript-best-practices/{SKILL.md,LICENSE,references/}
+│       ├── setup-pstack/{SKILL.md,LICENSE}
+│       ├── poteto-help/{SKILL.md,LICENSE,references/}
+│       ├── make-bot-ui/{SKILL.md,LICENSE}
+│       ├── in-your-own-words/{SKILL.md,LICENSE}
+│       ├── sharpen/{SKILL.md,LICENSE}
 │       ├── control-cli/{SKILL.md,LICENSE}
 │       ├── maintain-verification-skill/{SKILL.md,LICENSE}
 │       └── create-verification-skill/{SKILL.md,LICENSE,references/feature-map-example/}
@@ -254,7 +239,7 @@ bin/bin/agent-skills check
 make check
 ```
 
-The installer explicitly lists all 28 davstack names. It links their complete
+The installer explicitly lists all 35 davstack names. It links their complete
 directories into `~/.agents/skills/` for Yuke/Codex and `~/.claude/skills/` for
 Claude Code. It also links the `comment-sicko` and `dav-agent` adapters into
 `~/.claude/agents/` and `~/.codex/agents/`. The adapters inherit configured models.

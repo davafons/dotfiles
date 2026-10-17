@@ -27,7 +27,8 @@ shared-desktop rules. All searches and live-state checks are read-only. Check fo
 `.jj/` before version-control commands; in colocated repos use `jj` rather than
 Git. Use the installed `unslop` skill for the brief and the installed
 `dav-mode/playbooks/session-pickup.md` for a specific session handoff.
-`automate-me` is not installed; do not silently load an unavailable skill.
+Use the installed [automate-me](../automate-me/SKILL.md) only when the user
+requests a personal-mode workflow, not as an automatic part of recall.
 
 **Before you start or resume work, you rebuild the user's recent working context and hand back a tight capsule of where things stand now and what to do next.**
 
