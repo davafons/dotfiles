@@ -6,7 +6,11 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
+import subprocess
+import sys
 import tempfile
+import textwrap
 import threading
 import unittest
 from unittest.mock import patch
@@ -112,6 +116,137 @@ class NativeAuthoring(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIs(result["native_process_stopped"], True)
         self.assertEqual(json.loads(self.budget.read_text())["used"], 1)
+
+
+class NativeBoundaries(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="authoring-boundaries-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.budget = self.root / "budget.json"
+        self.budget.write_text('{"limit":20,"used":0}')
+        env = patch.dict(os.environ, {
+            "DAVSTACK_AUTHORING_ALLOW_MODELS": "1",
+            "DAVSTACK_AUTHORING_BUDGET": str(self.budget),
+            "DAVSTACK_AUTHORING_EVIDENCE": str(self.root),
+        })
+        env.start()
+        self.addCleanup(env.stop)
+        binaries = patch.object(native.shutil, "which", return_value="/fixture-only")
+        binaries.start()
+        self.addCleanup(binaries.stop)
+
+    def receipt(self):
+        paths = list(self.root.glob("run-*/result.json"))
+        self.assertEqual(len(paths), 1, "every reserved failed trial must retain its result")
+        result = json.loads(paths[0].read_text())
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertIs(result["native_process_stopped"], True)
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 1)
+        return result
+
+    def test_skill_names_cannot_write_paths_or_inject_frontmatter(self):
+        names = ["../escape", "../../../../escaped", str(self.root / "absolute"),
+                 "nested/name", ".", "..", "bad\nname", "", "a" * 65]
+        with patch.object(native.subprocess, "Popen", side_effect=OSError("unexpected launch")) as launch:
+            for name in names:
+                with self.subTest(name=name):
+                    with self.assertRaisesRegex(native.NativeRunError, "skill name"):
+                        native.run_trial("Never sent", "fixture/model", skill_name=name)
+            launch.assert_not_called()
+        self.assertEqual(list(self.root.rglob("SKILL.md")), [], "invalid names must not create any skill file")
+        self.assertEqual(json.loads(self.budget.read_text())["used"], 0)
+
+    def test_launch_failure_retains_receipt_and_consumes_reservation(self):
+        with patch.object(native.subprocess, "Popen", side_effect=OSError("fixture launch refused")):
+            with self.assertRaisesRegex(native.NativeRunError, "fixture launch refused.*evidence:"):
+                native.run_trial("Never sent", "fixture/model", skill_name="fixture-reader")
+        result = self.receipt()
+        self.assertIs(result["native_process_started"], False)
+        self.assertIn("fixture launch refused", result["error"])
+        self.assertTrue((Path(result["artifact_dir"]) / "work/.agents/skills/fixture-reader/SKILL.md").is_file())
+
+    def test_preparation_failure_retains_receipt_without_launch(self):
+        with patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(native.NativeRunError, "Fixture path.*evidence:"):
+                native.run_trial("Never sent", "fixture/model", files={"../escaped.txt": "must not write"})
+            launch.assert_not_called()
+        result = self.receipt()
+        self.assertIs(result["native_process_started"], False)
+        self.assertEqual(list(self.root.rglob("escaped.txt")), [])
+
+    def test_skill_path_cannot_follow_a_prepared_symlink(self):
+        target = self.root / "outside-skills"
+        target.mkdir()
+        original_write = Path.write_text
+
+        def prepare_link(path, content, *args, **kwargs):
+            written = original_write(path, content, *args, **kwargs)
+            if path.name == "seed":
+                (path.parent / ".agents").mkdir()
+                (path.parent / ".agents/skills").symlink_to(target, target_is_directory=True)
+            return written
+
+        with patch.object(Path, "write_text", prepare_link), patch.object(native.subprocess, "Popen") as launch:
+            with self.assertRaisesRegex(native.NativeRunError, "Skill path.*evidence:"):
+                native.run_trial("Never sent", "fixture/model", skill_name="fixture-reader", files={"seed": "fixture"})
+            launch.assert_not_called()
+        self.assertEqual(list(target.rglob("SKILL.md")), [])
+        self.receipt()
+
+    def pipe_trial(self, flood):
+        fixture = textwrap.dedent('''\
+            import json, os, sys, time
+            from pathlib import Path
+            Path(os.environ['XDG_CACHE_HOME'], 'fixture.pid').write_text(str(os.getpid()))
+            row = json.loads(sys.stdin.readline())
+            print(json.dumps({'id': row['id'], 'result': {'engine': {'name': 'no-model fixture'}}}), flush=True)
+        ''')
+        if flood:
+            fixture += "sys.stdout.write((json.dumps({'method': 'fixture.event', 'params': 'x' * 1000}) + '\\n') * 2000)\nsys.stdout.flush()\n"
+            fixture += "row = json.loads(sys.stdin.readline())\nprint(json.dumps({'id': row['id'], 'error': 'fixture consumed request'}), flush=True)\n"
+        fixture += "time.sleep(30)\n"
+        worker = textwrap.dedent(f'''\
+            import importlib.util, subprocess, sys
+            from unittest.mock import patch
+            spec = importlib.util.spec_from_file_location('native_fixture', {str(SCRIPT)!r})
+            native = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(native)
+            launch = subprocess.Popen
+            def start_fixture(args, **kwargs):
+                return launch([sys.executable, '-c', {fixture!r}], **kwargs)
+            with patch.object(native.shutil, 'which', return_value='/fixture-only'), patch.object(native.subprocess, 'Popen', side_effect=start_fixture):
+                try:
+                    native.run_trial('Never sent to a model. ' * 100000, 'fixture/model', timeout=1)
+                except native.NativeRunError as error:
+                    print(error)
+        ''')
+        process = subprocess.Popen([sys.executable, "-B", "-c", worker], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, start_new_session=True)
+        try:
+            stdout, stderr = process.communicate(timeout=4)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            self.fail("native helper exceeded its deadline while writing RPC input; watchdog stopped owned processes")
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait()
+        self.assertEqual(process.returncode, 0, stderr)
+        expected = "fixture consumed request" if flood else "deadline"
+        self.assertIn(expected, stdout)
+        result = self.receipt()
+        self.assertIn(expected, result["error"])
+        pid = int(next(self.root.glob("run-*/cache/fixture.pid")).read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+
+    def test_stalled_rpc_input_is_bounded_and_process_is_reaped(self):
+        self.pipe_trial(flood=False)
+
+    def test_rpc_output_is_drained_while_input_is_blocked(self):
+        self.pipe_trial(flood=True)
 
 
 if __name__ == "__main__":
