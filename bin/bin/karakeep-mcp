@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export KARAKEEP_API_ADDR="${KARAKEEP_API_ADDR:-https://board.davafons.cc}"
+key_file="${XDG_CONFIG_HOME:-$HOME/.config}/karakeep/api-key"
+
+if [[ -z "${KARAKEEP_API_KEY:-}" ]]; then
+  if [[ -f "$key_file" ]]; then
+    KARAKEEP_API_KEY="$(cat "$key_file")"
+  elif [[ "$(uname -s)" == Darwin ]]; then
+    KARAKEEP_API_KEY="$(security find-generic-password \
+      -a "${USER}" -s com.davafons.codex.mcp-karakeep -w 2>/dev/null)" || {
+      echo 'karakeep-mcp: missing API key in macOS Keychain' >&2
+      exit 1
+    }
+  fi
+fi
+
+if [[ -z "${KARAKEEP_API_KEY:-}" ]]; then
+  echo "karakeep-mcp: set KARAKEEP_API_KEY or save it in $key_file" >&2
+  exit 1
+fi
+
+export KARAKEEP_API_KEY
+exec npx --yes @karakeep/mcp@0.34.0 "$@"

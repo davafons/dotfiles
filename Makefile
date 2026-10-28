@@ -101,6 +101,7 @@ doctor: check-stow check-profile
 	esac
 
 check:
+	@shellcheck "$(DOTFILES_DIR)/bin/bin/karakeep-mcp"
 	@shellcheck "$(DOTFILES_DIR)/bin/bin/playwright-cli" "$(DOTFILES_DIR)/bin/bin/playwright-brave-launcher" "$(DOTFILES_DIR)/bin/bin/agent-skills" "$(DOTFILES_DIR)/bin/bin/codex-mcp-grafana" "$(DOTFILES_DIR)/agents/.agents/davstack/skills/show-me-your-work/scripts/log.sh"
 	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py bin/tests/test_pstack_inventory.py bin/tests/test_decision_log.py bin/tests/test_workspace_audit.py bin/tests/test_skill_creator_native.py
 

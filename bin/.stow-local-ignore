@@ -1,2 +1,3 @@
 # Tests are run from the repo by `make check`; keep them out of $HOME.
 ^/tests
+^/KARAKEEP\.md$

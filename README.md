@@ -22,6 +22,9 @@ Neovim is tracked directly in `nvim/.config/nvim`; no submodule setup is needed.
 Its [configuration guide](nvim/.config/nvim/README.md) covers shortcuts and checks.
 After initializing the colocated repository, use `jj` for version-control operations.
 
+The [Karakeep MCP setup](bin/KARAKEEP.md) covers credentials and registration
+with Claude Code and Codex on the Mac and Tower.
+
 `make` defaults `PROFILE` to the current hostname for compatibility. Specify
 `PROFILE` explicitly on a new machine.
 
