@@ -32,17 +32,17 @@
     }
   },
   "effortLevel": "high",
-  "voice": {
-    "enabled": false
-  },
-  "skipDangerousModePermissionPrompt": true,
-  "editorMode": "vim",
-  "agentPushNotifEnabled": true,
-  "voiceEnabled": false,
   "modelSettings": {
     "claude-opus-5-5": {
       "autoCompactWindow": 400000
     }
   },
-  "theme": "dark"
+  "voice": {
+    "enabled": false
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": false
 }

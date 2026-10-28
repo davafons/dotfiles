@@ -59,21 +59,19 @@ exec jj git push "$@"
 # used to name, is the [E] ENCRYPTION subkey of the same keypair -- signing with it
 # cannot work. Do not "restore" that value.
 #
-# `own` signs commits I author and leaves existing signatures on other people's
-# commits alone when rewriting -- the right choice here because several agents
-# share one working copy and one revset.
-#
-# WARNING: on jj 0.45 (tower, 2026-10-28) a missing secret key is a hard error
-# that blocks every snapshot; import the key or set `behavior = "drop"` in an
-# untracked ~/.config/jj/conf.d/ file. Older jj (verified 2026-08-29) instead
-# exited 0 and left the commit UNSIGNED, so this config being present proves
-# nothing; check with
-#     jj log -r @ -T 'if(signature, "SIGNED", "NOT SIGNED")'
-# after importing the key, and any time signing matters.
+# Sign on push, not on every rewrite. `own` re-signed the working copy on nearly
+# every jj command, so unattended agents failed whenever gpg-agent had no cached
+# passphrase (and jj >= 0.45 makes a missing key a hard error on each snapshot).
+# Now local commits stay unsigned and `jj git push`/`jj gpush` signs what it
+# pushes: one passphrase prompt per push. Check with
+#     jj log -r 'main@origin' -T 'if(signature, "SIGNED", "NOT SIGNED")'
 [signing]
 backend = "gpg"
-behavior = "own"
+behavior = "drop"
 key = "09C635A88F755238"
+
+[git]
+sign-on-push = true
 
 [ui]
 default-command = "log"
