@@ -3,6 +3,9 @@
 # Keep using Bash without macOS's zsh migration notice.
 export BASH_SILENCE_DEPRECATION_WARNING=1
 
+# Omarchy environment (OMARCHY_PATH + PATH), needed even for non-interactive shells
+[[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap
+
 # If not running interactively, don't do anything
 case $- in
 *i*) ;;
@@ -62,5 +65,5 @@ export PATH="$PATH:/Users/davafons/.lmstudio/bin"
 export PATH="$HOME/.grok/bin:$PATH"
 [[ -r "$HOME/.grok/completions/bash/grok.bash" ]] && source "$HOME/.grok/completions/bash/grok.bash"
 # <<< grok installer <<<
-. "$HOME/.cargo/env"
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 

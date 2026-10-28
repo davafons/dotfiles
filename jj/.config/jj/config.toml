@@ -63,9 +63,11 @@ exec jj git push "$@"
 # commits alone when rewriting -- the right choice here because several agents
 # share one working copy and one revset.
 #
-# WARNING, verified on 2026-08-29: when the secret key is unavailable, jj does
-# NOT error. `jj describe` exits 0 and the commit is simply UNSIGNED. So this
-# config being present proves nothing; check with
+# WARNING: on jj 0.45 (tower, 2026-10-28) a missing secret key is a hard error
+# that blocks every snapshot; import the key or set `behavior = "drop"` in an
+# untracked ~/.config/jj/conf.d/ file. Older jj (verified 2026-08-29) instead
+# exited 0 and left the commit UNSIGNED, so this config being present proves
+# nothing; check with
 #     jj log -r @ -T 'if(signature, "SIGNED", "NOT SIGNED")'
 # after importing the key, and any time signing matters.
 [signing]

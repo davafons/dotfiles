@@ -42,7 +42,7 @@
   gpgsign = false
 [credential "https://github.com"]
 	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = "!f() { for g in /opt/homebrew/bin/gh gh; do command -v \"$g\" >/dev/null && exec \"$g\" auth git-credential \"$@\"; done; exit 1; }; f"
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = "!f() { for g in /opt/homebrew/bin/gh gh; do command -v \"$g\" >/dev/null && exec \"$g\" auth git-credential \"$@\"; done; exit 1; }; f"

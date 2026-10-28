@@ -1,0 +1,12 @@
+# Tower tools. The shared mise package is not stowed here: Omarchy's
+# ~/.local/bin wrappers run `mise use -g` on every launch, which would keep
+# rewriting a stowed config.toml, so that file stays local on tower.
+[tools]
+claude = "latest"
+codex = "latest"
+gh = "latest"
+node = "26.8.2"
+ruby = "4.0.2"
+
+[settings.upgrade]
+auto_prune = false

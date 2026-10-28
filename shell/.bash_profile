@@ -25,8 +25,7 @@ export PATH="$PATH:/Users/davafons/.lmstudio/bin"
 # This won't be added again if you remove it.
 source ~/.orbstack/shell/init.bash 2>/dev/null || :
 
-[[ -r ~/.bashrc ]] && source ~/.bashrc
-. "$HOME/.cargo/env"
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
 # >>> Codex installer >>>
 export PATH="/Users/davafons/.local/bin:$PATH"
