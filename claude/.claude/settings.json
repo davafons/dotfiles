@@ -46,5 +46,6 @@
   "theme": "dark",
   "editorMode": "vim",
   "agentPushNotifEnabled": true,
-  "voiceEnabled": false
+  "voiceEnabled": false,
+  "hooks": {"SessionStart":[{"matcher":"^(startup|resume|clear|compact|fork)$","hooks":[{"type":"command","command":"bash '/home/davafons/.claude/hooks/herdr-agent-state.sh' session","timeout":10}]}]}
 }
