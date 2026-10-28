@@ -2,7 +2,7 @@
 
 [user]
 name = "David Afonso"
-email = "davafons@gmail.com"
+email = "dav@davafons.com"
 
 [aliases]
 # `jj` doesn't run git hooks (even with the git subprocess), so wrap pushes
