@@ -1,6 +1,8 @@
+onboarding = false
 [theme]
 name = "terminal"
 
+auto_switch = false
 [theme.custom]
 panel_bg = "black"
 
@@ -43,3 +45,6 @@ prompt_new_tab_name = false
 mouse_capture = true
 tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
 window_title = "{hostname}: {workspace}"
+
+[ui.sound]
+enabled = true
