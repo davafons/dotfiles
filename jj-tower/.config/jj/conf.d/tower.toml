@@ -1,0 +1,10 @@
+# Tower signs with a passphrase-less SSH key that lives only on this machine,
+# so agents can push unattended. The shared config's GPG key needs a passphrase.
+# The private key is not in the repo: create it with
+#   ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519_signing_tower
+# and register the .pub on GitHub as a signing key. Revoke it there if tower is
+# ever compromised.
+[signing]
+backend = "ssh"
+key = "~/.ssh/id_ed25519_signing_tower.pub"
+backends.ssh.allowed-signers = "~/.config/jj/allowed_signers"
