@@ -44,7 +44,17 @@ Sidebar numbers 11–20 remain ordinal numbers. Both banks follow the current
 resource order; tabs are scoped to the invoking workspace, and missing
 positions leave focus unchanged.
 
-The Mac client orders machines with `ui.machine_order = ["tower", "Local"]`.
+Drag a machine's header above or below another machine to reorder the whole
+group. The insertion line shows where it will land; release to apply, or press
+Escape to cancel. Clicking the arrow still expands or collapses the group.
+Numbers and shortcut targets update immediately after a drop, without switching
+the active pane. Offline and collapsed machines can also be reordered.
+
+The client saves the order by machine ID in its existing local preferences,
+so it survives reattachment, reconnects, and machine renames. New machines follow
+the saved ones. Before the first drag, the Mac client uses the default order
+from `ui.machine_order = ["tower", "Local"]`; a saved drag order takes precedence.
+
 With `ui.global_shortcuts = true`, agent and workspace numbers each form one
 sequence across online machines. Agent numbers follow the displayed sort/filter;
 workspace numbers follow machine and workspace order. Offline entries have no
@@ -63,8 +73,8 @@ python3.14 ~/.config/herdr/local-plugins/sidebar-numbers/build-client.py \
 ```
 
 Set `ZIG` to the Zig executable if it is not on `PATH`. The builder verifies
-the upstream archive checksum, applies the patch, runs the client tests, and
-keeps a backup of the replaced binary. Detach and reattach the client to load
+the upstream archive checksum, applies the patch in its own cache, runs the
+client tests, and backs up the replaced binary. Detach and reattach the client to load
 it; the server and agents can keep running. A normal `herdr update` replaces
 this companion, so rerun the builder after an update to the same version.
 The patch is pinned to 0.9.3 and must be reviewed for a different version.

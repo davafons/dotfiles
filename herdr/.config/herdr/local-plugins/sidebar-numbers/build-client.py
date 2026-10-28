@@ -74,11 +74,12 @@ def install(binary, destination):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=Path.home() / ".cache/herdr-sidebar-client" / VERSION)
+    parser.add_argument("--source", type=Path, help="Source directory; defaults to a separate cache for each client patch")
     parser.add_argument("--install", type=Path, help="Atomically replace this binary after tests and build; retain a backup")
     args = parser.parse_args()
-    source = args.source.expanduser().resolve()
     patch = Path(__file__).resolve().with_name("client.patch")
+    cache = Path.home() / ".cache/herdr-sidebar-client" / VERSION / hashlib.sha256(patch.read_bytes()).hexdigest()[:12]
+    source = (args.source or cache).expanduser().resolve()
     prepare(source, patch)
     run("cargo", "test", "--locked", "--bin", "herdr", "client::shell::", cwd=source)
     run("cargo", "build", "--locked", "--release", "--bin", "herdr", cwd=source)

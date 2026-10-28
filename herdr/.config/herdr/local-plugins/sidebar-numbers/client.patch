@@ -45,9 +45,45 @@
      let state_text = labels
          .get(status_text(agent.agent_status))
          .map(String::as_str)
+--- a/src/client/shell/composition.rs
++++ b/src/client/shell/composition.rs
+@@ -76,7 +76,13 @@
+                 .or_else(|| pending_workspace_highlight.map(|pending| &pending.target)),
+             reveal_navigation_workspace: &mut self.reveal_navigation_workspace,
+             dragged_workspace_id: None,
+-            workspace_drop_indicator_row: None,
++            workspace_drop_indicator_row: match &self.chrome_drag {
++                Some(ClientChromeDrag::Machine {
++                    target: Some(target),
++                    ..
++                }) => Some(target.row),
++                _ => None,
++            },
+         };
+         if let Some(snapshot) = local_snapshot {
+             render::render_sidebar(
+@@ -195,6 +201,10 @@
+             _ => None,
+         };
+         let (dragged_workspace_id, workspace_drop_indicator_row) = match &self.chrome_drag {
++            Some(ClientChromeDrag::Machine {
++                target: Some(target),
++                ..
++            }) => (None, Some(target.row)),
+             Some(ClientChromeDrag::Workspace {
+                 source_workspace_id,
+                 target,
 --- a/src/client/shell/config.rs
 +++ b/src/client/shell/config.rs
-@@ -113,6 +113,8 @@
+@@ -49,6 +49,7 @@
+             .collect::<Vec<_>>();
+         remote_collapsed_groups.sort_by(|left, right| left.profile_id.cmp(&right.profile_id));
+         let preferences = preferences::ClientChromePreferences {
++            machine_order: self.machine_order.clone(),
+             sidebar_width: self.sidebar_width_manual.then_some(self.sidebar_width),
+             sidebar_section_split: self
+                 .sidebar_section_split_manual
+@@ -113,6 +114,8 @@
      pub(crate) fn from_config(config: &Config) -> Self {
          let theme_runtime = crate::app::client_theme_runtime_from_config(config);
          Self {
@@ -56,7 +92,7 @@
              sidebar_width: config.ui.sidebar_width,
              sidebar_min_width: config.ui.sidebar_min_width,
              sidebar_max_width: config.ui.sidebar_max_width,
-@@ -276,6 +278,24 @@
+@@ -276,6 +279,24 @@
                      });
              }
          }
@@ -81,7 +117,7 @@
          self.keybinds = keybinds;
          Ok(())
      }
-@@ -316,6 +336,8 @@
+@@ -316,6 +337,8 @@
              } else {
                  let ui = &config.ui;
                  diagnostics.extend(ui.sound.diagnostics());
@@ -147,7 +183,37 @@
              endpoint_id: row.endpoint.endpoint_id.clone(),
 --- a/src/client/shell/endpoint_navigation.rs
 +++ b/src/client/shell/endpoint_navigation.rs
-@@ -108,6 +108,25 @@
+@@ -57,23 +57,18 @@
+         };
+         let endpoint_id = hit.endpoint_id.clone();
+         let collapse_toggle = super::contains(hit.collapse_toggle, point);
+-        if collapse_toggle || endpoint_id == self.active_endpoint_id {
++        if collapse_toggle {
+             if !self.collapsed_endpoints.remove(&endpoint_id) {
+-                self.collapsed_endpoints.insert(endpoint_id.clone());
++                self.collapsed_endpoints.insert(endpoint_id);
+             }
+             outcome.repaint = true;
+-            if !collapse_toggle && endpoint_id.is_local() {
+-                self.activate_endpoint(endpoint_id, outcome);
+-            }
+-        } else if endpoint_id.is_local() || self.endpoint_is_online(&endpoint_id) {
+-            outcome.actions.push(ClientShellAction::ActivateEndpoint {
++        } else {
++            self.chrome_drag = Some(ClientChromeDrag::Machine {
+                 endpoint_id,
++                start: point,
++                dragged: false,
+                 target: None,
+             });
+-        } else {
+-            let label = self.endpoint_label(&endpoint_id).to_owned();
+-            self.receive_endpoint_unavailable(format!("{label} is not ready"));
+-            outcome.repaint = true;
+         }
+         true
+     }
+@@ -108,6 +103,25 @@
          use crate::input::KeybindAction;
          if !self.multi_endpoint_active() {
              return false;
@@ -222,9 +288,30 @@
                  );
                  let height = (tokens.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
                  if y.saturating_add(height) > body.bottom() {
+@@ -514,6 +536,20 @@
+         let track = Rect::new(body.right().saturating_sub(1), body.y, 1, body.height);
+         hits.workspace_scrollbar = track;
+         super::scroll::render_list_scrollbar(buffer, track, metrics, palette);
++    }
++
++    if let Some(row) = state
++        .workspace_drop_indicator_row
++        .filter(|row| *row >= body.y && *row < body.bottom())
++    {
++        put_text(
++            buffer,
++            body.x,
++            row,
++            content_width,
++            &"─".repeat(content_width as usize),
++            Style::default().fg(palette.accent),
++        );
+     }
+ 
+     let footer_y = workspace_area.bottom().saturating_sub(1);
 --- a/src/client/shell/endpoints.rs
 +++ b/src/client/shell/endpoints.rs
-@@ -96,6 +96,12 @@
+@@ -96,6 +96,20 @@
              next.iter()
                  .any(|endpoint| &endpoint.endpoint_id == endpoint_id)
          });
@@ -234,12 +321,34 @@
 +                    || matches!(&endpoint.endpoint_id, ClientEndpointId::Ssh(id) if id.to_string() == *label)
 +            }).unwrap_or(self.config.machine_order.len())
 +        });
++        if !self.machine_order.is_empty() {
++            next.sort_by_key(|endpoint| {
++                self.machine_order
++                    .iter()
++                    .position(|key| key == &endpoint.endpoint_id.storage_key())
++                    .unwrap_or(self.machine_order.len())
++            });
++        }
          self.endpoints = next;
      }
  
 --- a/src/client/shell/input.rs
 +++ b/src/client/shell/input.rs
-@@ -703,11 +703,9 @@
+@@ -505,6 +505,13 @@
+         key: &crate::input::TerminalKey,
+         outcome: &mut ClientShellInput,
+     ) -> Option<ClientInputTarget> {
++        if key.code == KeyCode::Esc
++            && matches!(self.chrome_drag, Some(ClientChromeDrag::Machine { .. }))
++        {
++            self.chrome_drag = None;
++            outcome.repaint = true;
++            return None;
++        }
+         if self.handle_modal_paste_shortcut_with(key, outcome, crate::platform::read_clipboard_text)
+         {
+             return None;
+@@ -703,11 +710,9 @@
                  (KeyCode::Char(digit), KeyModifiers::empty()),
              )
          }) {
@@ -254,7 +363,7 @@
              if valid {
                  self.mode = ClientShellMode::Terminal;
                  self.navigate_workspace_id = None;
-@@ -857,6 +855,15 @@
+@@ -857,6 +862,15 @@
  
          match binding {
              KeybindMatch::Action(KeybindAction::SwitchWorkspace(index)) => {
@@ -270,6 +379,211 @@
                  self.snapshot.as_deref().is_some_and(|snapshot| {
                      self.navigation_workspace_entries(snapshot)
                          .get(*index)
+--- /dev/null
++++ b/src/client/shell/machine_order.rs
+@@ -0,0 +1,164 @@
++use super::*;
++
++impl ClientShellState {
++    pub(super) fn machine_drop_target_at(
++        &self,
++        source: &ClientEndpointId,
++        point: (u16, u16),
++    ) -> Option<MachineDropTarget> {
++        if !super::contains(self.hits.workspace_body, point)
++            || super::contains(self.hits.workspace_scrollbar, point)
++        {
++            return None;
++        }
++        let source_index = self
++            .endpoints
++            .iter()
++            .position(|endpoint| &endpoint.endpoint_id == source)?;
++        let hit = self
++            .hits
++            .machines
++            .iter()
++            .rev()
++            .find(|hit| hit.rect.y <= point.1)?;
++        let target_index = self
++            .endpoints
++            .iter()
++            .position(|endpoint| endpoint.endpoint_id == hit.endpoint_id)?;
++        if source_index == target_index {
++            return None;
++        }
++        if source_index > target_index {
++            return Some(MachineDropTarget {
++                before: Some(hit.endpoint_id.clone()),
++                row: hit.rect.y,
++            });
++        }
++        let next = self
++            .endpoints
++            .get(target_index + 1)
++            .map(|endpoint| endpoint.endpoint_id.clone());
++        let row = next
++            .as_ref()
++            .and_then(|id| self.hits.machines.iter().find(|hit| &hit.endpoint_id == id))
++            .map(|hit| hit.rect.y)
++            .unwrap_or_else(|| {
++                self.hits
++                    .workspaces
++                    .iter()
++                    .filter(|workspace| workspace.endpoint_id == hit.endpoint_id)
++                    .map(|workspace| workspace.rect.bottom())
++                    .max()
++                    .unwrap_or(hit.rect.bottom())
++            })
++            .min(self.hits.workspace_body.bottom().saturating_sub(1));
++        Some(MachineDropTarget { before: next, row })
++    }
++
++    pub(super) fn drag_machine_header(
++        &mut self,
++        point: (u16, u16),
++        outcome: &mut ClientShellInput,
++    ) {
++        let Some(ClientChromeDrag::Machine {
++            endpoint_id,
++            start,
++            dragged,
++            ..
++        }) = self.chrome_drag.as_ref()
++        else {
++            return;
++        };
++        let moved = *dragged || point.0.abs_diff(start.0).max(point.1.abs_diff(start.1)) >= 1;
++        let target = if moved {
++            self.machine_drop_target_at(endpoint_id, point)
++        } else {
++            None
++        };
++        if let Some(ClientChromeDrag::Machine {
++            dragged,
++            target: current,
++            ..
++        }) = self.chrome_drag.as_mut()
++        {
++            *dragged = moved;
++            *current = target;
++        }
++        outcome.repaint = true;
++    }
++
++    pub(super) fn finish_machine_header(
++        &mut self,
++        endpoint_id: ClientEndpointId,
++        dragged: bool,
++        point: (u16, u16),
++        outcome: &mut ClientShellInput,
++    ) {
++        if dragged {
++            if let Some(target) = self.machine_drop_target_at(&endpoint_id, point) {
++                self.reorder_machine(&endpoint_id, target.before.as_ref(), outcome);
++            }
++        } else if self.hits.machines.iter().any(|hit| {
++            hit.endpoint_id == endpoint_id
++                && super::contains(hit.rect, point)
++                && !super::contains(hit.collapse_toggle, point)
++        }) {
++            if endpoint_id == self.active_endpoint_id {
++                if !self.collapsed_endpoints.remove(&endpoint_id) {
++                    self.collapsed_endpoints.insert(endpoint_id.clone());
++                }
++                if endpoint_id.is_local() {
++                    self.activate_endpoint(endpoint_id, outcome);
++                }
++            } else if endpoint_id.is_local() || self.endpoint_is_online(&endpoint_id) {
++                outcome.actions.push(ClientShellAction::ActivateEndpoint {
++                    endpoint_id,
++                    target: None,
++                });
++            } else {
++                let label = self.endpoint_label(&endpoint_id).to_owned();
++                self.receive_endpoint_unavailable(format!("{label} is not ready"));
++            }
++        }
++        outcome.repaint = true;
++    }
++
++    fn reorder_machine(
++        &mut self,
++        source: &ClientEndpointId,
++        before: Option<&ClientEndpointId>,
++        outcome: &mut ClientShellInput,
++    ) {
++        let Some(source_index) = self
++            .endpoints
++            .iter()
++            .position(|endpoint| &endpoint.endpoint_id == source)
++        else {
++            return;
++        };
++        let target_index = if let Some(id) = before {
++            let Some(index) = self
++                .endpoints
++                .iter()
++                .position(|endpoint| &endpoint.endpoint_id == id)
++            else {
++                return;
++            };
++            index
++        } else {
++            self.endpoints.len()
++        };
++        let target_index = target_index - usize::from(source_index < target_index);
++        if source_index == target_index {
++            return;
++        }
++        let endpoint = self.endpoints.remove(source_index);
++        self.endpoints.insert(target_index, endpoint);
++        self.machine_order = self
++            .endpoints
++            .iter()
++            .map(|endpoint| endpoint.endpoint_id.storage_key())
++            .collect();
++        self.persist_chrome_preferences(outcome);
++    }
++}
+--- a/src/client/shell/mouse.rs
++++ b/src/client/shell/mouse.rs
+@@ -992,6 +992,10 @@
+         }
+         if mouse.kind == MouseEventKind::Drag(MouseButton::Left) {
+             match self.chrome_drag.as_ref() {
++                Some(ClientChromeDrag::Machine { .. }) => {
++                    self.drag_machine_header(point, outcome);
++                    return;
++                }
+                 Some(ClientChromeDrag::SidebarWidth) => {
+                     self.set_sidebar_width_from_column(mouse.column, outcome);
+                     return;
+@@ -1230,6 +1234,13 @@
+                 self.workspace_press = None;
+                 self.tab_press = None;
+                 match drag {
++                    ClientChromeDrag::Machine {
++                        endpoint_id,
++                        dragged,
++                        ..
++                    } => {
++                        self.finish_machine_header(endpoint_id, dragged, point, outcome);
++                    }
+                     ClientChromeDrag::Tab {
+                         tab_id,
+                         workspace_id,
+--- a/src/client/shell/preferences.rs
++++ b/src/client/shell/preferences.rs
+@@ -16,6 +16,8 @@
+ 
+ #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+ pub(super) struct ClientChromePreferences {
++    #[serde(default, skip_serializing_if = "Vec::is_empty")]
++    pub(super) machine_order: Vec<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub(super) sidebar_width: Option<u16>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
 --- a/src/client/shell/render.rs
 +++ b/src/client/shell/render.rs
 @@ -315,6 +315,8 @@
@@ -427,6 +741,41 @@
      pub(super) sidebar_width: u16,
      pub(super) sidebar_min_width: u16,
      pub(super) sidebar_max_width: u16,
+@@ -186,7 +188,18 @@
+     pub(super) start_row: u16,
+ }
+ 
++pub(super) struct MachineDropTarget {
++    pub(super) before: Option<ClientEndpointId>,
++    pub(super) row: u16,
++}
++
+ pub(super) enum ClientChromeDrag {
++    Machine {
++        endpoint_id: ClientEndpointId,
++        start: (u16, u16),
++        dragged: bool,
++        target: Option<MachineDropTarget>,
++    },
+     SidebarWidth,
+     SidebarSection,
+     WorkspaceScrollbar {
+@@ -864,6 +877,7 @@
+     pub(super) sidebar_section_split_manual: bool,
+     pub(super) agent_panel_sort_manual: bool,
+     pub(super) last_sidebar_divider_click: Option<std::time::Instant>,
++    pub(super) machine_order: Vec<String>,
+     pub(super) chrome_drag: Option<ClientChromeDrag>,
+     pub(super) workspace_press: Option<ClientWorkspacePress>,
+     pub(super) tab_press: Option<ClientTabPress>,
+@@ -1029,6 +1043,7 @@
+             sidebar_section_split_manual: preferences.sidebar_section_split.is_some(),
+             agent_panel_sort_manual: preferences.agent_panel_sort.is_some(),
+             last_sidebar_divider_click: None,
++            machine_order: preferences.machine_order,
+             chrome_drag: None,
+             workspace_press: None,
+             tab_press: None,
 --- a/src/client/shell/tabs.rs
 +++ b/src/client/shell/tabs.rs
 @@ -9,6 +9,8 @@
@@ -561,7 +910,41 @@
          format!("{} Z", tab.label)
 --- a/src/client/shell/tests/endpoints.rs
 +++ b/src/client/shell/tests/endpoints.rs
-@@ -2591,3 +2591,6 @@
+@@ -533,6 +533,16 @@
+             },
+             &mut outcome,
+         );
++        assert!(outcome.actions.is_empty());
++        state.handle_mouse(
++            crossterm::event::MouseEvent {
++                kind: MouseEventKind::Up(MouseButton::Left),
++                column: hit.x + 5,
++                row: hit.y,
++                modifiers: KeyModifiers::NONE,
++            },
++            &mut outcome,
++        );
+         assert!(
+             matches!(outcome.actions.as_slice(), [ClientShellAction::ActivateEndpoint { endpoint_id, .. }] if endpoint_id == &remote)
+         );
+@@ -1592,8 +1602,15 @@
+         .find(|hit| hit.endpoint_id == endpoint_id)
+         .expect("remote endpoint hit")
+         .rect;
++    let pressed = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
++        kind: MouseEventKind::Down(MouseButton::Left),
++        column: hit.x + 3,
++        row: hit.y,
++        modifiers: KeyModifiers::empty(),
++    })]);
++    assert!(pressed.actions.is_empty());
+     let outcome = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
+-        kind: MouseEventKind::Down(MouseButton::Left),
++        kind: MouseEventKind::Up(MouseButton::Left),
+         column: hit.x + 3,
+         row: hit.y,
+         modifiers: KeyModifiers::empty(),
+@@ -2591,3 +2608,6 @@
          }] if activated == &endpoint_id && workspace_id == "ws_1"
      ));
  }
@@ -569,8 +952,243 @@
 +#[path = "sidebar_numbers.rs"]
 +mod sidebar_numbers;
 --- /dev/null
++++ b/src/client/shell/tests/machine_drag.rs
+@@ -0,0 +1,232 @@
++use super::*;
++
++fn mouse(
++    state: &mut ClientShellState,
++    kind: MouseEventKind,
++    point: (u16, u16),
++) -> ClientShellInput {
++    state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
++        kind,
++        column: point.0,
++        row: point.1,
++        modifiers: KeyModifiers::NONE,
++    })])
++}
++
++fn header(state: &mut ClientShellState, id: &ClientEndpointId) -> (u16, u16) {
++    state.compose(120, 40).unwrap();
++    let hit = state
++        .hits
++        .machines
++        .iter()
++        .find(|hit| &hit.endpoint_id == id)
++        .unwrap();
++    (hit.rect.x + 5, hit.rect.y)
++}
++
++fn drag(state: &mut ClientShellState, source: &ClientEndpointId, target: &ClientEndpointId) {
++    let start = header(state, source);
++    let end = header(state, target);
++    assert!(mouse(state, MouseEventKind::Down(MouseButton::Left), start)
++        .actions
++        .is_empty());
++    assert!(mouse(state, MouseEventKind::Drag(MouseButton::Left), end)
++        .actions
++        .is_empty());
++    assert!(mouse(state, MouseEventKind::Up(MouseButton::Left), end)
++        .actions
++        .is_empty());
++}
++
++#[test]
++fn dragging_headers_reorders_whole_groups_and_updates_shortcuts() {
++    let (mut state, remote) = numbered_state();
++    let before = state.snapshot.as_deref().unwrap().focused_pane_id.clone();
++    drag(&mut state, &ClientEndpointId::Local, &remote);
++    assert!(state.endpoints[0].endpoint_id.is_local());
++    assert!(state.active_endpoint_id.is_local());
++    assert_eq!(state.snapshot.as_deref().unwrap().focused_pane_id, before);
++    assert!(state.collapsed_endpoints.is_empty());
++    let text = frame_text(&state.compose(120, 40).unwrap());
++    assert!(
++        text.lines()
++            .any(|line| line.contains("1") && line.contains("local agent")),
++        "{text}"
++    );
++    assert!(
++        text.lines()
++            .any(|line| line.contains("2") && line.contains("remote agent")),
++        "{text}"
++    );
++    for action in [
++        crate::input::KeybindAction::FocusAgent(1),
++        crate::input::KeybindAction::SwitchWorkspace(1),
++    ] {
++        let mut output = ClientShellInput::default();
++        state.record_binding(crate::input::KeybindMatch::Action(action), &mut output);
++        assert!(
++            matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, .. }] if endpoint_id == &remote)
++        );
++    }
++    drag(&mut state, &ClientEndpointId::Local, &remote);
++    assert_eq!(state.endpoints[0].endpoint_id, remote);
++}
++
++#[test]
++fn header_click_switches_only_on_release_and_arrow_still_collapses() {
++    let (mut state, remote) = numbered_state();
++    let point = header(&mut state, &remote);
++    assert!(
++        mouse(&mut state, MouseEventKind::Down(MouseButton::Left), point)
++            .actions
++            .is_empty()
++    );
++    let output = mouse(&mut state, MouseEventKind::Up(MouseButton::Left), point);
++    assert!(
++        matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, .. }] if endpoint_id == &remote)
++    );
++    let toggle = state
++        .hits
++        .machines
++        .iter()
++        .find(|hit| hit.endpoint_id == remote)
++        .unwrap()
++        .collapse_toggle;
++    assert!(mouse(
++        &mut state,
++        MouseEventKind::Down(MouseButton::Left),
++        (toggle.x, toggle.y)
++    )
++    .actions
++    .is_empty());
++    assert!(state.collapsed_endpoints.contains(&remote));
++}
++
++#[test]
++fn cancelled_and_outside_drops_preserve_order_and_focus() {
++    for escape in [false, true] {
++        let (mut state, remote) = numbered_state();
++        let start = header(&mut state, &ClientEndpointId::Local);
++        let end = header(&mut state, &remote);
++        mouse(&mut state, MouseEventKind::Down(MouseButton::Left), start);
++        mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), end);
++        if escape {
++            let output = state.handle_raw_events(vec![RawInputEvent::Key(
++                crate::input::TerminalKey::new(KeyCode::Esc, KeyModifiers::NONE),
++            )]);
++            assert!(output.requests.is_empty());
++        }
++        let release = if escape { end } else { (100, 30) };
++        let output = mouse(&mut state, MouseEventKind::Up(MouseButton::Left), release);
++        assert!(output.actions.is_empty());
++        assert_eq!(state.endpoints[0].endpoint_id, remote);
++        assert!(state.active_endpoint_id.is_local());
++        assert!(state.chrome_drag.is_none());
++    }
++}
++
++#[test]
++fn dragging_offline_collapsed_machine_keeps_its_state() {
++    let (mut state, remote) = numbered_state();
++    state.set_endpoint_status(&remote, ClientEndpointStatus::Reconnecting);
++    state.collapsed_endpoints.insert(remote.clone());
++    drag(&mut state, &remote, &ClientEndpointId::Local);
++    assert!(state.endpoints[0].endpoint_id.is_local());
++    assert!(state.collapsed_endpoints.contains(&remote));
++    assert_eq!(
++        state.endpoints[1].status,
++        ClientEndpointStatus::Reconnecting
++    );
++    assert!(state.visible_endpoint_notice.is_none());
++}
++
++#[test]
++fn saved_drag_order_survives_restart_rename_and_catalog_refresh() {
++    let path = std::env::temp_dir().join(format!(
++        "herdr-machine-order-{}-{}.json",
++        std::process::id(),
++        crate::client::endpoint::ProfileId::generate()
++    ));
++    let (mut state, remote) = numbered_state();
++    state.config.preferences_path = Some(path.clone());
++    drag(&mut state, &ClientEndpointId::Local, &remote);
++    assert!(path.exists());
++    let config: Config =
++        toml::from_str("[ui]\nglobal_shortcuts=true\nmachine_order=['Build','Local']").unwrap();
++    let mut restored = ClientShellState::new(
++        ClientShellConfig::from_config(&config).with_preferences_path(path.clone()),
++    );
++    let mut profile = remote_profile();
++    profile.label = "Renamed machine".into();
++    restored.set_endpoint_catalog(&[profile.clone()]);
++    assert!(restored.endpoints[0].endpoint_id.is_local());
++    assert_eq!(restored.endpoints[1].endpoint_id, remote);
++    restored.set_endpoint_catalog(&[]);
++    let mut extra = profile.clone();
++    extra.id = crate::client::endpoint::ProfileId::generate();
++    extra.label = "Another machine".into();
++    restored.set_endpoint_catalog(&[extra.clone(), profile]);
++    assert!(restored.endpoints[0].endpoint_id.is_local());
++    assert_eq!(restored.endpoints[1].endpoint_id, remote);
++    assert_eq!(
++        restored.endpoints[2].endpoint_id,
++        ClientEndpointId::Ssh(extra.id)
++    );
++    std::fs::remove_file(path).unwrap();
++}
++
++#[test]
++fn removed_machine_cannot_be_dropped_and_legacy_preferences_load() {
++    let (mut state, remote) = numbered_state();
++    let start = header(&mut state, &remote);
++    let end = header(&mut state, &ClientEndpointId::Local);
++    mouse(&mut state, MouseEventKind::Down(MouseButton::Left), start);
++    mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), end);
++    state.set_endpoint_catalog(&[]);
++    state.compose(120, 40).unwrap();
++    let output = mouse(&mut state, MouseEventKind::Up(MouseButton::Left), end);
++    assert!(output.actions.is_empty());
++    assert_eq!(state.endpoints.len(), 1);
++    assert!(state.active_endpoint_id.is_local());
++    let preferences: preferences::ClientChromePreferences =
++        serde_json::from_str(r#"{"sidebar_width":30}"#).unwrap();
++    assert_eq!(preferences.sidebar_width, Some(30));
++}
++
++#[test]
++fn drag_shows_insertion_marker_without_switching_machines() {
++    let (mut state, remote) = numbered_state();
++    let start = header(&mut state, &ClientEndpointId::Local);
++    let end = header(&mut state, &remote);
++    mouse(&mut state, MouseEventKind::Down(MouseButton::Left), start);
++    mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), end);
++    let frame = state.compose(120, 40).unwrap();
++    let buffer = frame.to_ratatui_buffer().unwrap();
++    assert_eq!(buffer[(end.0, end.1)].symbol(), "─");
++    assert!(state.active_endpoint_id.is_local());
++    assert_eq!(state.endpoints[0].endpoint_id, remote);
++}
++
++#[test]
++fn online_status_badge_keeps_header_click_behavior() {
++    let (mut state, remote) = numbered_state();
++    state.compose(120, 40).unwrap();
++    let badge = state
++        .hits
++        .machines
++        .iter()
++        .find(|hit| hit.endpoint_id == remote)
++        .unwrap()
++        .status_badge;
++    assert!(badge.width > 0);
++    let point = (badge.x, badge.y);
++    assert!(
++        mouse(&mut state, MouseEventKind::Down(MouseButton::Left), point)
++            .actions
++            .is_empty()
++    );
++    let output = mouse(&mut state, MouseEventKind::Up(MouseButton::Left), point);
++    assert!(
++        matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, .. }] if endpoint_id == &remote)
++    );
++}
+--- /dev/null
 +++ b/src/client/shell/tests/sidebar_numbers.rs
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,202 @@
 +use super::*;
 +
 +fn numbered_state() -> (ClientShellState, ClientEndpointId) {
@@ -770,12 +1388,16 @@
 +        matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, target: Some(ClientEndpointFocusTarget::Workspace(workspace_id)) }] if endpoint_id == &remote_id && workspace_id == "remote_ws_2")
 +    );
 +}
++
++#[path = "machine_drag.rs"]
++mod machine_drag;
 --- a/src/client/shell.rs
 +++ b/src/client/shell.rs
-@@ -4,6 +4,7 @@
+@@ -4,6 +4,8 @@
  mod agent_sidebar;
  mod aggregate_navigation;
  mod machine_diagnostics;
++mod machine_order;
 +mod sidebar_numbers;
  mod workspace_navigation;
  use workspace_navigation::{PendingWorkspaceHighlight, WorkspaceNavigationTarget};

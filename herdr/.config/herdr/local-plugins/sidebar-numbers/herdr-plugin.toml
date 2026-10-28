@@ -1,6 +1,6 @@
 id = "sidebar-numbers"
 name = "Sidebar Numbers"
-version = "0.2.0"
+version = "0.3.0"
 min_herdr_version = "0.9.3"
 description = "Sidebar and tab shortcut numbers, with a client companion for cross-machine navigation."
 platforms = ["macos", "linux"]
