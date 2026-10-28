@@ -44,5 +44,6 @@
   "theme": "dark",
   "editorMode": "vim",
   "agentPushNotifEnabled": true,
-  "voiceEnabled": false
+  "voiceEnabled": false,
+  "model": "opus"
 }
