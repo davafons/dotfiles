@@ -1,0 +1,814 @@
+--- a/src/client/shell/actions.rs
++++ b/src/client/shell/actions.rs
+@@ -181,6 +181,12 @@
+                 outcome.actions.push(ClientShellAction::Keybind(action));
+             }
+             crate::input::KeybindMatch::Command(command) => {
++                if self.config.global_shortcuts {
++                    if let Some(action) = super::sidebar_numbers::plugin_action(&command) {
++                        self.record_binding(crate::input::KeybindMatch::Action(action), outcome);
++                        return;
++                    }
++                }
+                 let action = command.action.into();
+                 let resolved_labels = command.bindings.labels();
+                 let command_id = self.snapshot.as_deref().and_then(|snapshot| {
+--- a/src/client/shell/agent_sidebar.rs
++++ b/src/client/shell/agent_sidebar.rs
+@@ -241,7 +241,8 @@
+ ) -> Vec<AgentRow> {
+     ordered_agent_pane_ids(snapshot, config.agent_panel_sort)
+         .into_iter()
+-        .filter_map(|pane_id| agent_row(snapshot, &pane_id, config, machine))
++        .enumerate()
++        .filter_map(|(index, pane_id)| agent_row(snapshot, &pane_id, config, machine, Some(index)))
+         .collect()
+ }
+ 
+@@ -250,6 +251,7 @@
+     pane_id: &str,
+     config: &ClientShellConfig,
+     machine: Option<&str>,
++    number: Option<usize>,
+ ) -> Option<AgentRow> {
+     let agent = snapshot
+         .agents
+@@ -283,7 +285,10 @@
+         .iter()
+         .cloned()
+         .collect::<HashMap<_, _>>();
+-    let tokens = agent.tokens.iter().cloned().collect::<HashMap<_, _>>();
++    let mut tokens = agent.tokens.iter().cloned().collect::<HashMap<_, _>>();
++    if config.global_shortcuts {
++        super::sidebar_numbers::set_number(&mut tokens, number);
++    }
+     let state_text = labels
+         .get(status_text(agent.agent_status))
+         .map(String::as_str)
+--- a/src/client/shell/config.rs
++++ b/src/client/shell/config.rs
+@@ -113,6 +113,8 @@
+     pub(crate) fn from_config(config: &Config) -> Self {
+         let theme_runtime = crate::app::client_theme_runtime_from_config(config);
+         Self {
++            global_shortcuts: config.ui.global_shortcuts,
++            machine_order: config.ui.machine_order.clone(),
+             sidebar_width: config.ui.sidebar_width,
+             sidebar_min_width: config.ui.sidebar_min_width,
+             sidebar_max_width: config.ui.sidebar_max_width,
+@@ -276,6 +278,24 @@
+                     });
+             }
+         }
++        if self.global_shortcuts {
++            let local = Config {
++                keys: self.local_keys.clone(),
++                ..Default::default()
++            }
++            .keybinds();
++            for command in local
++                .custom_commands
++                .into_iter()
++                .filter(|command| super::sidebar_numbers::plugin_action(command).is_some())
++            {
++                keybinds
++                    .keybinds
++                    .custom_commands
++                    .retain(|existing| existing.bindings != command.bindings);
++                keybinds.keybinds.custom_commands.push(command);
++            }
++        }
+         self.keybinds = keybinds;
+         Ok(())
+     }
+@@ -316,6 +336,8 @@
+             } else {
+                 let ui = &config.ui;
+                 diagnostics.extend(ui.sound.diagnostics());
++                self.global_shortcuts = ui.global_shortcuts;
++                self.machine_order = ui.machine_order.clone();
+                 self.sidebar_width = ui.sidebar_width;
+                 self.sidebar_min_width = ui.sidebar_min_width;
+                 self.sidebar_max_width = ui.sidebar_max_width;
+--- a/src/client/shell/endpoint_agents.rs
++++ b/src/client/shell/endpoint_agents.rs
+@@ -134,28 +134,7 @@
+     active_endpoint_id: &ClientEndpointId,
+     config: &ClientShellConfig,
+ ) -> Vec<EndpointAgentRow> {
+-    let mut rendered_rows = endpoints
+-        .iter()
+-        .filter_map(|endpoint| {
+-            endpoint.snapshot.as_deref().map(|snapshot| {
+-                snapshot
+-                    .agents
+-                    .iter()
+-                    .filter_map(|agent| {
+-                        super::agent_sidebar::agent_row(
+-                            snapshot,
+-                            &agent.pane_id,
+-                            config,
+-                            Some(&endpoint.label),
+-                        )
+-                    })
+-                    .map(|agent| ((endpoint.endpoint_id.clone(), agent.pane_id.clone()), agent))
+-                    .collect::<Vec<_>>()
+-            })
+-        })
+-        .flatten()
+-        .collect::<HashMap<_, _>>();
+-
++    let mut next_number = 0;
+     super::aggregate_navigation::aggregate_agent_rows(
+         endpoints,
+         active_endpoint_id,
+@@ -163,8 +142,20 @@
+     )
+     .into_iter()
+     .filter_map(|row| {
+-        let key = (row.endpoint.endpoint_id.clone(), row.agent.pane_id.clone());
+-        let mut agent = rendered_rows.remove(&key)?;
++        let number = if row.endpoint.stale() {
++            None
++        } else {
++            let index = next_number;
++            next_number += 1;
++            Some(index)
++        };
++        let mut agent = super::agent_sidebar::agent_row(
++            row.endpoint.snapshot,
++            &row.agent.pane_id,
++            config,
++            Some(row.endpoint.label),
++            number,
++        )?;
+         agent.focused &= row.endpoint.endpoint_id == active_endpoint_id;
+         Some(EndpointAgentRow {
+             endpoint_id: row.endpoint.endpoint_id.clone(),
+--- a/src/client/shell/endpoint_navigation.rs
++++ b/src/client/shell/endpoint_navigation.rs
+@@ -108,6 +108,25 @@
+         use crate::input::KeybindAction;
+         if !self.multi_endpoint_active() {
+             return false;
++        }
++        if self.config.global_shortcuts {
++            if let KeybindAction::SwitchWorkspace(index) = action {
++                if let Some((endpoint_id, workspace_id)) =
++                    super::sidebar_numbers::workspace_targets(
++                        &self.endpoints,
++                        &self.collapsed_groups,
++                        &self.remote_collapsed_groups,
++                    )
++                    .get(index)
++                {
++                    self.focus_or_activate(
++                        endpoint_id.clone(),
++                        ClientEndpointFocusTarget::Workspace(workspace_id.clone()),
++                        outcome,
++                    );
++                }
++                return true;
++            }
+         }
+         if matches!(
+             action,
+--- a/src/client/shell/endpoint_sidebar.rs
++++ b/src/client/shell/endpoint_sidebar.rs
+@@ -301,6 +301,19 @@
+             .saturating_sub(WORKSPACE_HEADER_ROWS + 1),
+     );
+     hits.workspace_body = body;
++    let workspace_numbers = if config.global_shortcuts {
++        super::sidebar_numbers::workspace_targets(
++            state.endpoints,
++            state.collapsed_groups,
++            state.remote_collapsed_groups,
++        )
++        .into_iter()
++        .enumerate()
++        .map(|(index, target)| (target, index))
++        .collect::<HashMap<_, _>>()
++    } else {
++        HashMap::new()
++    };
+     let row_heights = rows
+         .iter()
+         .map(|row| match row {
+@@ -323,7 +336,13 @@
+                                     collapsed_groups,
+                                 ),
+                                 entry.indented,
+-                                &config.spaces,
++                                config,
++                                workspace_numbers
++                                    .get(&(
++                                        endpoint.endpoint_id.clone(),
++                                        workspace.workspace_id.clone(),
++                                    ))
++                                    .copied(),
+                             )
+                             .len()
+                             .max(1)
+@@ -451,7 +470,10 @@
+                     workspace,
+                     status,
+                     entry.indented,
+-                    &config.spaces,
++                    config,
++                    workspace_numbers
++                        .get(&(endpoint.endpoint_id.clone(), workspace.workspace_id.clone()))
++                        .copied(),
+                 );
+                 let height = (tokens.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
+                 if y.saturating_add(height) > body.bottom() {
+--- a/src/client/shell/endpoints.rs
++++ b/src/client/shell/endpoints.rs
+@@ -96,6 +96,12 @@
+             next.iter()
+                 .any(|endpoint| &endpoint.endpoint_id == endpoint_id)
+         });
++        next.sort_by_key(|endpoint| {
++            self.config.machine_order.iter().position(|label| {
++                endpoint.label.eq_ignore_ascii_case(label)
++                    || matches!(&endpoint.endpoint_id, ClientEndpointId::Ssh(id) if id.to_string() == *label)
++            }).unwrap_or(self.config.machine_order.len())
++        });
+         self.endpoints = next;
+     }
+ 
+--- a/src/client/shell/input.rs
++++ b/src/client/shell/input.rs
+@@ -703,11 +703,9 @@
+                 (KeyCode::Char(digit), KeyModifiers::empty()),
+             )
+         }) {
+-            let valid = self.snapshot.as_deref().is_some_and(|snapshot| {
+-                self.navigation_workspace_entries(snapshot)
+-                    .get(index)
+-                    .is_some()
+-            });
++            let valid = self.indexed_navigation_target_exists(&KeybindMatch::Action(
++                KeybindAction::SwitchWorkspace(index),
++            ));
+             if valid {
+                 self.mode = ClientShellMode::Terminal;
+                 self.navigate_workspace_id = None;
+@@ -857,6 +855,15 @@
+ 
+         match binding {
+             KeybindMatch::Action(KeybindAction::SwitchWorkspace(index)) => {
++                if self.config.global_shortcuts && self.multi_endpoint_active() {
++                    return super::sidebar_numbers::workspace_targets(
++                        &self.endpoints,
++                        &self.collapsed_groups,
++                        &self.remote_collapsed_groups,
++                    )
++                    .get(*index)
++                    .is_some();
++                }
+                 self.snapshot.as_deref().is_some_and(|snapshot| {
+                     self.navigation_workspace_entries(snapshot)
+                         .get(*index)
+--- a/src/client/shell/render.rs
++++ b/src/client/shell/render.rs
+@@ -315,6 +315,8 @@
+             layout.tab_bar,
+             snapshot,
+             config,
++            state.endpoints,
++            state.active_endpoint_id,
+             state.tab_scroll,
+             state.reveal_focused_tab,
+             state.tab_drag_insert_index,
+--- a/src/client/shell/sidebar.rs
++++ b/src/client/shell/sidebar.rs
+@@ -238,7 +238,8 @@
+     hits.workspace_body = body;
+     let row_heights = entries
+         .iter()
+-        .map(|entry| {
++        .enumerate()
++        .map(|(entry_position, entry)| {
+             snapshot
+                 .workspaces
+                 .get(entry.index)
+@@ -247,7 +248,8 @@
+                         workspace,
+                         displayed_workspace_status(snapshot, workspace, state.collapsed_groups),
+                         entry.indented,
+-                        &config.spaces,
++                        config,
++                        Some(entry_position),
+                     )
+                     .len()
+                     .max(1)
+@@ -304,7 +306,13 @@
+             continue;
+         };
+         let status = displayed_workspace_status(snapshot, workspace, state.collapsed_groups);
+-        let rows = workspace_rows(workspace, status, entry.indented, &config.spaces);
++        let rows = workspace_rows(
++            workspace,
++            status,
++            entry.indented,
++            config,
++            Some(entry_position),
++        );
+         let row_height = (rows.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
+         if y.saturating_add(row_height) > body.bottom() {
+             break;
+@@ -627,7 +635,8 @@
+     workspace: &ClientShellWorkspace,
+     status: crate::api::schema::AgentStatus,
+     indented: bool,
+-    config: &SpacesSidebarConfig,
++    config: &ClientShellConfig,
++    number: Option<usize>,
+ ) -> Vec<Vec<crate::ui::ResolvedToken>> {
+     let label = if indented && !workspace.custom_label {
+         workspace
+@@ -638,9 +647,12 @@
+     } else {
+         &workspace.label
+     };
+-    let token_values = workspace.tokens.iter().cloned().collect::<HashMap<_, _>>();
++    let mut token_values = workspace.tokens.iter().cloned().collect::<HashMap<_, _>>();
++    if config.global_shortcuts {
++        super::sidebar_numbers::set_number(&mut token_values, number);
++    }
+     crate::ui::sidebar_space_rows(
+-        config,
++        &config.spaces,
+         crate::ui::SpaceTokenContext {
+             workspace: label,
+             branch: workspace.branch.as_deref(),
+--- /dev/null
++++ b/src/client/shell/sidebar_numbers.rs
+@@ -0,0 +1,70 @@
++use super::*;
++
++pub(super) fn shortcut_number(index: usize) -> String {
++    if index == 9 {
++        "0".into()
++    } else {
++        (index + 1).to_string()
++    }
++}
++
++pub(super) fn set_number(tokens: &mut HashMap<String, String>, index: Option<usize>) {
++    tokens.remove("shortcut_number");
++    if let Some(index) = index {
++        tokens.insert("shortcut_number".into(), shortcut_number(index));
++    }
++}
++
++pub(super) fn workspace_targets(
++    endpoints: &[ClientShellEndpoint],
++    local_groups: &HashSet<String>,
++    remote_groups: &HashMap<ClientEndpointId, HashSet<String>>,
++) -> Vec<(ClientEndpointId, String)> {
++    let empty = HashSet::new();
++    endpoints
++        .iter()
++        .filter(|endpoint| endpoint.status == ClientEndpointStatus::Online)
++        .flat_map(|endpoint| {
++            let groups = if endpoint.endpoint_id.is_local() {
++                local_groups
++            } else {
++                remote_groups.get(&endpoint.endpoint_id).unwrap_or(&empty)
++            };
++            endpoint
++                .snapshot
++                .as_deref()
++                .map_or_else(Vec::new, |snapshot| {
++                    render::workspace_entries(snapshot, groups)
++                        .into_iter()
++                        .map(|entry| {
++                            (
++                                endpoint.endpoint_id.clone(),
++                                snapshot.workspaces[entry.index].workspace_id.clone(),
++                            )
++                        })
++                        .collect()
++                })
++        })
++        .collect()
++}
++
++pub(super) fn plugin_action(
++    command: &crate::config::CustomCommandKeybind,
++) -> Option<crate::input::KeybindAction> {
++    use crate::input::KeybindAction;
++    if command.action != crate::config::CustomCommandAction::PluginAction {
++        return None;
++    }
++    let action = command.command.strip_prefix("sidebar-numbers.")?;
++    let (kind, number) = action.rsplit_once('-')?;
++    let number = number.parse::<usize>().ok()?;
++    if !(10..=20).contains(&number) {
++        return None;
++    }
++    match kind {
++        "agent" => Some(KeybindAction::FocusAgent(number - 1)),
++        "workspace" => Some(KeybindAction::SwitchWorkspace(number - 1)),
++        "tab" => Some(KeybindAction::SwitchTab(number - 1)),
++        _ => None,
++    }
++}
+--- a/src/client/shell/state.rs
++++ b/src/client/shell/state.rs
+@@ -13,6 +13,8 @@
+ }
+ 
+ pub(crate) struct ClientShellConfig {
++    pub(super) global_shortcuts: bool,
++    pub(super) machine_order: Vec<String>,
+     pub(super) sidebar_width: u16,
+     pub(super) sidebar_min_width: u16,
+     pub(super) sidebar_max_width: u16,
+--- a/src/client/shell/tabs.rs
++++ b/src/client/shell/tabs.rs
+@@ -9,6 +9,8 @@
+     area: Rect,
+     snapshot: &ClientShellSnapshot,
+     config: &ClientShellConfig,
++    endpoints: &[ClientShellEndpoint],
++    active_endpoint_id: &ClientEndpointId,
+     tab_scroll: &mut usize,
+     reveal_focused_tab: &mut bool,
+     tab_drag_insert_index: Option<usize>,
+@@ -21,10 +23,54 @@
+         .iter()
+         .filter(|tab| Some(tab.workspace_id.as_str()) == snapshot.focused_workspace_id.as_deref())
+         .collect::<Vec<_>>();
++    let mut agent_numbers: HashMap<String, Vec<String>> = HashMap::new();
++    if config.global_shortcuts {
++        for (index, row) in super::super::aggregate_navigation::aggregate_agent_rows(
++            endpoints,
++            active_endpoint_id,
++            config.agent_panel_sort,
++        )
++        .into_iter()
++        .filter(|row| !row.endpoint.stale())
++        .enumerate()
++        {
++            if row.endpoint.endpoint_id == active_endpoint_id {
++                agent_numbers
++                    .entry(row.agent.tab_id.clone())
++                    .or_default()
++                    .push((index + 1).to_string());
++            }
++        }
++    }
++    let labels = tabs
++        .iter()
++        .map(|tab| {
++            if config.global_shortcuts {
++                let base = strip_agent_badge(&tab.label);
++                let label = match agent_numbers.get(&tab.tab_id) {
++                    Some(numbers) => format!(
++                        "[{} {}] {}",
++                        numbers.join(","),
++                        status_icon(tab.agent_status, config.status_indicators),
++                        base
++                    ),
++                    None => base.to_owned(),
++                };
++                if tab.zoomed {
++                    format!("{label} Z")
++                } else {
++                    label
++                }
++            } else {
++                tab_label(tab)
++            }
++        })
++        .collect::<Vec<_>>();
+     let desired_widths = tabs
+         .iter()
+-        .map(|tab| {
+-            let label = tab_label(tab);
++        .enumerate()
++        .map(|(index, _tab)| {
++            let label = &labels[index];
+             display_width(&label).saturating_add(4).max(MIN_TAB_WIDTH)
+         })
+         .collect::<Vec<_>>();
+@@ -92,7 +138,7 @@
+     let mut first_visible = None;
+     let mut last_visible = None;
+     for (index, tab) in tabs.iter().enumerate().skip(*tab_scroll) {
+-        let name = tab_label(tab);
++        let name = &labels[index];
+         let desired = desired_widths[index];
+         let remaining = tab_right.saturating_sub(x);
+         let width = desired.min(remaining);
+@@ -123,6 +169,7 @@
+             right_padding = padding.saturating_sub(left) as usize,
+         );
+         put_text(buffer, rect.x, rect.y, rect.width, &text, style);
++        color_agent_badge(buffer, rect, &text, tab.agent_status, palette);
+         hits.tabs.push((rect, tab.tab_id.clone()));
+         first_visible.get_or_insert(index);
+         last_visible = Some(index);
+@@ -371,6 +418,46 @@
+     start
+ }
+ 
++fn strip_agent_badge(label: &str) -> &str {
++    static MARKER: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
++    let marker = MARKER.get_or_init(|| regex::Regex::new(r"^(?:\[[1-9]\d*(?:,[1-9]\d*)* [●×◐✓○·]\]|\[[1-9]\d*(?:,[1-9]\d*)*\] [●×◐✓○·]|[●×◐✓○·]\[[1-9]\d*(?:,[1-9]\d*)*\])\s+").unwrap());
++    marker
++        .find(label)
++        .map_or(label, |found| &label[found.end()..])
++}
++
++fn color_agent_badge(
++    buffer: &mut Buffer,
++    rect: Rect,
++    text: &str,
++    status: crate::api::schema::AgentStatus,
++    palette: &Palette,
++) {
++    let label = text.trim_start();
++    if strip_agent_badge(label) == label {
++        return;
++    }
++    let mut x = rect.x + (text.len() - label.len()) as u16;
++    for ch in label.chars() {
++        if x >= rect.right() {
++            break;
++        }
++        let color = match ch {
++            '[' | ']' => Some(palette.overlay0),
++            '●' | '×' | '◐' | '✓' | '○' | '·' => Some(status_color(status, palette)),
++            '0'..='9' | ',' => Some(palette.text),
++            _ => None,
++        };
++        if let Some(color) = color {
++            buffer[(x, rect.y)].set_fg(color);
++        }
++        if ch == ']' {
++            break;
++        }
++        x += display_width(&ch.to_string());
++    }
++}
++
+ fn tab_label(tab: &ClientShellTab) -> String {
+     if tab.zoomed {
+         format!("{} Z", tab.label)
+--- a/src/client/shell/tests/endpoints.rs
++++ b/src/client/shell/tests/endpoints.rs
+@@ -2591,3 +2591,6 @@
+         }] if activated == &endpoint_id && workspace_id == "ws_1"
+     ));
+ }
++
++#[path = "sidebar_numbers.rs"]
++mod sidebar_numbers;
+--- /dev/null
++++ b/src/client/shell/tests/sidebar_numbers.rs
+@@ -0,0 +1,199 @@
++use super::*;
++
++fn numbered_state() -> (ClientShellState, ClientEndpointId) {
++    let config: Config = toml::from_str(
++        r#"
++[ui]
++global_shortcuts = true
++machine_order = ["Build", "Local"]
++agent_panel_sort = "spaces"
++[ui.sidebar.spaces]
++rows = [["$shortcut_number", "workspace"]]
++[ui.sidebar.agents]
++rows = [["$shortcut_number", "agent"]]
++[[keys.command]]
++key = "prefix+ctrl+0"
++type = "plugin_action"
++command = "sidebar-numbers.agent-10"
++"#,
++    )
++    .unwrap();
++    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
++    let profile = remote_profile();
++    let remote_id = ClientEndpointId::Ssh(profile.id.clone());
++    state.set_endpoint_catalog(&[profile]);
++    state.set_endpoint_status(&remote_id, ClientEndpointStatus::Online);
++    let mut local = snapshot();
++    local.agents = vec![agent(
++        "local agent",
++        crate::api::schema::AgentStatus::Idle,
++        1,
++    )];
++    local.agents[0].tokens = vec![("shortcut_number".into(), "99".into())];
++    state.set_snapshot(Box::new(local));
++    state.set_pane_surface(surface());
++    let mut remote = snapshot();
++    remote.boot_id = "remote-boot".into();
++    remote.workspaces[0].label = "remote-workspace".into();
++    remote.agents = vec![agent(
++        "remote agent",
++        crate::api::schema::AgentStatus::Idle,
++        1,
++    )];
++    state.set_endpoint_snapshot(&remote_id, Box::new(remote));
++    (state, remote_id)
++}
++
++#[test]
++fn global_numbers_follow_machine_order_and_shortcut_targets() {
++    let (mut state, remote_id) = numbered_state();
++    assert_eq!(state.endpoints[0].endpoint_id, remote_id);
++    let frame = state.compose(120, 40).unwrap();
++    let text = frame_text(&frame);
++    assert!(
++        text.lines()
++            .any(|line| line.contains("1") && line.contains("remote agent")),
++        "{text}"
++    );
++    assert!(
++        text.lines()
++            .any(|line| line.contains("2") && line.contains("local agent")),
++        "{text}"
++    );
++    assert!(
++        text.lines()
++            .any(|line| line.contains("1") && line.contains("remote-workspace")),
++        "{text}"
++    );
++    assert!(!text.contains("99"), "stale server numbering: {text}");
++    assert!(
++        text.lines().next().unwrap().contains("[2 ○]"),
++        "tab badge uses global number: {text}"
++    );
++    for action in [
++        crate::input::KeybindAction::FocusAgent(0),
++        crate::input::KeybindAction::SwitchWorkspace(0),
++    ] {
++        let mut output = ClientShellInput::default();
++        state.record_binding(crate::input::KeybindMatch::Action(action), &mut output);
++        assert!(
++            matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, .. }] if endpoint_id == &remote_id)
++        );
++    }
++}
++
++#[test]
++fn offline_machine_does_not_consume_numbers() {
++    let (mut state, remote_id) = numbered_state();
++    state.set_endpoint_status(&remote_id, ClientEndpointStatus::Reconnecting);
++    let frame = state.compose(120, 40).unwrap();
++    let text = frame_text(&frame);
++    assert!(
++        text.lines()
++            .any(|line| line.contains("1") && line.contains("local agent")),
++        "{text}"
++    );
++    assert!(
++        text.lines()
++            .any(|line| line.contains("remote agent") && !line.contains("1")),
++        "{text}"
++    );
++}
++
++#[test]
++fn plugin_second_bank_uses_combined_list_without_remote_plugin() {
++    let (mut state, remote_id) = numbered_state();
++    let mut remote = snapshot();
++    remote.boot_id = "remote-boot".into();
++    remote.agents = (1..=12)
++        .map(|index| {
++            let mut item = agent(
++                &format!("remote {index}"),
++                crate::api::schema::AgentStatus::Idle,
++                1,
++            );
++            item.pane_id = format!("ws_1:p{index}");
++            item
++        })
++        .collect();
++    state.set_endpoint_snapshot(&remote_id, Box::new(remote));
++    let key = |code, modifiers| RawInputEvent::Key(crate::input::TerminalKey::new(code, modifiers));
++    state.handle_raw_events(vec![key(KeyCode::Char('b'), KeyModifiers::CONTROL)]);
++    let output = state.handle_raw_events(vec![key(KeyCode::Char('0'), KeyModifiers::CONTROL)]);
++    assert!(
++        matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, target: Some(ClientEndpointFocusTarget::Pane(pane_id)) }] if endpoint_id == &remote_id && pane_id == "ws_1:p10")
++    );
++}
++
++fn frame_text(frame: &crate::protocol::FrameData) -> String {
++    frame
++        .cells
++        .chunks(frame.width as usize)
++        .map(|row| {
++            row.iter()
++                .map(|cell| cell.symbol.as_str())
++                .collect::<String>()
++        })
++        .collect::<Vec<_>>()
++        .join("\n")
++}
++
++#[test]
++fn numbers_follow_priority_sort_and_missing_positions_leave_focus_alone() {
++    let (mut state, remote_id) = numbered_state();
++    state.config.agent_panel_sort = crate::config::AgentPanelSortConfig::Priority;
++    let mut local = snapshot();
++    local.agents = vec![agent(
++        "local agent",
++        crate::api::schema::AgentStatus::Blocked,
++        2,
++    )];
++    state.set_snapshot(Box::new(local));
++    let text = frame_text(&state.compose(120, 40).unwrap());
++    assert!(
++        text.lines()
++            .any(|line| line.contains("1") && line.contains("local agent")),
++        "{text}"
++    );
++    assert!(
++        text.lines()
++            .any(|line| line.contains("2") && line.contains("remote agent")),
++        "{text}"
++    );
++    let targets = aggregate_navigation::online_agent_targets(
++        &state.endpoints,
++        &state.active_endpoint_id,
++        state.config.agent_panel_sort,
++    );
++    assert_eq!(targets[0].endpoint_id, ClientEndpointId::Local);
++    assert_eq!(targets[1].endpoint_id, remote_id);
++    for action in [
++        crate::input::KeybindAction::FocusAgent(19),
++        crate::input::KeybindAction::SwitchWorkspace(19),
++    ] {
++        let mut output = ClientShellInput::default();
++        state.record_binding(crate::input::KeybindMatch::Action(action), &mut output);
++        assert!(output.actions.is_empty());
++    }
++}
++
++#[test]
++fn navigation_mode_uses_global_workspace_positions() {
++    let (mut state, remote_id) = numbered_state();
++    let mut remote = snapshot();
++    remote.boot_id = "remote-boot".into();
++    let mut second = remote.workspaces[0].clone();
++    second.workspace_id = "remote_ws_2".into();
++    second.label = "second remote workspace".into();
++    remote.workspaces.push(second);
++    state.set_endpoint_snapshot(&remote_id, Box::new(remote));
++    state.compose(120, 40).unwrap();
++    state.mode = ClientShellMode::Navigate;
++    let output = state.handle_raw_events(vec![RawInputEvent::Key(crate::input::TerminalKey::new(
++        KeyCode::Char('2'),
++        KeyModifiers::NONE,
++    ))]);
++    assert!(
++        matches!(&output.actions[..], [ClientShellAction::ActivateEndpoint { endpoint_id, target: Some(ClientEndpointFocusTarget::Workspace(workspace_id)) }] if endpoint_id == &remote_id && workspace_id == "remote_ws_2")
++    );
++}
+--- a/src/client/shell.rs
++++ b/src/client/shell.rs
+@@ -4,6 +4,7 @@
+ mod agent_sidebar;
+ mod aggregate_navigation;
+ mod machine_diagnostics;
++mod sidebar_numbers;
+ mod workspace_navigation;
+ use workspace_navigation::{PendingWorkspaceHighlight, WorkspaceNavigationTarget};
+ mod composition;
+--- a/src/config/model.rs
++++ b/src/config/model.rs
+@@ -937,6 +937,8 @@
+ #[derive(Debug, Deserialize)]
+ #[serde(default)]
+ pub struct UiConfig {
++    pub global_shortcuts: bool,
++    pub machine_order: Vec<String>,
+     pub sidebar_width: u16,
+     /// Minimum sidebar width (columns) when expanded. Default: 18.
+     pub sidebar_min_width: u16,
+@@ -1195,6 +1197,8 @@
+ impl Default for UiConfig {
+     fn default() -> Self {
+         Self {
++            global_shortcuts: false,
++            machine_order: Vec::new(),
+             sidebar_width: 26,
+             sidebar_min_width: 18,
+             sidebar_max_width: 36,
+--- a/src/ui/sidebar/tokens.rs
++++ b/src/ui/sidebar/tokens.rs
+@@ -178,7 +178,8 @@
+ }
+ 
+ pub(crate) fn separator(previous: &ResolvedToken, current: &ResolvedToken) -> &'static str {
+-    if matches!(previous.kind, ResolvedTokenKind::StateIcon)
++    if matches!(&previous.kind, ResolvedTokenKind::Custom(value) if !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()))
++        || matches!(previous.kind, ResolvedTokenKind::StateIcon)
+         || matches!(current.kind, ResolvedTokenKind::GitStatus { .. })
+     {
+         " "

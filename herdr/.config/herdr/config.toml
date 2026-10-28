@@ -2,7 +2,7 @@ onboarding = false
 
 [keys]
 prefix = "ctrl+a"
-remote_image_paste = ""
+remote_image_paste = "ctrl+v"
 edit_scrollback = "prefix+ctrl+e"
 switch_workspace = "prefix+shift+1..9"
 previous_workspace = "prefix+shift+p"
@@ -272,6 +272,8 @@ selection_bg = "#0d303a"
 surface1 = "#0d303a"
 
 [ui]
+global_shortcuts = true
+machine_order = ["tower", "Local"]
 sidebar_width = 36
 prompt_new_tab_name = false
 agent_panel_sort = "spaces"

@@ -8,6 +8,7 @@
     ],
     "defaultMode": "bypassPermissions"
   },
+  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
@@ -21,7 +22,8 @@
     "claude-code-setup@claude-plugins-official": true,
     "ruby-lsp@claude-plugins-official": true,
     "posthog@claude-plugins-official": true,
-    "hey@37signals": true
+    "hey@37signals": true,
+    "swift-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "37signals": {
@@ -44,6 +46,5 @@
   "theme": "dark",
   "editorMode": "vim",
   "agentPushNotifEnabled": true,
-  "voiceEnabled": false,
-  "model": "opus"
+  "voiceEnabled": false
 }

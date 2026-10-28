@@ -44,6 +44,31 @@ Sidebar numbers 11–20 remain ordinal numbers. Both banks follow the current
 resource order; tabs are scoped to the invoking workspace, and missing
 positions leave focus unchanged.
 
+The Mac client orders machines with `ui.machine_order = ["tower", "Local"]`.
+With `ui.global_shortcuts = true`, agent and workspace numbers each form one
+sequence across online machines. Agent numbers follow the displayed sort/filter;
+workspace numbers follow machine and workspace order. Offline entries have no
+number. The same client lists supply the shortcut targets, including positions
+10–20 and tab badges. Tabs themselves remain scoped to the selected workspace.
+
+These two settings require the sidebar plugin's client companion: stock Herdr
+0.9.3 exposes only server-local snapshots to plugins and pins Local first.
+The companion lives in `local-plugins/sidebar-numbers/client.patch`; it also
+preserves the installed client's number spacing and colored tab status dots.
+Build and install it with Python 3.14, Cargo, and Zig 0.16:
+
+```sh
+python3.14 ~/.config/herdr/local-plugins/sidebar-numbers/build-client.py \
+  --install "$HOME/.local/bin/herdr"
+```
+
+Set `ZIG` to the Zig executable if it is not on `PATH`. The builder verifies
+the upstream archive checksum, applies the patch, runs the client tests, and
+keeps a backup of the replaced binary. Detach and reattach the client to load
+it; the server and agents can keep running. A normal `herdr update` replaces
+this companion, so rerun the builder after an update to the same version.
+The patch is pinned to 0.9.3 and must be reviewed for a different version.
+
 No configured Herdr shortcut requires Alt/Option. The function-key banks accept
 standard terminal sequences and CSI-u/Kitty input. On Mac, function keys may
 require Fn if the top row controls media or brightness. macOS can also reserve
