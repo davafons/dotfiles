@@ -20,12 +20,11 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # Set rust cargo path
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Lazy-load zoxide (--cmd cd enables fuzzy matching via cd, e.g. "cd dot")
-cd() {
-  unset -f cd
+# Use zoxide for cd, overriding aliases supplied by Omarchy or other shell defaults.
+if command -v zoxide >/dev/null 2>&1; then
+  unalias cd 2>/dev/null
   eval "$(zoxide init bash --cmd cd)"
-  cd "$@"
-}
+fi
 
 # bash-completion (homebrew)
 [[ -r "/opt/homebrew/etc/profile.d/bash_completion.sh" ]] && . "/opt/homebrew/etc/profile.d/bash_completion.sh"
