@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code status line, one line:
-#   󰚩 Opus 5.5 ·  wariwari ·  lymx main+ · 󰧑 ██░░░░░░░░ 15% ·  5h 42% ↻44m ·  7d 12% ↻4d21h
+#   󰚩 Opus 5.5 ·  wariwari ·  lymx main+ · 󰧑 ██░░░░░░░░ 15% 62k/400k ·  5h 42% ↻44m ·  7d 12% ↻4d21h
 # Claude pipes a JSON blob on stdin each refresh; `tee` it to a file to see every field.
 
 input=$(cat)
@@ -44,6 +44,13 @@ bar() {
 	printf '%s' "$out"
 }
 
+# 243000 → "243k", 1000000 → "1M".
+human_tokens() {
+	if (($1 >= 1000000)); then printf '%sM' "$(awk -v n="$1" 'BEGIN { printf "%g", int(n / 100000) / 10 }')"
+	elif (($1 >= 1000)); then printf '%dk' $(($1 / 1000))
+	else printf '%d' "$1"; fi
+}
+
 # Seconds → "3d4h", "2h13m", "45m".
 human_duration() {
 	local s=$(($1 > 0 ? $1 : 0))
@@ -76,10 +83,11 @@ fi
 if [[ -n $ctx_pct ]]; then
 	compact=$(jq -r --arg m "$model_id" '.modelSettings[$m].autoCompactWindow // empty' ~/.claude/settings.json 2>/dev/null)
 	if [[ -n $compact ]] && ((compact > 0 && compact < ctx_size)); then
+		ctx_size=$compact
 		ctx_pct=$((ctx_used * 100 / compact))
 	fi
 	c=$(level_color "$ctx_pct")
-	out+="$SEP${DIM}${I_CTX}${RESET} ${c}$(bar "$ctx_pct") ${ctx_pct%.*}%${RESET}"
+	out+="$SEP${DIM}${I_CTX}${RESET} ${c}$(bar "$ctx_pct") ${ctx_pct%.*}%${RESET} ${DIM}$(human_tokens "$ctx_used")/$(human_tokens "$ctx_size")${RESET}"
 fi
 
 # Subscription limits; only present on Pro/Max after the first response.
