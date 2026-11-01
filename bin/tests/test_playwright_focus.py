@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,12 @@ class OwnedBrowser(unittest.TestCase):
         backend.write_text(f"#!{sys.executable}\n" + '''import json, os, sys
 from pathlib import Path
 args = sys.argv[3:]
+Path(os.environ["FOCUS_TEST_LOG"]).with_suffix(".environment").write_text(json.dumps({
+    "entrypoint": args[0] if args else None,
+    "background": os.environ.get("PLAYWRIGHT_MCP_BACKGROUND")
+}))
+if args and args[0] == "cli":
+    args = args[1:]
 with open(os.environ["FOCUS_TEST_LOG"], "a") as log:
     log.write(json.dumps(["cli", *args]) + "\\n")
 mode = os.environ.get("FOCUS_TEST_SESSION", "missing")
@@ -29,6 +36,9 @@ state = Path(os.environ["FOCUS_TEST_LOG"]).with_suffix(".attached")
 if state.exists():
     mode = "open"
 if args == ["list", "--json"]:
+    if os.environ.get("FOCUS_TEST_SLOW_LIST"):
+        import time
+        time.sleep(0.3)
     print(json.dumps({"browsers": [] if mode == "missing" else [{"name": "focus-test", "status": "open", "browserType": "firefox" if mode == "wrong-browser" else "chrome", "attached": mode not in ("unattached", "failed-attach")}]}))
 elif "tab-list" in args:
     if mode == "missing":
@@ -49,19 +59,39 @@ print("60" if "list-windows" in sys.argv else "1")
 ''')
         aerospace.chmod(0o755)
 
-    def run_wrapper(self, *args, session="missing"):
         script = WRAPPER.read_text()
         assignment = 'ENV_FILE="${HOME}/.config/playwright-cli/env"'
         self.assertEqual(script.count(assignment), 1)
-        script = script.replace(assignment, 'ENV_FILE="${FOCUS_TEST_ENV_FILE}"')
+        self.wrapper = self.root / "playwright-cli"
+        self.wrapper.write_text(script.replace(assignment, 'ENV_FILE="${FOCUS_TEST_ENV_FILE}"'))
+
+    def run_wrapper(self, *args, session="missing", extra_env=None):
         env = {**os.environ, "PATH": f"{self.root}:/opt/homebrew/bin:/usr/bin:/bin",
                "FOCUS_TEST_LOG": str(self.log), "FOCUS_TEST_ENV_FILE": str(self.env_file),
                "FOCUS_TEST_SESSION": session, "PLAYWRIGHT_CLI_SESSION": "focus-test",
                "PLAYWRIGHT_CLI_CONTROL_DIR": str(self.root / "control")}
-        result = subprocess.run(["/bin/bash", "-c", script, str(WRAPPER), *args], env=env,
+        if extra_env:
+            env.update(extra_env)
+        result = subprocess.run(["/bin/bash", str(self.wrapper), *args], env=env,
                                 capture_output=True, text=True, timeout=10)
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
         return result, calls
+
+    def test_upstream_cli_runs_in_background_even_with_a_foreground_environment(self):
+        result, _ = self.run_wrapper("snapshot", extra_env={"PLAYWRIGHT_MCP_BACKGROUND": "0"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        settings = json.loads(self.log.with_suffix(".environment").read_text())
+        self.assertEqual(settings, {"entrypoint": "cli", "background": "1"})
+
+    def test_concurrent_attachments_reuse_one_connection(self):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            runs = [pool.submit(self.run_wrapper, "attach", "--extension",
+                                extra_env={"FOCUS_TEST_SLOW_LIST": "1"}) for _ in range(2)]
+            for run in runs:
+                result, _ = run.result()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertEqual(sum("attach" in call for call in calls), 1)
 
     def test_fresh_attach_is_pre_authorized_and_verified(self):
         result, calls = self.run_wrapper("attach", "--extension")
@@ -97,6 +127,11 @@ print("60" if "list-windows" in sys.argv else "1")
         self.assertIn("launching another browser is disabled", result.stderr)
         self.assertFalse(calls)
 
+    def test_leading_command_options_cannot_bypass_launch_guard(self):
+        result, calls = self.run_wrapper("--config", "fixture.json", "open")
+        self.assertEqual(result.returncode, 64, result.stdout + result.stderr)
+        self.assertFalse(calls)
+
     def test_explicit_owned_attach_is_verified(self):
         result, calls = self.run_wrapper("-s=focus-test", "attach", "--extension")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -104,7 +139,7 @@ print("60" if "list-windows" in sys.argv else "1")
         self.assertIn("verified Brave group", result.stdout)
         self.assertFalse(any(call[0] == "aerospace" for call in calls))
 
-    def test_foreground_tab_selection_remains_available(self):
+    def test_tab_selection_remains_available_in_background(self):
         result, calls = self.run_wrapper("tab-select", "2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(calls, [["cli", "-s=focus-test", "tab-select", "2"]])

@@ -9,6 +9,20 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "^(startup|resume|clear|compact|fork)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.claude/hooks/herdr-agent-state.sh\"; [ -f \"$f\" ] && bash \"$f\" session || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
@@ -21,7 +35,6 @@
     "claude-md-management@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "ruby-lsp@claude-plugins-official": true,
-    "posthog@claude-plugins-official": true,
     "hey@37signals": true,
     "swift-lsp@claude-plugins-official": true
   },
@@ -46,6 +59,5 @@
   "theme": "dark",
   "editorMode": "vim",
   "agentPushNotifEnabled": true,
-  "voiceEnabled": false,
-  "hooks": {"SessionStart":[{"matcher":"^(startup|resume|clear|compact|fork)$","hooks":[{"type":"command","command":"bash '/home/davafons/.claude/hooks/herdr-agent-state.sh' session","timeout":10}]}]}
+  "voiceEnabled": false
 }

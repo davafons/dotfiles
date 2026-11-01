@@ -37,6 +37,34 @@ make install PROFILE=work
 make install PACKAGES="shell git jj" PROFILE=mb
 ```
 
+## Tower SSH auto-wake
+
+Use `ssh tower-wake` to wake Tower and connect. This explicit alias uses
+`~/bin/tower-ssh-proxy`. If SSH is unreachable, the helper sends the Home
+Assistant wake webhook and waits up to 90 seconds before connecting. It
+prefers the LAN and falls back to Tailscale.
+SSH checks Tower's pinned host key and authenticates normally.
+The LAN and Tailscale endpoints currently present the same host key.
+
+Install the `bin` and `ssh` Stow packages. The helper needs Python 3, `nc`, and
+the private webhook export from `davafons-infra/scripts/tower_power_webhooks.py`.
+On macOS, put that export at
+`~/Library/Application Support/tower-power/grok-actions.json`; on Linux, use
+`${XDG_CONFIG_HOME:-~/.config}/tower-power/grok-actions.json`. Set its mode to
+`600`. The helper uses only the `wake` URL and never prints it.
+
+The ordinary aliases `tower`, `tower-lan`, and `tower-tailnet` never send a
+wake request. Keep background tools such as Herdr on these passive aliases so
+reconnects cannot wake an idle machine. SCP and SFTP wake Tower only when
+explicitly using `tower-wake`. Inspecting settings with `ssh -G tower-wake`
+does not wake it. Normal idle sleep remains enabled, and the wake hook does
+not set a keep-awake hold.
+
+```sh
+python3 -B -m unittest -v bin/tests/test_tower_ssh_proxy.py
+ssh tower-wake hostname
+```
+
 ## Verify configuration behavior
 
 Project-local [Yuke](.agents/skills/verify-yuke-profile/SKILL.md),

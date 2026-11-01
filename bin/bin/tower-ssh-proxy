@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Wake Tower on demand, then carry SSH over the selected network route."""
+
+import json
+import os
+from pathlib import Path
+import socket
+import sys
+import time
+import urllib.error
+import urllib.request
+from urllib.parse import urlsplit
+
+
+LAN = "192.168.3.249"
+TAILNET = "tower.tail5c9dbf.ts.net"
+WAIT_SECONDS = 90
+
+
+def ready_route(routes, port):
+    for host in routes:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return host
+        except OSError:
+            pass
+    return None
+
+
+def wake():
+    if sys.platform == "darwin":
+        path = Path.home() / "Library/Application Support/tower-power/grok-actions.json"
+    else:
+        path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "tower-power/grok-actions.json"
+    try:
+        if path.stat().st_mode & 0o077:
+            raise RuntimeError("Tower wake credentials must be readable only by their owner (chmod 600).")
+        url = json.loads(path.read_text())["actions"]["wake"]
+        parsed = urlsplit(url)
+        if parsed.scheme != "https" or parsed.netloc != "home.davafons.cc" or not parsed.path.startswith("/api/webhook/"):
+            raise ValueError("Unexpected wake endpoint")
+    except (OSError, ValueError, KeyError, TypeError):
+        raise RuntimeError(f"Tower wake credentials are missing or invalid: {path}") from None
+    request = urllib.request.Request(url, data=b"", headers={"User-Agent": "tower-power/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                raise RuntimeError("Tower wake service rejected the request.")
+    except (OSError, urllib.error.URLError):
+        raise RuntimeError("Tower wake service is unreachable or rejected the request.") from None
+
+
+def connect(alias, target, port):
+    if alias != "tower-wake" or target not in (LAN, TAILNET) or port != 22:
+        raise RuntimeError("Tower auto-wake requires the explicit tower-wake alias on port 22.")
+    routes = (LAN, TAILNET)
+    route = ready_route(routes, port)
+    if route is None:
+        print("Tower is unreachable; sending a wake request…", file=sys.stderr, flush=True)
+        wake()
+        deadline = time.monotonic() + WAIT_SECONDS
+        while route is None:
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Tower did not become reachable within 90 seconds. Check its power and your LAN/Tailscale connection.")
+            time.sleep(2)
+            route = ready_route(routes, port)
+        print("Tower is reachable; connecting…", file=sys.stderr, flush=True)
+    os.execvp("nc", ["nc", route, str(port)])
+
+
+def main():
+    try:
+        if len(sys.argv) != 4:
+            raise RuntimeError("Usage: tower-ssh-proxy ALIAS HOST PORT")
+        connect(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+    except (RuntimeError, ValueError, OSError) as error:
+        print(f"tower-ssh-proxy: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

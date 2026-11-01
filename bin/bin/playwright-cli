@@ -44,8 +44,9 @@ if [[ "$DAVAFONS_BROWSER_BACKEND" != "brave-extension" ]]; then
 fi
 export DAVAFONS_BROWSER_BACKEND
 
-CLI_PACKAGE="${PLAYWRIGHT_CLI_PACKAGE:-@playwright/cli@0.1.21}"
-CONTROL_DIR="${PLAYWRIGHT_CLI_CONTROL_DIR:-${HOME}/.local/state/playwright-cli/control}"
+CLI_PACKAGE="${PLAYWRIGHT_CLI_PACKAGE:-playwright-core@1.66.0-alpha-2026-11-04}"
+export PLAYWRIGHT_MCP_BACKGROUND=1
+CONTROL_DIR="${PLAYWRIGHT_CLI_CONTROL_DIR:-${HOME}/.local/state/playwright-cli/control}/background"
 mkdir -p "$CONTROL_DIR"
 
 set_controller_identity() {
@@ -82,6 +83,15 @@ fi
 owned_session_name="$session_name"
 export DAVAFONS_BROWSER_GROUP_NAME="${controller_label} · ${activity_slug}"
 
+if [[ "${PLAYWRIGHT_CLI_LOCK_HELD:-}" != "$owned_session_name" ]]; then
+  mkdir -p "$CONTROL_DIR/locks"
+  exec lockf -k -t 10 "$CONTROL_DIR/locks/${owned_session_name}.lock" \
+    env PLAYWRIGHT_CLI_LOCK_HELD="$owned_session_name" \
+    PLAYWRIGHT_MCP_EXECUTABLE_PATH="$configured_brave_executable" \
+    /bin/bash "$0" "--activity=$activity_slug" "$@"
+fi
+unset PLAYWRIGHT_CLI_LOCK_HELD
+
 redact_output() {
   sed -E \
     -e 's/([?&]token=)[^&[:space:])]+/\1<redacted>/g' \
@@ -92,10 +102,7 @@ cli() {
   # Playwright includes the current workspace in its daemon identity. Run the
   # control plane from one neutral directory so the same controller does not
   # create a second tab group merely because a command came from another repo.
-  mkdir -p "$CONTROL_DIR/locks"
-  # Serialize only this controller/activity. Different agents and activities
-  # use different lock files and continue in parallel.
-  (cd "$CONTROL_DIR" && lockf -t 10 "$CONTROL_DIR/locks/${owned_session_name}.lock" npx --yes "$CLI_PACKAGE" "$@")
+  (cd "$CONTROL_DIR" && npx --yes "$CLI_PACKAGE" cli "$@")
 }
 
 run_cli() {
@@ -159,6 +166,7 @@ if [[ "${1:-}" == "doctor" ]]; then
   echo "playwright-cli: extension token: configured (redacted)"
   echo "playwright-cli: Playwright Extension: installed"
   echo "playwright-cli: CLI version: $(cli --version)"
+  echo "playwright-cli: background mode: enabled (upstream)"
   doctor_session="$session_name"
   session_list="$(cli list --json | jq --arg name "$doctor_session" '{browsers: [.browsers[]? | select(.name == $name)]}')"
   printf '%s\n' "$session_list" | redact_output
@@ -193,6 +201,14 @@ for a in "$@"; do
   elif [[ "$a" == --session=* ]]; then
     session_name="${a#--session=}"
     explicit_session_name=1
+  elif [[ -z "$command_name" && "$a" == -* ]]; then
+    case "$a" in
+      --help|-h|--version|-v|--json|--raw) ;;
+      *)
+        echo "playwright-cli: put the command before command-specific options" >&2
+        exit 64
+        ;;
+    esac
   elif [[ -z "$command_name" && "$a" != -* ]]; then
     command_name="$a"
   fi
