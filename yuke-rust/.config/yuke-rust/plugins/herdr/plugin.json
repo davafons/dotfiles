@@ -1,0 +1,14 @@
+{
+  "name": "herdr",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "personal-navigation",
+        "yuke-clarify"
+      ],
+      "provides": []
+    }
+  }
+}

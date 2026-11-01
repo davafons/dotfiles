@@ -1,0 +1,30 @@
+{
+  "plugins": [
+    "./plugins/navigation",
+    "./plugins/solarized-theme",
+    "./plugins/vim",
+    "./plugins/personal",
+    "./plugins/web",
+    "./plugins/project-work",
+    "./plugins/controls",
+    "./plugins/models",
+    "./plugins/prompt-history",
+    "./plugins/path-completion",
+    "./plugins/workspace",
+    "./plugins/session-fork",
+    "./plugins/agent-tools",
+    "./plugins/dollar-skills",
+    "./plugins/loop",
+    "./plugins/build-status",
+    "./plugins/sessions-reworked",
+    "./plugins/search",
+    "./plugins/yuke-clarify",
+    "./plugins/herdr",
+    "./plugins/run-feedback",
+    "./plugins/step-trace",
+    "./plugins/peek",
+    "./plugins/sudo-command",
+    "./plugins/dashboard",
+    "./plugins/insights"
+  ]
+}

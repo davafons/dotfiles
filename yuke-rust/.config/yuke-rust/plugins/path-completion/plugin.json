@@ -1,0 +1,12 @@
+{
+  "name": "path-completion",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "composer-vim"
+      ]
+    }
+  }
+}

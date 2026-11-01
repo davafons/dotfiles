@@ -1,0 +1,14 @@
+{
+  "name": "personal",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "provides": [
+        "personal-commands"
+      ],
+      "uses": [
+        "composer-vim"
+      ]
+    }
+  }
+}

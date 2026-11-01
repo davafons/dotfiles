@@ -1,0 +1,8 @@
+{
+  "name": "web",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts"
+    }
+  }
+}

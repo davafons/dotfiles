@@ -1,0 +1,9 @@
+{
+  "name": "session-fork",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": []
+    }
+  }
+}

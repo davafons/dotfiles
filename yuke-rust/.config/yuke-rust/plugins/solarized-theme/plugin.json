@@ -1,0 +1,8 @@
+{
+  "name": "solarized-theme",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts"
+    }
+  }
+}

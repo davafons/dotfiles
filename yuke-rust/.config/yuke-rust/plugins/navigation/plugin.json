@@ -1,0 +1,14 @@
+{
+  "name": "navigation",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat"
+      ],
+      "provides": [
+        "personal-navigation"
+      ]
+    }
+  }
+}

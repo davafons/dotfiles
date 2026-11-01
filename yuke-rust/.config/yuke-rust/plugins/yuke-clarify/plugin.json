@@ -1,0 +1,15 @@
+{
+  "name": "yuke-clarify",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "personal-commands"
+      ],
+      "provides": [
+        "yuke-clarify"
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "prompt-history",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "composer-vim",
+        "personal-commands"
+      ]
+    }
+  }
+}

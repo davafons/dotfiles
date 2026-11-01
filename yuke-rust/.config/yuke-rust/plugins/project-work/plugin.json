@@ -1,0 +1,13 @@
+{
+  "name": "project-work",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "personal-commands",
+        "personal-navigation"
+      ]
+    }
+  }
+}

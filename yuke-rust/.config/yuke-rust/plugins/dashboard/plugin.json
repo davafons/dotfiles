@@ -1,0 +1,13 @@
+{
+  "name": "dashboard",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "index.ts",
+      "uses": [
+        "chat",
+        "personal-commands",
+        "composer-vim"
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "agent-tools",
+  "version": "0.1.0",
+  "description": "Subagents: new agents with their own context that report to the parent agent.",
+  "extensions": {
+    "sh.yuke": {
+      "entry": "src/index.ts",
+      "uses": [
+        "chat"
+      ]
+    }
+  }
+}
