@@ -12,19 +12,19 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
   let lastReport = lastPulse;
   const log = (event: string, fields: Record<string, unknown>): void =>
     console.log("STEP_TRACE", JSON.stringify({ time_ms: Date.now(), event, ...fields }));
-  ctx.on("session.update", ({ sessionId, update }) => {
+  ctx.addListener("session.update", ({ sessionId, update }) => {
     if (
-      update.sessionUpdate !== "tool_started" &&
-      update.sessionUpdate !== "tool_output" &&
-      update.sessionUpdate !== "tool_finished"
+      update.sessionUpdate !== "toolStarted" &&
+      update.sessionUpdate !== "toolOutput" &&
+      update.sessionUpdate !== "toolFinished"
     )
       return;
-    const key = `${sessionId}:${update.execution.eventNumber}:${update.execution.blockIndex}`;
+    const key = `${sessionId}:${update.position.eventNumber}:${update.position.blockIndex}`;
     const now = Date.now();
-    if (update.sessionUpdate === "tool_started") {
+    if (update.sessionUpdate === "toolStarted") {
       calls.set(key, { name: update.call.name, start: now, updated: now });
       log("tool.started", { session: sessionId, site: key, name: update.call.name });
-    } else if (update.sessionUpdate === "tool_output") {
+    } else if (update.sessionUpdate === "toolOutput") {
       const call = calls.get(key);
       if (call !== undefined) call.updated = now;
     } else {

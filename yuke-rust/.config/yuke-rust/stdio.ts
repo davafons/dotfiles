@@ -34,7 +34,7 @@ export async function stdio<T>(
     for (let attempt = 0; attempt < 100; attempt += 1) {
       lifetime.throwIfAborted();
       try {
-        connection = await connect({ transport: "unix", path, signal: lifetime });
+        connection = await connect({ path, signal: lifetime });
         break;
       } catch (error) {
         if (!(error instanceof ConnectionError) || (error.code !== "ENOENT" && error.code !== "ECONNREFUSED") || ended)

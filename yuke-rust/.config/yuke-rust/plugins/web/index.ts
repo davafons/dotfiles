@@ -61,11 +61,11 @@ async function run(endpoint: string, input: unknown, signal: AbortSignal): Promi
 
 /** Register web search and page retrieval in every session. HTTP, key, cancellation, and response errors fail the call. */
 export function session(s: SessionContext): undefined {
-  s.tools.define({
+  s.tools.add({
     name: "web_search",
     description: "Live web search. Titles, URLs, and short snippets. Use web_fetch for page text.",
     concurrency: "parallel",
-    parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+    inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
     execute: async (args, context) => {
       if (args.query.trim() === "") throw new Error("query is required");
       const output = await run("/free/search", { queryParams: { query: args.query } }, context.signal);
@@ -81,11 +81,11 @@ export function session(s: SessionContext): undefined {
       );
     },
   });
-  s.tools.define({
+  s.tools.add({
     name: "web_fetch",
     description: "Fetch an HTTP or HTTPS URL as Markdown. Long pages are truncated.",
     concurrency: "parallel",
-    parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
+    inputSchema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
     execute: async (args, context) => {
       const url = new URL(args.url);
       if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("url must be HTTP or HTTPS");

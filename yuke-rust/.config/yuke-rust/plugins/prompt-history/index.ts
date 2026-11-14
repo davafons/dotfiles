@@ -1,3 +1,4 @@
+import { composerRows } from "yuke:chat";
 import type { Frozen, PluginContext } from "yuke:plugins";
 import type { Block } from "yuke:protocol";
 import { Transcript } from "yuke:transcript";
@@ -10,14 +11,18 @@ export function draftOf(content: readonly Frozen<Block>[]): EditorState {
   let text = "";
   const spans: EditorSpan[] = [];
   for (const block of content) {
-    if ("user_text" in block) text += block.user_text;
-    else if ("media" in block) {
+    if (block.kind === "userText") text += block.text;
+    else if (block.kind === "media") {
       spans.push({
         from: text.length,
         to: text.length + 1,
         kind: "image",
         label: `[image ${spans.length + 1}]`,
-        media: block.media,
+        media: {
+          blob: block.blob,
+          mimeType: block.mimeType,
+          ...(block.filename === undefined ? {} : { filename: block.filename }),
+        },
       });
       text += "\uFFFC";
     }
@@ -59,8 +64,8 @@ export function apply(ctx: PluginContext): undefined {
     });
     if (selected !== undefined) editor.reset(selected.draft);
   });
-  tui.keys.bind("ctrl+x p", "history", { in: "chat" });
-  tui.widgets.watch((mount) => {
+  tui.keys.add("ctrl+x p", "history", { in: "chat" });
+  tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const extension = editor.extend(mount.signal);
@@ -95,10 +100,10 @@ export function apply(ctx: PluginContext): undefined {
         changing = false;
       }
     };
-    extension.onChange(() => {
+    extension.addChangeListener(() => {
       if (!changing) history = undefined;
     });
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       const stroke = strokeOf(event);
       let direction: -1 | 1;
       if (stroke === "ctrl+k") direction = -1;
@@ -113,10 +118,10 @@ export function apply(ctx: PluginContext): undefined {
   });
   const working = new Map<string, readonly { text: string; style: string }[]>();
   const noRows: never[] = [];
-  ctx.on("session.update", (event) => {
+  ctx.addListener("session.update", (event) => {
     const update = event.update;
     if (
-      update.sessionUpdate === "input_accepted" &&
+      update.sessionUpdate === "inputAccepted" &&
       update.input.source.kind === "user" &&
       update.input.kind === "message"
     ) {
@@ -127,9 +132,10 @@ export function apply(ctx: PluginContext): undefined {
     else return;
     tui.requestFrame();
   });
-  const stopRows = ctx.get("chat").addComposerRows("above", (pane) => {
-    const prompt = pane.session === undefined ? undefined : working.get(pane.session);
-    return prompt ?? noRows;
-  });
+  const stopRows = ctx
+    .get("chat")
+    .addComposerView("above", (_mount, pane) =>
+      composerRows(() => (pane.session === undefined ? undefined : working.get(pane.session)) ?? noRows),
+    );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
 }

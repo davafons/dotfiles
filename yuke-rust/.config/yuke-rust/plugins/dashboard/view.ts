@@ -57,7 +57,7 @@ export class Dashboard implements View {
     }
   }
 
-  mouse(event: MouseEvent): boolean {
+  onMouse(event: MouseEvent): boolean {
     if (event.action !== "press" || event.button !== "left") return false;
     const row = event.row - this.#menuRow;
     const column = event.column - this.#menuColumn;

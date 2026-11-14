@@ -2,8 +2,7 @@ import { readTextFile } from "yuke:fs";
 import type { PluginContext, SessionContext, SessionHooks } from "yuke:plugins";
 import { Command } from "yuke:process";
 import type { Block } from "yuke:protocol";
-import { TextEditor } from "yuke:tui";
-import { Completion } from "../../completion.ts";
+import { focusedEditor } from "../../lib.ts";
 import type {} from "../vim/src/service.ts";
 
 interface Skill {
@@ -49,117 +48,65 @@ export function session(s: SessionContext): undefined {
   const expand: SessionHooks["input.before"] = async (event) => {
     const names = new Set<string>();
     for (const block of event.blocks)
-      if ("user_text" in block && block.user_text.includes("$"))
-        for (const name of mentions(block.user_text)) names.add(name);
+      if ("kind" in block && block.kind === "userText" && block.text.includes("$"))
+        for (const name of mentions(block.text)) names.add(name);
     if (names.size === 0) return undefined;
-    const selected = (await scan(s.folder, s.signal)).filter((skill) => names.has(skill.name));
+    const selected = (await scan(s.cwd, s.signal)).filter((skill) => names.has(skill.name));
     if (selected.length === 0) return undefined;
     const bodies: Block[] = [];
     for (const skill of selected) {
       const source = await readTextFile(skill.canonical_path, { signal: event.signal });
       const body = source.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "").trim();
       bodies.push({
-        user_text: `<skill name=${JSON.stringify(skill.name)} path=${JSON.stringify(skill.path)}>\n${body}\n</skill>`,
+        kind: "userText",
+        text: `<skill name=${JSON.stringify(skill.name)} path=${JSON.stringify(skill.path)}>\n${body}\n</skill>`,
       });
     }
     const [first, ...rest] = [...event.blocks, ...bodies];
     return first === undefined ? undefined : { replace: { blocks: [first, ...rest] } };
   };
-  s.hook("input.before", (event) => {
+  s.addHook("input.before", (event) => {
     if (event.source.kind !== "user") return undefined;
     for (let index = 0; index < event.blocks.length; index += 1) {
       const block = event.blocks[index];
-      if (block !== undefined && "user_text" in block && block.user_text.includes("$")) return expand(event);
+      if (block !== undefined && "kind" in block && block.kind === "userText" && block.text.includes("$"))
+        return expand(event);
     }
     return undefined;
   });
 }
 
-/** Complete skill names in each composer. A modal or Vim mode change closes the list. */
+/** Complete skill names after `$` in Vim Insert mode, outside code spans. */
 export function apply(ctx: PluginContext): undefined {
   const tui = ctx.get("tui");
   const vim = ctx.get("composer-vim");
   if (tui === undefined || vim === undefined) return;
-  tui.widgets.watch((mount) => {
-    const editor = mount.widget;
-    if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
-    const extension = editor.extend(mount.signal);
-    let list: Completion<Skill> | undefined;
-    let generation = 0;
-    let dismissedText: string | undefined;
-    let dismissedCaret = -1;
-    const close = (): void => {
-      list?.close();
-      list = undefined;
-      generation += 1;
-    };
-    const sync = (): void => {
-      close();
-      const source = editor.state;
-      const caret = editor.caret;
-      if (
-        tui.focused !== editor ||
-        vim.mode(editor) !== "insert" ||
-        (dismissedText === source.text && dismissedCaret === caret)
-      )
-        return;
-      const prefix = source.text.slice(0, caret);
+  const remove = ctx.get("chat").addCompletionProvider({
+    complete: async (context) => {
+      const editor = focusedEditor(tui);
+      if (editor === undefined || vim.mode(editor) !== "insert") return undefined;
+      const prefix = context.text.slice(0, context.caret);
       const match = /(?:^|\s)\$([a-z0-9-]*)$/.exec(prefix);
-      if (match?.[1] === undefined || prefix.replace(/(`+)[\s\S]*?\1/g, "").includes("`")) return;
-      void complete(source, caret, match[1], generation).catch(failed);
-    };
-    const complete = async (
-      source: import("yuke:tui").EditorState,
-      caret: number,
-      query: string,
-      serial: number,
-    ): Promise<void> => {
-      const folder =
-        mount.pane === undefined ? tui.startup.cwd : (ctx.get("chat").folder(mount.pane.view) ?? tui.startup.cwd);
-      const matches = (await scan(folder, ctx.signal)).filter((skill) => skill.name.startsWith(query));
-      if (
-        generation !== serial ||
-        ctx.signal.aborted ||
-        mount.signal.aborted ||
-        editor.state !== source ||
-        tui.focused !== editor ||
-        matches.length === 0
-      )
-        return;
-      list = new Completion(
-        tui,
-        mount,
-        matches,
-        (skill) => `$${skill.name}  ${skill.description.replace(/\s+/g, " ")}`,
-        (skill) => {
-          let end = caret;
-          while (end < source.text.length && /[a-z0-9-]/.test(source.text[end] ?? "")) end += 1;
-          close();
-          editor.replace(caret - query.length - 1, end, `$${skill.name} `);
-        },
-        () => {
-          dismissedText = source.text;
-          dismissedCaret = caret;
-          close();
-        },
-      );
-    };
-    const failed = (error: unknown): void => {
-      if (!ctx.signal.aborted && !mount.signal.aborted) ctx.notify("error", String(error));
-    };
-    const refresh = sync;
-    extension.onChange(refresh);
-    const stopFocus = tui.onFocus(() => {
-      if (tui.focused !== editor) close();
-    });
-    const stopMode = vim.onMode((changed) => {
-      if (changed === editor) refresh();
-    });
-    return () => {
-      close();
-      extension.dispose();
-      stopFocus();
-      stopMode();
-    };
+      const query = match?.[1];
+      if (query === undefined || prefix.replace(/(`+)[\s\S]*?\1/g, "").includes("`")) return undefined;
+      let skills: readonly Skill[];
+      try {
+        skills = await scan(context.cwd, ctx.signal);
+      } catch (error) {
+        if (!ctx.signal.aborted && !context.signal.aborted) ctx.notify("error", String(error));
+        return undefined;
+      }
+      let to = context.caret;
+      while (to < context.text.length && /[a-z0-9-]/.test(context.text[to] ?? "")) to += 1;
+      const items = skills
+        .filter((skill) => skill.name.startsWith(query))
+        .map((skill) => ({
+          label: `$${skill.name}`,
+          detail: skill.description.replace(/\s+/g, " "),
+          insert: `$${skill.name} `,
+        }));
+      return items.length === 0 ? undefined : { from: context.caret - query.length - 1, to, items };
+    },
   });
+  ctx.signal.addEventListener("abort", remove, { once: true });
 }

@@ -1,7 +1,9 @@
+import { composerRows } from "yuke:chat";
 import type { PluginContext } from "yuke:plugins";
 import { Picker, stack, TextEditor, TextView, type Tui } from "yuke:tui";
 import { command, currentSession } from "../../lib.ts";
 import { markdown } from "../../views.ts";
+import { owners } from "./presence.ts";
 
 type Status = "now" | "later" | "blocked" | "review" | "done";
 interface Task {
@@ -54,21 +56,21 @@ export function install(
     );
     tui.requestFrame();
   };
-  const stopRows = chat.addComposerRows("above", (pane) =>
-    pane.session === undefined ? noRows : (assigned.get(pane.session) ?? noRows),
+  const stopRows = chat.addComposerView("above", (_mount, pane) =>
+    composerRows(() => (pane.session === undefined ? noRows : (assigned.get(pane.session) ?? noRows))),
   );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
-  const stopChange = chat.onChange(() => {
+  const stopChange = chat.addChangeListener(() => {
     void refreshAssignment().catch((error: unknown) => ctx.notify("warn", String(error)));
   });
   ctx.signal.addEventListener("abort", stopChange, { once: true });
-  ctx.on("session.update", (event) => {
+  ctx.addListener("session.update", (event) => {
     const update = event.update;
-    if (update.sessionUpdate === "tool_started" && update.call.name === "project_work")
-      mutations.set(event.sessionId, update.execution);
-    else if (update.sessionUpdate === "tool_finished") {
+    if (update.sessionUpdate === "toolStarted" && update.call.name === "project_work")
+      mutations.set(event.sessionId, update.position);
+    else if (update.sessionUpdate === "toolFinished") {
       const position = mutations.get(event.sessionId);
-      if (position?.eventNumber !== update.execution.eventNumber || position.blockIndex !== update.execution.blockIndex)
+      if (position?.eventNumber !== update.position.eventNumber || position.blockIndex !== update.position.blockIndex)
         return;
       mutations.delete(event.sessionId);
       void refreshAssignment().catch((error: unknown) => ctx.notify("warn", String(error)));
@@ -130,7 +132,7 @@ export function install(
     };
     const picker = new Picker<Item>({
       items: [],
-      key: (row) => row.key,
+      id: (row) => row.key,
       label: (row) =>
         row.task === undefined ? `#${row.github.number} ${row.github.title}` : `[${row.task.status}] ${row.task.title}`,
       detail: (row) =>
@@ -139,13 +141,13 @@ export function install(
           : row.task.owner_session
             ? `assigned ${row.task.owner_session}`
             : "unassigned",
-      select: (row) => {
+      onSelectionChange: (row) => {
         void select(row).catch(failed);
       },
-      choose: () => {
+      onChoose: () => {
         tui.focus(preview);
       },
-      cancel: () => dialog.close(),
+      onCancel: () => dialog.close(),
     });
     const load = async (): Promise<void> => {
       if (busy) {
@@ -162,7 +164,14 @@ export function install(
           );
           if (result.tasks.some((task) => task.owner_session !== "")) {
             const presence = await request<{ released: string[] }>(
-              { action: "presence", roots: {}, open_sessions: [] },
+              {
+                action: "presence",
+                ...(await owners(
+                  ctx.get("sessions"),
+                  result.tasks.map((task) => task.owner_session),
+                  dialog.signal,
+                )),
+              },
               cwd,
               dialog.signal,
             );
@@ -221,7 +230,7 @@ export function install(
           ]),
           initialFocus: title,
         },
-        rows: Math.max(12, tui.height - 4),
+        rows: Math.max(12, tui.size.height - 4),
         keys: [
           {
             key: "tab",
@@ -308,7 +317,7 @@ export function install(
         ]),
         initialFocus: picker.input,
       },
-      rows: Math.max(12, tui.height - 2),
+      rows: Math.max(12, tui.size.height - 2),
       keys: [
         {
           key: "tab",

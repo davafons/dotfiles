@@ -158,7 +158,7 @@ export function apply(ctx: PluginContext): undefined {
               await sessions.open(id, {
                 tail: 200,
                 signal: AbortSignal.any([dialog.signal, hold.signal]),
-                event: (event) => transcript.apply(event),
+                onEvent: (event) => transcript.apply(event),
               });
             } finally {
               hold.abort();
@@ -189,7 +189,7 @@ export function apply(ctx: PluginContext): undefined {
             view.setDocument(
               markdown(
                 "inspection",
-                `# Status\n${ctx.version}\n\n${inspection.settings.model.provider}/${inspection.settings.model.model}\n${inspection.settings.cwd}\n\n${transcript.state} · ${transcript.pending.size} queued · ${transcript.questions.size} interactions\n\nContext: ${used == null ? "unknown" : number(used)} last reported input tokens / ${model?.contextWindow == null ? "unknown" : number(model.contextWindow)} window\nLast response: ${usage?.output == null ? "unknown" : number(usage.output)} output tokens\nRegistered tools: ${inspection.tools.length}\n\n## Prompt preview · size estimates\n| Section | Bytes | Tokens |\n| --- | ---: | ---: |\n${sections}\n\n## Account allowance\n${quota.plan}\n${quota.error}\n${quota.windows.map((window) => `${window.label}: ${window.remainingPercent.toFixed(1)}% remaining${window.resetsAt === null ? "" : ` · resets ${new Date(window.resetsAt * 1000).toLocaleString()}`}`).join("\n\n")}\n${quota.creditBalance === null ? "" : `Credits: ${quota.creditBalance}`}\n${quota.notes.join("\n\n")}`,
+                `# Status\n${tui.startup.version}\n\n${inspection.settings.model.provider}/${inspection.settings.model.model}\n${inspection.settings.cwd}\n\n${transcript.state} · ${transcript.pending.size} queued · ${transcript.interactions.size} interactions\n\nContext: ${used == null ? "unknown" : number(used)} last reported input tokens / ${model?.contextWindow == null ? "unknown" : number(model.contextWindow)} window\nLast response: ${usage?.output == null ? "unknown" : number(usage.output)} output tokens\nRegistered tools: ${inspection.tools.length}\n\n## Prompt preview · size estimates\n| Section | Bytes | Tokens |\n| --- | ---: | ---: |\n${sections}\n\n## Account allowance\n${quota.plan}\n${quota.error}\n${quota.windows.map((window) => `${window.label}: ${window.remainingPercent.toFixed(1)}% remaining${window.resetsAt === null ? "" : ` · resets ${new Date(window.resetsAt * 1000).toLocaleString()}`}`).join("\n\n")}\n${quota.creditBalance === null ? "" : `Credits: ${quota.creditBalance}`}\n${quota.notes.join("\n\n")}`,
               ),
             );
             tui.requestFrame();
@@ -203,7 +203,7 @@ export function apply(ctx: PluginContext): undefined {
               ? `Context · ${["budget", "saved blocks", "prompt preview", "registered tools"][tab]}`
               : "Status",
           body: view,
-          rows: Math.max(10, tui.height - 2),
+          rows: Math.max(10, tui.size.height - 2),
           keys: [
             {
               key: "tab",
@@ -221,12 +221,12 @@ export function apply(ctx: PluginContext): undefined {
                 void refresh().catch((error: unknown) => ctx.notify("error", String(error)));
               },
             },
-            ...(["j", "k", "down", "up", "page_down", "page_up"] as const).map((key) => ({
+            ...(["j", "k", "down", "up", "pagedown", "pageup"] as const).map((key) => ({
               key,
               label: "scroll",
               run: () =>
                 view.scroll.scrollBy(
-                  (key === "j" || key === "down" || key === "page_down" ? 1 : -1) * (key.startsWith("page") ? 12 : 1),
+                  (key === "j" || key === "down" || key === "pagedown" ? 1 : -1) * (key.startsWith("page") ? 12 : 1),
                 ),
             })),
           ],
@@ -245,10 +245,10 @@ export function apply(ctx: PluginContext): undefined {
     const view = new TextView({ document: markdown("usage", "Reading…") });
     const picker = new Picker<Chat>({
       items: [],
-      key: (row) => row.id,
+      id: (row) => row.id,
       label: (row) => row.title,
       detail: (row) => `${row.root} · ${row.messages} responses`,
-      choose: (row) => {
+      onChoose: (row) => {
         void ctx
           .get("personal-navigation")
           .openSession(row.id)
@@ -257,7 +257,7 @@ export function apply(ctx: PluginContext): undefined {
             (error: unknown) => ctx.notify("error", String(error)),
           );
       },
-      cancel: () => dialog.close(),
+      onCancel: () => dialog.close(),
     });
     const render = (): void => {
       if (usage === undefined) return;
@@ -296,10 +296,7 @@ export function apply(ctx: PluginContext): undefined {
         text = `## Tool calls\n| Tool | Calls | Errors |\n| --- | ---: | ---: |\n${value.tools.map((row) => `| ${row.name} | ${row.calls} | ${row.errors} |`).join("\n")}`;
       else if (tab === 4) text = `## Admitted skills\n| Skill | Invocations |\n| --- | ---: |\n${table(value.skills)}`;
       view.setDocument(
-        markdown(
-          "usage",
-          `# ${["Overview", "Usage", "Messages", "Plugins", "Skills", "Chats"][tab]}\n${text}`,
-        ),
+        markdown("usage", `# ${["Overview", "Usage", "Messages", "Plugins", "Skills", "Chats"][tab]}\n${text}`),
       );
       picker.setItems(tab === 5 ? value.chats : []);
       view.scroll.scrollTo(0);
@@ -341,7 +338,7 @@ export function apply(ctx: PluginContext): undefined {
         ]),
         initialFocus: view,
       },
-      rows: Math.max(10, tui.height - 2),
+      rows: Math.max(10, tui.size.height - 2),
       keys: [
         ...Array.from({ length: 6 }, (_, index) => ({
           key: `alt+${index + 1}`,
@@ -376,8 +373,8 @@ export function apply(ctx: PluginContext): undefined {
         },
         { key: "j", label: "down", when: () => tab !== 5, run: () => view.scroll.scrollBy(1) },
         { key: "k", label: "up", when: () => tab !== 5, run: () => view.scroll.scrollBy(-1) },
-        { key: "page_down", label: "page down", run: () => view.scroll.scrollBy(12) },
-        { key: "page_up", label: "page up", run: () => view.scroll.scrollBy(-12) },
+        { key: "pagedown", label: "page down", run: () => view.scroll.scrollBy(12) },
+        { key: "pageup", label: "page up", run: () => view.scroll.scrollBy(-12) },
       ],
     });
     await refresh();

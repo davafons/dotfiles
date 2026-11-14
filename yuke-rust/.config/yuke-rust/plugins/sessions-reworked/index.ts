@@ -19,20 +19,20 @@ export function apply(ctx: PluginContext): undefined {
     let rows: SessionRow[] = [];
     const picker = new Picker<SessionRow>({
       items: [],
-      key: (row) => row.session.sessionId,
+      id: (row) => row.sessionId,
       label: (row) =>
-        `${row.activity === "running" ? "●" : row.activity === "idle" ? "○" : " "} ${row.session.preview?.replace(/\s+/g, " ") ?? "(empty chat)"}`,
-      detail: (row) => `${row.session.model.provider}/${row.session.model.model} · ${row.session.cwd}`,
-      choose: (row) => {
+        `${row.state === "running" ? "●" : row.state === "idle" ? "○" : " "} ${row.title?.replace(/\s+/g, " ") ?? "(empty chat)"}`,
+      detail: (row) => `${row.model.provider}/${row.model.model} · ${row.cwd}`,
+      onChoose: (row) => {
         void ctx
           .get("personal-navigation")
-          .openSession(row.session.sessionId)
+          .openSession(row.sessionId)
           .then(
             () => dialog.close(),
             (error: unknown) => ctx.notify("error", String(error)),
           );
       },
-      cancel: () => dialog.close(),
+      onCancel: () => dialog.close(),
     });
     const load = async (more = false): Promise<void> => {
       if (busy) return;
@@ -93,7 +93,7 @@ export function apply(ctx: PluginContext): undefined {
             const confirm = tui.dialog({
               title: () => "Delete this session and its children?",
               body: new TextView({
-                document: markdown("delete-session", selected.session.preview ?? selected.session.sessionId),
+                document: markdown("delete-session", selected.title ?? selected.sessionId),
               }),
               rows: 5,
               signal: dialog.signal,
@@ -103,7 +103,7 @@ export function apply(ctx: PluginContext): undefined {
                   label: "delete",
                   run: () => {
                     confirm.close();
-                    void sessions.remove(selected.session.sessionId).then(() => load(), failed);
+                    void sessions.remove(selected.sessionId).then(() => load(), failed);
                   },
                 },
               ],

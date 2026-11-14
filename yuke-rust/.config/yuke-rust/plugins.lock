@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/btw",
+      "ref": "c6324ac825ca8da12403162a33d590653db2a470",
+      "commit": "c6324ac825ca8da12403162a33d590653db2a470"
+    }
+  ]
+}

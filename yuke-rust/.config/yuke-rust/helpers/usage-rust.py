@@ -63,7 +63,7 @@ def snapshot(request):
         db.execute('BEGIN')
         for session in db.execute('SELECT * FROM sessions WHERE (? IS NULL OR cwd=?)', (request.get('workspace'), request.get('workspace'))):
             current = json.loads(session['settings'])
-            chat = dict(id=str(uuid.UUID(bytes=session['id'])), title=session['preview'] or '(empty chat)', root=session['cwd'],
+            chat = dict(id=str(uuid.UUID(bytes=session['id'])), title=session['title'] or '(empty chat)', root=session['cwd'],
                         kind='child' if session['parent'] else 'chat', input=0, output=0, messages=0,
                         created=session['created_at'], updated=session['updated_at'])
             for event in db.execute('SELECT * FROM events WHERE session_id=? ORDER BY seq', (session['id'],)):
@@ -73,20 +73,19 @@ def snapshot(request):
                 blocks = json.loads(event['blocks'] or '[]')
                 display = json.loads(event['display'] or '{}')
                 for block in blocks:
-                    for kind in block:
-                        roles[kind] += 1
-                    if 'tool_call' in block:
-                        name = block['tool_call']['name']
-                        tools[name]['calls'] += 1
-                    if 'tool_result' in block and block['tool_result']['isError']:
-                        call_id = block['tool_result']['callId']
+                    kind = block.get('kind')
+                    roles[kind] += 1
+                    if kind == 'toolCall':
+                        tools[block['name']]['calls'] += 1
+                    if kind == 'toolResult' and block['isError']:
+                        call_id = block['callId']
                         # A bounded lookup inside the session identifies a result, without reading another store.
-                        row = db.execute("SELECT json_extract(value, '$.tool_call.name') FROM events, json_each(events.blocks) WHERE session_id=? AND json_extract(value, '$.tool_call.callId')=? LIMIT 1", (session['id'], call_id)).fetchone()
+                        row = db.execute("SELECT json_extract(value, '$.name') FROM events, json_each(events.blocks) WHERE session_id=? AND json_extract(value, '$.kind')='toolCall' AND json_extract(value, '$.callId')=? LIMIT 1", (session['id'], call_id)).fetchone()
                         if row:
                             tools[row[0]]['errors'] += 1
-                    if 'user_text' in block:
+                    if kind == 'userText':
                         import re
-                        for name in re.findall(r'<skill name="([^"]+)"', block['user_text']):
+                        for name in re.findall(r'<skill name="([^"]+)"', block['text']):
                             skills[name] += 1
                 if event['end_kind']:
                     outcomes[event['end_kind']] += 1

@@ -97,16 +97,16 @@ export class Campaign {
 
   attach(s: SessionContext): void {
     if (!this.enabled) return;
-    s.hook("prompt.build", (event) => ({
+    s.addHook("prompt.build", (event) => ({
       sections: {
         ...event.sections,
         campaign:
           "This is a bounded campaign. Only read, write, edit, spawn_agent, send_agent_input, and stop may run. File operations stay in the private campaign workspace. Each session has at most eight rounds. Do not delegate from a child.",
       },
     }));
-    s.hook("round.before", () => {
+    s.addHook("round.before", () => {
       const grant = this.check();
-      if (s.folder !== grant.workspace) throw new Error("Campaign workspace mismatch.");
+      if (s.cwd !== grant.workspace) throw new Error("Campaign workspace mismatch.");
       if (s.parent === undefined) {
         if (this.root !== undefined && this.root !== s.sessionId)
           throw new Error("Only one prepaid root session is allowed.");
@@ -119,11 +119,11 @@ export class Campaign {
       console.log("CAMPAIGN_REQUEST", JSON.stringify({ session: s.sessionId, count, reserved: this.reserved }));
       return { tools: [...ALLOWED].filter((name) => s.parent === undefined || name !== "spawn_agent") };
     });
-    s.hook("tool.before", (event) => {
+    s.addHook("tool.before", (event) => {
       const grant = this.check();
-      if (!ALLOWED.has(event.call.name)) return { block: "Tool is not allowed in a bounded campaign." };
+      if (!ALLOWED.has(event.call.name)) return { deny: "Tool is not allowed in a bounded campaign." };
       if (s.parent !== undefined && event.call.name === "spawn_agent")
-        return { block: "Nested campaign delegation is not allowed." };
+        return { deny: "Nested campaign delegation is not allowed." };
       if (event.call.name === "read" || event.call.name === "write" || event.call.name === "edit") {
         const args = event.call.arguments;
         if (
@@ -133,7 +133,7 @@ export class Campaign {
           typeof args.path !== "string" ||
           args.path.includes("\0")
         )
-          return { block: "Campaign tool requires a workspace path." };
+          return { deny: "Campaign tool requires a workspace path." };
         let path = args.path;
         if (path.startsWith("~/")) path = grant.home + path.slice(1);
         if (event.call.name === "read" && path.startsWith(`${grant.home}/.agents/skills/`))
@@ -146,7 +146,7 @@ export class Campaign {
         }
         path = `/${parts.join("/")}`;
         if (path !== grant.workspace && !path.startsWith(`${grant.workspace}/`))
-          return { block: "Campaign file access must stay in the private workspace." };
+          return { deny: "Campaign file access must stay in the private workspace." };
       }
       return undefined;
     });

@@ -1,3 +1,4 @@
+import { composerRows } from "yuke:chat";
 import type { PluginContext, SessionContext, Sessions } from "yuke:plugins";
 import { Command } from "yuke:process";
 import { stack, strokeOf, TextEditor, TextView, type View } from "yuke:tui";
@@ -97,7 +98,9 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
   if (tui === undefined) return;
   const stopRows = ctx
     .get("chat")
-    .addComposerRows("below", (pane) => (pane.session === undefined ? noRows : (rows.get(pane.session) ?? noRows)));
+    .addComposerView("below", (_mount, pane) =>
+      composerRows(() => (pane.session === undefined ? noRows : (rows.get(pane.session) ?? noRows))),
+    );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
   const deliver = async (entry: Entry, batch: boolean, allowUnanswered: boolean, dismiss = false): Promise<void> => {
     await pendingWrites;
@@ -107,7 +110,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
       const handle = await sessions.open(entry.session, {
         tail: 0,
         signal: AbortSignal.any([ctx.signal, controller.signal]),
-        event: () => {},
+        onEvent: () => {},
       });
       if (batch) {
         const value = await store<Parameters<typeof batchAnswerMessage>[0]>(
@@ -116,7 +119,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
           ctx.signal,
         );
         attempted = true;
-        const input = await handle.input([{ user_text: batchAnswerMessage(value) }]);
+        const input = await handle.sendMessage({ content: [{ kind: "userText", text: batchAnswerMessage(value) }] });
         await store("finish_batch", { id: value.id, token: value.token, input_id: input }, ctx.signal);
       } else {
         const responses = dismiss ? [] : entry.draft.responses;
@@ -126,7 +129,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
           ctx.signal,
         );
         attempted = true;
-        const input = await handle.input([{ user_text: answerMessage(value) }]);
+        const input = await handle.sendMessage({ content: [{ kind: "userText", text: answerMessage(value) }] });
         await store("finish", { id: value.id, token: value.token, input_id: input }, ctx.signal);
       }
     } catch (error) {
@@ -182,7 +185,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
           canvas.text(5, row * 2 + 1, option?.description ?? "Type a custom answer below.", style ?? "chat.meta");
         }
       },
-      mouse: (event) => {
+      onMouse: (event) => {
         const entry = questions[index];
         if (entry === undefined || event.action !== "press" || event.button !== "left" || busy || review) return false;
         const first = Math.max(0, selected - Math.floor(Math.min(18, 2 * (entry.options.length + 1)) / 2) + 1);
@@ -346,7 +349,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
     const dialog = tui.dialog({
       title: () => `Questions · ${review ? "Review" : `${index + 1}/${questions.length}`} · ${first.title}`,
       body,
-      rows: Math.max(12, tui.height - 2),
+      rows: Math.max(12, tui.size.height - 2),
       keys: [
         {
           key: "ctrl+o",
@@ -354,7 +357,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
           when: () => !busy && first.status === "pending",
           run: () => {
             const move = async (): Promise<void> => {
-              const target = await ctx.get("chat").start();
+              const target = await ctx.get("chat").ensureSession();
               if (target === undefined || target === first.session) return;
               const confirm = tui.dialog({
                 title: () => "Move these pending questions to this chat?",
@@ -461,9 +464,9 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
       ],
     });
     const extension = editor.extend(dialog.signal);
-    extension.onChange(changed);
+    extension.addChangeListener(changed);
     dialog.signal.addEventListener("abort", persist, { once: true });
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       const stroke = strokeOf(event);
       const entry = questions[index];
       if (entry === undefined) return false;
@@ -501,7 +504,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
     tui.focus(editor);
   };
   command(ctx, tui, "questions", "Open the clarification inbox", open);
-  tui.keys.bind("shift+left", "questions", { in: "chat" });
+  tui.keys.add("shift+left", "questions", { in: "chat" });
   return async () => {
     await pendingWrites;
   };
@@ -509,7 +512,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
 
 /** Register nonblocking question tools. A pending receipt never supplies an answer or approval. */
 export function session(s: SessionContext): undefined {
-  s.hook("prompt.build", (event) => ({
+  s.addHook("prompt.build", (event) => ({
     sections: {
       ...event.sections,
       clarification:
@@ -527,12 +530,12 @@ export function session(s: SessionContext): undefined {
     multi_select: { type: "boolean" },
     options: { type: "array", items: option },
   } as const;
-  s.tools.define({
+  s.tools.add({
     name: "ask_question",
     description:
       "Queue one clarification without opening a popup or waiting. Supply title, question, optional context, and up to eight options. The user can enter a custom answer. A pending receipt is not approval. Continue independent work only.",
     concurrency: "serial",
-    parameters: {
+    inputSchema: {
       type: "object",
       properties: { ...fields, title: { type: "string" } },
       required: ["title", "question"],
@@ -552,12 +555,12 @@ export function session(s: SessionContext): undefined {
       });
     },
   });
-  s.tools.define({
+  s.tools.add({
     name: "request_user_input",
     description:
       "Queue one to three related questions with short headers and stable snake_case IDs. The user can choose options, add notes or a custom answer, review, and submit the batch together. This returns a pending ID, not answers or approval. Do not include an Other option; the UI supplies it.",
     concurrency: "serial",
-    parameters: {
+    inputSchema: {
       type: "object",
       properties: {
         questions: {

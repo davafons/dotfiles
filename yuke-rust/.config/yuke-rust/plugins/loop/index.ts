@@ -17,21 +17,28 @@ export function apply(ctx: PluginContext): undefined {
   chat = ctx.get("chat");
   const surface = tui;
   if (surface === undefined) return;
-  command(ctx, surface, "loop", "Schedule /loop 5m prompt, list, or stop [id]", async (argument) => {
-    const id = currentSession(ctx, surface);
-    if (id === undefined) throw new Error("Start a saved conversation before arming a loop.");
-    const loops = managers.get(id);
-    if (loops === undefined) throw new Error("The loop session is not ready.");
-    const parts = argument.trim().split(/\s+/);
-    const verb = parts[0] ?? "";
-    if (verb === "" || verb === "list") ctx.notify("info", JSON.stringify(loops.list(id)));
-    else if (verb === "stop") ctx.notify("info", JSON.stringify(await loops.stop(id, parts[1])));
-    else
-      ctx.notify(
-        "info",
-        JSON.stringify(loops.arm(id, intervalSeconds(verb), argument.trim().slice(verb.length).trim())),
-      );
-  });
+  command(
+    ctx,
+    surface,
+    "loop",
+    "Schedule /loop 5m prompt, list, or stop [id]",
+    async (argument) => {
+      const id = currentSession(ctx, surface);
+      if (id === undefined) throw new Error("Start a saved conversation before arming a loop.");
+      const loops = managers.get(id);
+      if (loops === undefined) throw new Error("The loop session is not ready.");
+      const parts = argument.trim().split(/\s+/);
+      const verb = parts[0] ?? "";
+      if (verb === "" || verb === "list") ctx.notify("info", JSON.stringify(loops.list(id)));
+      else if (verb === "stop") ctx.notify("info", JSON.stringify(await loops.stop(id, parts[1])));
+      else
+        ctx.notify(
+          "info",
+          JSON.stringify(loops.arm(id, intervalSeconds(verb), argument.trim().slice(verb.length).trim())),
+        );
+    },
+    "<interval prompt|list|stop [id]>",
+  );
 }
 
 /** Add bounded recurring-input tools. A close, cancellation, failure, or reload stops their timers. */
@@ -44,16 +51,17 @@ export function session(s: SessionContext): () => Promise<void> {
       .open(s.sessionId, {
         tail: 0,
         signal: s.signal,
-        event: (event) => {
+        onEvent: (event) => {
           transcript.apply(event);
-          if ("update" in event && event.update.sessionUpdate === "input_removed")
-            loops.canceled(s.sessionId, event.update.inputId);
-          if ("update" in event && event.update.sessionUpdate === "commit" && event.update.commit.end !== null) {
-            const end = event.update.commit.end;
+          if (event.kind !== "update") return;
+          const update = event.update;
+          if (update.sessionUpdate === "inputRemoved") loops.canceled(s.sessionId, update.inputId);
+          if (update.sessionUpdate === "commit" && update.commit.end !== undefined) {
+            const end = update.commit.end;
             const reason =
-              "failed" in end
-                ? end.failed
-                : "outcome" in end && end.outcome === "cancelled"
+              end.kind === "failed"
+                ? end.error
+                : end.kind === "cancelled"
                   ? "The turn was cancelled. Rearm explicitly."
                   : undefined;
             void loops.wake(s.sessionId, reason).catch((error: unknown) => s.notify("error", String(error)));
@@ -89,7 +97,7 @@ export function session(s: SessionContext): () => Promise<void> {
     },
     send: async (_id, text) => ({
       type: "queued",
-      input_id: await (await open()).sendNotification("Recurring prompt", text),
+      input_id: await (await open()).notifyModel({ display: "Recurring prompt", text }),
     }),
     cancel: async (_id, input) => (await open()).removeInput(input),
     changed: () => {
@@ -97,30 +105,31 @@ export function session(s: SessionContext): () => Promise<void> {
     },
   });
   managers.set(s.sessionId, loops);
-  s.hook("input.before", (event) => {
+  s.addHook("input.before", (event) => {
     const block = event.blocks[0];
     if (
       event.source.kind !== "plugin" ||
       event.source.name !== "loop" ||
       block === undefined ||
-      !("user_text" in block)
+      !("kind" in block) ||
+      block.kind !== "userText"
     )
       return undefined;
     const prefix = '<system_notification plugin="loop">';
     const suffix = "</system_notification>";
     const text =
-      block.user_text.startsWith(prefix) && block.user_text.endsWith(suffix)
-        ? block.user_text.slice(prefix.length, -suffix.length)
-        : block.user_text;
+      block.text.startsWith(prefix) && block.text.endsWith(suffix)
+        ? block.text.slice(prefix.length, -suffix.length)
+        : block.text;
     if (text.startsWith("[yuke-loop ") && !loops.admits(s.sessionId, text)) return { handled: true };
     return undefined;
   });
-  s.tools.define({
+  s.tools.add({
     name: "loop",
     description:
       "Arm a recurring prompt only when the user requests recurrence. It waits until the session is idle and no user input waits. A cancel, failure, reload, or quit stops it. action list returns loops. stop ends one loop or all loops of this session; an active turn continues.",
     concurrency: "serial",
-    parameters: {
+    inputSchema: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["arm", "list", "stop"] },

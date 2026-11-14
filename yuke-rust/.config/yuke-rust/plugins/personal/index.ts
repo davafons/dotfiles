@@ -18,11 +18,11 @@ export function apply(ctx: PluginContext): undefined {
   ctx.provide("personal-commands", service);
   const tui = ctx.get("tui");
   if (tui === undefined) return;
-  tui.widgets.watch((mount) => {
+  tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const extension = editor.extend(mount.signal);
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       const text = editor.state.text;
       if (!text.startsWith("/") || strokeOf(event) !== "enter" || ctx.get("composer-vim")?.pending(editor))
         return false;
@@ -49,5 +49,5 @@ export function apply(ctx: PluginContext): undefined {
 export async function session(s: SessionContext): Promise<undefined> {
   const prompt: unknown = JSON.parse(await readTextFile(`${import.meta.dirname}/prompt.json`));
   if (typeof prompt !== "string") throw new TypeError("The personal prompt must be text.");
-  s.hook("prompt.build", (event) => ({ sections: { ...event.sections, base: prompt } }));
+  s.addHook("prompt.build", (event) => ({ sections: { ...event.sections, base: prompt } }));
 }

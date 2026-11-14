@@ -9,12 +9,12 @@ export function apply(ctx: PluginContext): undefined {
 
 /** Add an explicit conversation fork. The tool starts no model turn and opens no pane. */
 export function session(s: SessionContext): undefined {
-  s.tools.define({
+  s.tools.add({
     name: "fork_session",
     description:
       "Fork this conversation only when the user requests it. Copy history through a completed turn to an independent session. Omit workspace_path to keep the source workspace and prompt. A destination folder supplies its own instructions, skills, and MCP configuration. Queued inputs, active drafts, children, and jobs stay with the source. No pane or model turn starts. A cancelled call can still create a fork; inspect sessions before retrying.",
     concurrency: "serial",
-    parameters: {
+    inputSchema: {
       type: "object",
       properties: {
         workspace_path: { type: "string", description: "Existing absolute destination folder." },
@@ -27,13 +27,16 @@ export function session(s: SessionContext): undefined {
     },
     execute: async (args, context) => {
       context.signal.throwIfAborted();
-      const id = await sessions.fork(context.sessionId, args.through_event, args.workspace_path);
+      const id = await sessions.fork(context.sessionId, {
+        ...(args.through_event === undefined ? {} : { through: args.through_event }),
+        ...(args.workspace_path === undefined ? {} : { cwd: args.workspace_path }),
+      });
       const row = await sessions.get(id);
       return JSON.stringify({
         session_id: id,
         source_session_id: context.sessionId,
-        workspace_path: row.session.cwd,
-        resume_command: `yuke --session ${id}`,
+        workspace_path: row.cwd,
+        resume_command: `yuke --resume ${id}`,
       });
     },
   });

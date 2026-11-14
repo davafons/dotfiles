@@ -42,6 +42,12 @@ const VERTICAL = new Set(["j", "k", "up", "down", "gj", "gk"]);
 const NAMED_MOTIONS = new Set(["left", "right", "up", "down", "home", "end"]);
 const REVERSE_FIND: Readonly<Record<string, string>> = { f: "F", F: "f", t: "T", T: "t" };
 
+/** True for a key that the native editor would use to change text: deletions, line ends, and control shortcuts. */
+function editsNatively({ code, modifiers }: KeyEvent): boolean {
+  if (code === "backspace" || code === "delete") return true;
+  return (code === "enter" || code === "character") && Object.values(modifiers).some(Boolean);
+}
+
 class ComposerState {
   mode: Mode = "insert";
   presentedMode: Mode | undefined;
@@ -111,7 +117,7 @@ export class ComposerEditor implements ComposerVim {
       return handled;
     };
     let keymapEvent: KeyEvent | undefined;
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       keymapEvent = undefined;
       const stroke = strokeOf(event);
       if (this.tui.keys.pending() !== "" && stroke !== "esc" && stroke !== "ctrl+[") {
@@ -120,12 +126,15 @@ export class ComposerEditor implements ComposerVim {
       }
       return handleKey(event);
     }, "beforeKeymap");
-    extension.onKey((event) => {
-      if (event !== keymapEvent) return false;
-      keymapEvent = undefined;
-      return handleKey(event);
+    extension.addKeyHandler((event) => {
+      if (event === keymapEvent) {
+        keymapEvent = undefined;
+        if (handleKey(event)) return true;
+      }
+      // The keymap had its turn: outside Insert mode, keep native editing from changing the draft.
+      return state.mode !== "insert" && editsNatively(event);
     });
-    extension.onChange((change) => {
+    extension.addChangeListener((change) => {
       if (state.muted) return;
       if (change.kind === "reset" || change.kind === "restore") {
         state.undo.length = 0;
@@ -155,12 +164,12 @@ export class ComposerEditor implements ComposerVim {
       state.expectedCaret = editor.caret;
       this.refresh(editor, state);
     });
-    extension.onMouse(() => {
+    extension.addMouseHandler(() => {
       this.cancel(editor);
       this.refresh(editor, state);
       return false;
     });
-    extension.onPaste(() => {
+    extension.addPasteHandler(() => {
       this.reset(state);
       return state.mode !== "insert";
     });
@@ -762,7 +771,7 @@ export class ComposerEditor implements ComposerVim {
     }
     if (operator === "y") {
       editor.caret = state.navigation.clamp(text, from);
-      if (state.register !== "_") this.tui.copy(value);
+      if (state.register !== "_") this.tui.clipboard.writeText(value);
       return;
     }
     if (operator === "d" || operator === "c") {
@@ -1304,6 +1313,8 @@ export class ComposerEditor implements ComposerVim {
       this.complete(editor, state, prefix + stroke, count, "", counted);
       return true;
     }
+    if (stroke === "backspace") stroke = "h";
+    else if (stroke === "delete") stroke = "x";
     if (stroke.length === 1 && stroke >= "0" && stroke <= "9" && (stroke !== "0" || state.count > 0)) {
       state.count = state.count * 10 + Number(stroke);
       if ((state.leading || 1) * state.count > MAX_COUNT) {
@@ -1448,14 +1459,14 @@ export class ComposerEditor implements ComposerVim {
     const register = state.register;
     const count = (state.leading || 1) * (state.count || 1);
     this.reset(state);
-    const field = new TextEditor({
-      multiline: false,
-      state: { text: state.query, spans: [], selection: { anchor: state.query.length, head: state.query.length } },
-      submit: (answer) => {
-        const current = this.states.has(editor) && this.tui.focused === field && editor.state === original;
-        dialog.close();
-        if (!current) return;
-        if (answer.text !== "") state.query = answer.text;
+    // A draft that changed while the prompt was open takes no search.
+    void this.tui.input({
+      title: "Search draft (literal, case-sensitive)",
+      text: state.query,
+      signal: state.signal,
+      onSubmit: (text) => {
+        if (!this.states.has(editor) || editor.state !== original) return;
+        if (text !== "") state.query = text;
         state.searchForward = forward;
         state.searchWhole = false;
         state.operator = operator;
@@ -1463,12 +1474,6 @@ export class ComposerEditor implements ComposerVim {
         this.complete(editor, state, "n", count);
         this.refresh(editor, state);
       },
-    });
-    const dialog = this.tui.dialog({
-      title: () => "Search draft (literal, case-sensitive)",
-      body: field,
-      rows: 5,
-      signal: state.signal,
     });
   }
 }

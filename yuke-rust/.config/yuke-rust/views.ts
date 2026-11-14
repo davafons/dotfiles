@@ -4,11 +4,11 @@ import { Markdown, type TextDocument } from "yuke:tui";
 export function markdown(key: string, text: string): TextDocument {
   const source = new Markdown(text);
   return {
-    key,
+    id: key,
     items: [
       {
-        key: "body",
-        sections: [{ key: "text", kind: "text", text: source.source(), render: (width) => source.rows(width) }],
+        id: "body",
+        sections: [{ id: "text", kind: "text", text: source.source(), render: (width) => source.rows(width) }],
       },
     ],
   };

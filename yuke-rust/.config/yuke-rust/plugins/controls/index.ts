@@ -12,51 +12,58 @@ export function apply(ctx: PluginContext): undefined {
     tui.commands.run(`core:${name}`);
   };
   for (const name of ["exit", "close"]) command(ctx, tui, name, "Exit Yuke", () => run("quit"));
-  command(ctx, tui, "clear", "Start an empty chat", () => ctx.get("chat").newChat());
-  command(ctx, tui, "panel", "Split, close, or keep the current panel", (argument) => {
-    switch (argument.trim()) {
-      case "split":
-        run("split-down");
-        break;
-      case "vsplit":
-        run("split-right");
-        break;
-      case "close":
-        run("close");
-        break;
-      case "only": {
-        const active = tui.panes.active;
-        const panes = new Set(tui.widgets.list().map((mount) => mount.pane));
-        panes.forEach((pane) => {
-          if (pane !== undefined && pane !== active) pane.close();
-        });
-        break;
+  command(ctx, tui, "clear", "Start an empty chat", () => ctx.get("chat").newSession());
+  command(
+    ctx,
+    tui,
+    "panel",
+    "Split, close, or keep the current panel",
+    (argument) => {
+      switch (argument.trim()) {
+        case "split":
+          run("split-down");
+          break;
+        case "vsplit":
+          run("split-right");
+          break;
+        case "close":
+          run("close");
+          break;
+        case "only": {
+          const active = tui.panes.active;
+          const panes = new Set(tui.widgets.list().map((mount) => mount.pane));
+          panes.forEach((pane) => {
+            if (pane !== undefined && pane !== active) pane.close();
+          });
+          break;
+        }
+        default:
+          ctx.notify("info", "Usage: /panel split | vsplit | close | only");
       }
-      default:
-        ctx.notify("info", "Usage: /panel split | vsplit | close | only");
-    }
-  });
+    },
+    "<split|vsplit|close|only>",
+  );
   let armed: TextEditor | undefined;
   const disarm = (): void => {
     armed = undefined;
     tui.status.delete("exit");
   };
-  tui.onFocus(disarm);
-  ctx.get("chat").onChange(disarm);
-  tui.widgets.watch((mount) => {
+  tui.addFocusListener(disarm);
+  ctx.get("chat").addChangeListener(disarm);
+  tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const extension = editor.extend(mount.signal);
-    extension.onMouse(() => {
+    extension.addMouseHandler(() => {
       disarm();
       return false;
     });
-    extension.onPaste(() => {
+    extension.addPasteHandler(() => {
       disarm();
       return false;
     });
-    extension.onChange(disarm);
-    extension.onKey((event) => {
+    extension.addChangeListener(disarm);
+    extension.addKeyHandler((event) => {
       const stroke = strokeOf(event);
       if (stroke !== "ctrl+c") {
         disarm();
@@ -65,7 +72,7 @@ export function apply(ctx: PluginContext): undefined {
         ];
         if (direction !== undefined || (stroke === "ctrl+j" && vim.mode(editor) !== "insert")) {
           vim.cancel(editor);
-          tui.panes.focus(direction ?? "down");
+          tui.panes.moveFocus(direction ?? "down");
           return true;
         }
         return false;

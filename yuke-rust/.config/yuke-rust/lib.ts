@@ -33,8 +33,16 @@ export function command(
   name: string,
   description: string,
   run: (args: string) => void | Promise<void>,
+  argumentHint?: string,
 ): void {
-  tui.commands.add({ name, description, run: (args) => run(typeof args === "string" ? args : "") });
+  // The slash word gives the command a `/name` completion. The personal key handler still runs the draft.
+  tui.commands.add({
+    name,
+    description,
+    slash: name,
+    ...(argumentHint === undefined ? {} : { argumentHint }),
+    run: (args) => run(typeof args === "string" ? args : ""),
+  });
   const remove = ctx.get("personal-commands").add(name, run);
   ctx.signal.addEventListener("abort", remove, { once: true });
 }

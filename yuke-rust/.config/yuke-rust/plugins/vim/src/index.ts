@@ -14,7 +14,7 @@ export function apply(ctx: PluginContext): (() => void) | undefined {
   ctx.provide("composer-vim", composer);
   const transcripts = new Map<TextView, TranscriptEditor>();
   const marks = new Map<string, Map<string, TextPosition>>();
-  const stopWidgets = tui.widgets.watch((mount) => {
+  const stopWidgets = tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (editor instanceof TextView && editor.role === "transcript") {
       const reader = new TranscriptEditor(ctx, tui, mount, editor, registers, marks);
@@ -27,7 +27,7 @@ export function apply(ctx: PluginContext): (() => void) | undefined {
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const stop = composer.bind(editor, mount.signal);
     const extension = editor.extend(mount.signal);
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       if (strokeOf(event) !== "tab" || composer.mode(editor) === "insert" || composer.pending(editor)) return false;
       const transcript = tui.widgets
         .list()
@@ -39,7 +39,7 @@ export function apply(ctx: PluginContext): (() => void) | undefined {
       stop();
     };
   });
-  const stopFocus = tui.onFocus((change) => {
+  const stopFocus = tui.addFocusListener((change) => {
     if (change.previous instanceof TextEditor) composer.cancel(change.previous);
     if (
       (change.pane !== undefined ||

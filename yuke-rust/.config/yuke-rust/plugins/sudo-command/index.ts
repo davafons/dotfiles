@@ -111,12 +111,12 @@ export async function run(
 
 /** Register a root command tool. Each execution needs local approval and masked entry; headless calls run nothing. */
 export function session(s: SessionContext): undefined {
-  s.tools.define({
+  s.tools.add({
     name: "sudo_command",
     description:
       "Request one root command. Supply an absolute executable and separate arguments. Explain why root is needed. The user approves each command and enters its password in a masked local field. Never request a password in chat or tool arguments. Stdin is closed. Password retries stay in this call. Do not restart a rejected or canceled command without user permission.",
     concurrency: "serial",
-    parameters: {
+    inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
@@ -140,7 +140,7 @@ export function session(s: SessionContext): undefined {
       if (args.cwd !== undefined && (!args.cwd || args.cwd.length > 8192 || /[\x00-\x1f\x7f]/u.test(args.cwd)))
         throw new Error("Invalid working directory.");
       const cwd =
-        args.cwd === undefined ? context.folder : args.cwd.startsWith("/") ? args.cwd : `${context.folder}/${args.cwd}`;
+        args.cwd === undefined ? context.cwd : args.cwd.startsWith("/") ? args.cwd : `${context.cwd}/${args.cwd}`;
       if (!(await stat(cwd, { signal: context.signal })).isDirectory)
         throw new Error("The working directory is not a directory.");
       const approved = await s.ask(

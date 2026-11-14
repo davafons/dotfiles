@@ -1,4 +1,4 @@
-import { assert, createHost, equal, test } from "yuke:test";
+import { assert, assertEquals, createHost, test } from "yuke:test";
 import type { NavigationBridge } from "../.config/yuke-rust/navigation.ts";
 import { apply } from "../.config/yuke-rust/plugins/herdr/index.ts";
 
@@ -8,6 +8,7 @@ test("Herdr navigation uses the private test server and preserves the session UU
     plugins: [
       {
         name: "navigation",
+        provides: ["personal-navigation"],
         apply: (ctx) => {
           ctx.provide("personal-navigation", {
             installBridge: (bridge) => {
@@ -26,7 +27,7 @@ test("Herdr navigation uses the private test server and preserves the session UU
   });
   const bridge = shared.bridge;
   assert(bridge !== undefined);
-  equal(await bridge.focusSession("019a3d2b-1234-7000-8000-000000000002"), true);
-  equal(await bridge.focusSession("019a3d2b-1234-7000-8000-000000000003"), false);
+  assertEquals(await bridge.focusSession("019a3d2b-1234-7000-8000-000000000002"), true);
+  assertEquals(await bridge.focusSession("019a3d2b-1234-7000-8000-000000000003"), false);
   await bridge.openFile("file:///tmp/a%20b.rs#L7C2", "/tmp");
 });

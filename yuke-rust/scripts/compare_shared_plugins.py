@@ -11,7 +11,8 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--upstream', type=Path, default=Path.home() / 'workspace/yuke-rust-plugins-upstream')
+parser.add_argument('--upstream', type=Path, default=Path.home() / 'workspace/yuke-rust-plugins-upstream',
+                    help='A tree of lostcoords/yuke-plugins at the pinned commit (c6324ac), such as a git archive.')
 parser.add_argument('--binary', type=Path, default=Path.home() / '.local/lib/yuke-rust/bin/yuke')
 parser.add_argument('--output', type=Path, default=Path.home() / 'workspace/yuke/target/shared-plugin-comparison')
 args = parser.parse_args()
@@ -46,7 +47,7 @@ report['vim_consumers'] = sorted(
 (output / 'source.diff').write_text(''.join(patches))
 
 contract = '''import type { PluginContext } from "yuke:plugins";
-import { assert, createFrame, createHost, equal, reply, test } from "yuke:test";
+import { assert, assertEquals, createFrame, createHost, reply, test } from "yuke:test";
 import { TextEditor } from "yuke:tui";
 import type { ComposerVim } from __SERVICE__;
 import { apply as vimApply } from __VIM__;
@@ -72,8 +73,8 @@ test("other plugins can observe, change and cancel composer Vim modes", () => {
   service.cancel(editor);
   assert(!service.pending(editor));
   service.setMode(editor, "insert");
-  equal(service.mode(editor), "insert");
-  equal(modes, ["normal", "insert"]);
+  assertEquals(service.mode(editor), "insert");
+  assertEquals(modes, ["normal", "insert"]);
   stop();
 });
 
@@ -120,23 +121,27 @@ parent_view_test = (scaffold + '\n' + parent_view_test).replace(
     '"../src/index.ts"', json.dumps(str(plugins / 'agent-tools/src/index.ts'))).replace(
     '"../src/run-log.ts"', json.dumps(str(plugins / 'agent-tools/src/run-log.ts'))).replace(
     'const SPAWN = {', 'const SPAWN = { agent: "dav-agent",').replace('spawn_subagent', 'spawn_agent')
-parent_view_test = parent_view_test.replace('equal(viewsOfParent(), 1);', 'const firstViews = viewsOfParent();').replace(
-    'equal(viewsOfParent(), 2);', 'equal([firstViews, viewsOfParent()], [1, 2]);')
+parent_view_test = parent_view_test.replace('assertEquals(viewsOfParent(), 1);', 'const firstViews = viewsOfParent();').replace(
+    'assertEquals(viewsOfParent(), 2);', 'assertEquals([firstViews, viewsOfParent()], [1, 2]);')
 (output / 'personal-parent-view.test.ts').write_text(parent_view_test)
 
 checks = [
     ('upstream-vim', upstream / 'plugins/vim/tests', True),
     ('personal-vim', plugins / 'vim/tests', True),
-    ('upstream-subagents', upstream / 'plugins/subagents/tests', True),
+    ('upstream-subagents', upstream / 'plugins/subagents/tests', False),
     ('personal-contract', output / 'personal-contract.test.ts', True),
     ('upstream-contract', output / 'upstream-contract.test.ts', False),
     ('upstream-transcript', output / 'upstream-transcript.test.ts', False),
     ('personal-parent-view', output / 'personal-parent-view.test.ts', False),
 ]
+# Upstream c6324ac predates the plugin API of the port binary (a3b9526). Its subagents scaffold writes
+# JSON.stringify(undefined) as the run log when a test gives no runs, so each such session setup fails to parse it.
+SCAFFOLD = "unexpected token: 'undefined'"
 expected_failures = {
-    'upstream-contract': ('0 passed, 2 failed', ['Vim does not provide the service', 'did not receive the configured role prompt']),
+    'upstream-subagents': ('14 passed, 41 failed', [SCAFFOLD]),
+    'upstream-contract': ('0 passed, 2 failed', ['Vim does not provide the service', SCAFFOLD]),
     'upstream-transcript': ('0 passed, 6 failed', ['at reader']),
-    'personal-parent-view': ('0 passed, 1 failed', ['expected 1, got 2']),
+    'personal-parent-view': ('0 passed, 1 failed', [SCAFFOLD]),
 }
 failed = False
 for name, path, expected_success in checks:

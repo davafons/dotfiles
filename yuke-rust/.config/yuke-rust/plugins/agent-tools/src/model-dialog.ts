@@ -70,7 +70,7 @@ export async function openModelDialog(tui: Tui, list: ModelList, fail: (text: st
 
   const body: View = {
     focusable: true,
-    key(event) {
+    onKey(event) {
       const stroke = strokeOf(event);
       const down = stroke === "down";
       if (!down && stroke !== "up") return false;
@@ -100,7 +100,7 @@ export async function openModelDialog(tui: Tui, list: ModelList, fail: (text: st
   };
 
   tui.dialog({
-    title: () => "Subagent models",
+    title: "Subagent models",
     body,
     keys: [
       { key: "a", label: "add", run: () => run(add()) },

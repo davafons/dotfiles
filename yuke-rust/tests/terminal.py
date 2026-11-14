@@ -64,9 +64,9 @@ export function apply(ctx) {
   if (tui === undefined) return;
   const record = (notice) => { if (notice.level === "error") void writeTextFile(NOTICES, JSON.stringify(notice) + "\\n", { append: true }); };
   tui.notices.list().forEach(record);
-  tui.notices.on(record);
+  tui.notices.addListener(record);
   let recorded = false;
-  tui.widgets.watch((mount) => {
+  tui.widgets.addWatcher((mount) => {
     if (mount.widget.kind === "editor" && mount.widget.role !== "composer") void writeTextFile(READY, "dialog-editor\\n", { append: true });
     if (recorded || mount.widget.kind !== "editor" || mount.widget.role !== "composer") return;
     recorded = true;
@@ -76,16 +76,24 @@ export function apply(ctx) {
 '''.replace("READY", json.dumps(str(ready))).replace("NOTICES", json.dumps(str(notices))))
     plugins = []
     for item in json.loads((profile / "config.json").read_text())["plugins"]:
-        if item == "./plugins/models":
-            plugins.append({"path": str(config / item), "options": {"startupModel": "fixture/fixture", "startupEffort": "medium"}})
+        if isinstance(item, dict) and "git" in item:
+            plugins.append(item)
+            continue
+        path = item["path"] if isinstance(item, dict) else item
+        if path == "./plugins/models":
+            plugins.append({"path": str(config / path), "options": {"startupModel": "fixture/fixture", "startupEffort": "medium"}})
+        elif isinstance(item, dict):
+            plugins.append(dict(item, path=str(config / path)))
         else:
-            plugins.append(str(config / item))
+            plugins.append(str(config / path))
     (config / "config.json").write_text(json.dumps({"plugins": plugins + [str(probe)]}))
     environment = dict(
         PATH=os.environ["PATH"], HOME=str(root), YUKE_APPNAME="yuke", XDG_CONFIG_HOME=str(root / "config"),
         XDG_DATA_HOME=str(root / "data"), XDG_CACHE_HOME=str(root / "cache"),
         YUKE_EXECUTABLE=binary, TERM="xterm-256color", COLORTERM="truecolor",
     )
+    # Git plugins install into the private data folder at their plugins.lock commits.
+    subprocess.run([binary, "plugin", "sync", "--locked"], env=environment, check=True, capture_output=True)
     spec = importlib.util.spec_from_file_location('inbox', config / 'helpers/yuke-clarify-store.py')
     inbox = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(inbox)
@@ -201,7 +209,12 @@ export function apply(ctx) {
         wait_for(contains("│"))
         os.write(terminal, b"/panel only\r")
         wait_for(lambda rows: not any("│" in row for row in rows))
-        os.write(terminal, b"/clear\r")
+        # Personal commands and the btw Git plugin show as slash completions.
+        os.write(terminal, b"/pan")
+        wait_for(contains("<split|vsplit|close|only>"))
+        os.write(terminal, b"\x03i/bt")
+        wait_for(contains("btw:history"))
+        os.write(terminal, b"\x03i/clear\r")
         wait_for(contains("Message"))
         wait_for(lambda rows: ready.exists())
         mounts = ready.read_text().count("mounted\n")
@@ -297,7 +310,7 @@ export function apply(ctx) {
             assert database.execute('SELECT count(*) FROM sessions WHERE cwd=?', (str((root / 'work/cd folder').resolve()),)).fetchone()[0] == 1
         assert requests == [], f"Unexpected model requests: {requests}"
         assert not notices.exists() or notices.read_text() == "", notices.read_text() if notices.exists() else ""
-        print("PASS real terminal: profile, dashboard, Vim, paths, panes, reload, recorded commands, masked sudo, context, usage, tasks, search, retained inbox adoption, workspace switch; zero model requests")
+        print("PASS real terminal: profile, dashboard, Vim, paths, panes, reload, recorded commands, masked sudo, context, usage, tasks, search, retained inbox adoption, workspace switch, slash completions, btw Git plugin; zero model requests")
     finally:
         Path(os.environ.get("YUKE_VIM_TERMINAL_LOG", "/tmp/yuke-vim-terminal.log")).write_bytes(transcript)
         os.kill(process, signal.SIGTERM)

@@ -44,8 +44,10 @@ There is no `~/.config/yuke-rust/mcp.json`. Shared MCP servers are in `~/.mcport
 
 ## Plugins
 
-`config.json` loads 26 local plugins through public APIs.
-The Vim and subagent implementations started from upstream `lostcoords/yuke-plugins`. `SHARED-PLUGIN-COMPARISON.md` lists what the personal versions add.
+`config.json` loads 26 local plugins through public APIs, and the upstream `btw` plugin as a Git plugin pinned in `plugins.lock`.
+The Vim and subagent implementations are upstream `lostcoords/yuke-plugins` at `c6324ac` plus a personal delta. `SHARED-PLUGIN-COMPARISON.md` lists that delta and why titles and mailbox are not loaded.
+Commands registered through `lib.ts` show as `/word` completions.
+After linking a profile with a changed `plugins.lock`, run `yuke plugin sync --locked` before `/reload`.
 
 | Plugin | Behavior |
 | --- | --- |
@@ -58,11 +60,11 @@ The Vim and subagent implementations started from upstream `lostcoords/yuke-plug
 | controls | Pane commands, directional focus, new chat, layered Ctrl+C |
 | models | Ready-model and effort pickers, persistent aliases and their editor, startup preferences |
 | prompt-history | Saved user prompts, draft restoration, history picker and keys |
-| path-completion | Relative and home paths, quoting, directory completion for `/cd` |
+| path-completion | Relative and home paths, quoting, directory completion for `/cd`, through the chat completion list in Insert mode |
 | workspace | `/pwd`, canonical `/cd`, destination instructions, idle and single-pane checks |
 | session-fork | Completed-event forks, optional destination, source preservation |
 | agent-tools | Explicit delegation, general, dav-agent and reviewer roles, receipts, reports, campaign grants |
-| dollar-skills | Multiple explicit skills, escaped and code exclusions, original visible input |
+| dollar-skills | Multiple explicit skills, `$skill` completions, escaped and code exclusions, original visible input |
 | loop | Session-bound timer, stop, cancellation, failure and reload cleanup |
 | build-status | Version of the running native host |
 | sessions-reworked | Workspace and global session picker, pagination, deletion, owner navigation |
@@ -85,7 +87,7 @@ python3 ~/dotfiles/yuke-rust/scripts/verify.py --source ~/workspace/yuke --binar
 ```
 
 Add `--native` to also run the native workspace checks.
-The checks include TypeScript, Biome, the plugin-host tests, the Vim tests, the Python store tests, and a real terminal check in a private profile.
+The checks include TypeScript, Biome, the plugin-host tests, the Vim tests, the Python store tests, a real terminal check in a private profile that syncs its Git plugins, and `tests/check-agent-tools.py`, which routes the four agent roles through `yuke --rpc` against a scripted local provider.
 The terminal check makes no model requests and uses no real credentials.
 `make doctor PROFILE=mb` checks that the profile is linked, that no link dangles, and that tracked files hold no secrets.
 

@@ -1,4 +1,4 @@
-import { assert, equal, test } from "yuke:test";
+import { assert, assertEquals, test } from "yuke:test";
 import { stdio } from "../.config/yuke-rust/stdio.ts";
 
 test("private subprocess stdin and split Unicode output cross the socket without entering process output", async () => {
@@ -17,7 +17,7 @@ test("private subprocess stdin and split Unicode output cross the socket without
       for (;;) {
         const event = await connection.read();
         if ("code" in event) {
-          equal(event.code, 0);
+          assertEquals(event.code, 0);
           break;
         }
         chunks.push(event.text);
@@ -38,12 +38,12 @@ test("a private subprocess flushes an incomplete final UTF-8 character", async (
       for (;;) {
         const event = await connection.read();
         if ("code" in event) {
-          equal(event.code, 0);
+          assertEquals(event.code, 0);
           break;
         }
         text += event.text;
       }
     },
   );
-  equal(text, "hello�");
+  assertEquals(text, "hello�");
 });

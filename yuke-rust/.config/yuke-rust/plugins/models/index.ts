@@ -141,10 +141,10 @@ export async function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): Pr
   if ((startupModel === "") !== (startupEffort === "")) throw new Error("Set startupModel and startupEffort together.");
   if (startupModel !== "") {
     let started = false;
-    tui.widgets.watch((mount) => {
+    tui.widgets.addWatcher((mount) => {
       if (started || mount.widget.role !== "composer") return;
       started = true;
-      tui.after(0, () => {
+      tui.addTimer(0, () => {
         void chat
           .chooseModel(async (context) => {
             const row = resolve({ alias: "startup", model: startupModel }, context.providers);
@@ -162,23 +162,33 @@ export async function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): Pr
   }
   if (stopPicker !== undefined) ctx.signal.addEventListener("abort", stopPicker, { once: true });
   if (ctx.options.picker !== false) {
-    command(ctx, tui, "model", "Choose a model or alias", (query) =>
-      chat.chooseModel((context) => pick(context, query.trim())),
+    command(
+      ctx,
+      tui,
+      "model",
+      "Choose a model or alias",
+      (query) => chat.chooseModel((context) => pick(context, query.trim())),
+      "[model]",
     );
-    tui.keys.bind(ctx.options.modelKey ?? "ctrl+x m", "model", { in: "chat" });
+    tui.keys.add(ctx.options.modelKey ?? "ctrl+x m", "model", { in: "chat" });
   }
   if (ctx.options.effortPicker !== false) {
-    command(ctx, tui, "effort", "Choose the reasoning effort", (query) =>
-      chat.chooseModel((context) => pick(context, query.trim(), true)),
+    command(
+      ctx,
+      tui,
+      "effort",
+      "Choose the reasoning effort",
+      (query) => chat.chooseModel((context) => pick(context, query.trim(), true)),
+      "[level]",
     );
-    tui.keys.bind(ctx.options.effortKey ?? "ctrl+x e", "effort", { in: "chat" });
+    tui.keys.add(ctx.options.effortKey ?? "ctrl+x e", "effort", { in: "chat" });
   }
   if (ctx.options.aliases === false) return;
   for (const preset of aliases.presets) {
     command(ctx, tui, preset.alias, `Use ${preset.alias}`, () =>
       chat.chooseModel((context) => pick(context, preset.alias)),
     );
-    if (preset.key !== undefined) tui.keys.bind(preset.key, preset.alias, { in: "chat" });
+    if (preset.key !== undefined) tui.keys.add(preset.key, preset.alias, { in: "chat" });
   }
   command(ctx, tui, "model-aliases", "Edit persistent model aliases", () => {
     const editor = new TextEditor({

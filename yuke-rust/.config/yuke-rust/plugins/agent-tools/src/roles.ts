@@ -9,7 +9,7 @@ export const AGENTS = {
   general: {
     description: "A capable general agent. Give it one self-contained task.",
     model: "openai-codex/gpt-6-luna",
-    reasoning: undefined,
+    reasoning: "medium",
     prompt: undefined,
   },
   "dav-agent": { ...davAgent, model: undefined, reasoning: undefined },

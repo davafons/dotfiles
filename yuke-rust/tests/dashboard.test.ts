@@ -1,4 +1,4 @@
-import { assert, createFrame, equal, test } from "yuke:test";
+import { assert, assertEquals, createFrame, test } from "yuke:test";
 import { Dashboard } from "../.config/yuke-rust/plugins/dashboard/view.ts";
 
 const actions = [
@@ -19,13 +19,13 @@ test("the dashboard centers the original logo and context with clickable shortcu
   view.model("gpt-6.1-sol medium");
   using frame = createFrame({ width: 80, height: 30 }, () => view);
   const rows = frame.frame.cells.map((row) => row.map((cell) => cell.text).join(""));
-  equal(rows.filter((row) => row.includes("██") || row.includes("╚═╝")).length, 6);
+  assertEquals(rows.filter((row) => row.includes("██") || row.includes("╚═╝")).length, 6);
   const workspace = rows.find((row) => row.includes("~/workspace/project"));
   assert(workspace !== undefined);
-  equal(workspace.indexOf("~/workspace/project"), 30);
+  assertEquals(workspace.indexOf("~/workspace/project"), 30);
   assert(rows.some((row) => row.includes("gpt-6.1-sol medium")));
   const menu = rows.findIndex((row) => row.includes("Sign in"));
-  equal([rows[menu]?.indexOf("Sign in"), rows[menu]?.lastIndexOf("l")], [13, 66]);
+  assertEquals([rows[menu]?.indexOf("Sign in"), rows[menu]?.lastIndexOf("l")], [13, 66]);
   frame.mouse({
     type: "mouse",
     action: "press",
@@ -34,7 +34,7 @@ test("the dashboard centers the original logo and context with clickable shortcu
     row: menu + 3,
     modifiers: { shift: false, alt: false, ctrl: false, super: false, hyper: false, meta: false },
   });
-  equal(invoked, ["work"]);
+  assertEquals(invoked, ["work"]);
   frame.mouse({
     type: "mouse",
     action: "press",
@@ -43,7 +43,7 @@ test("the dashboard centers the original logo and context with clickable shortcu
     row: menu + 3,
     modifiers: { shift: false, alt: false, ctrl: false, super: false, hyper: false, meta: false },
   });
-  equal(invoked, ["work"]);
+  assertEquals(invoked, ["work"]);
 });
 
 test("the dashboard uses its compact layout after resize and refreshes its model context", () => {

@@ -59,7 +59,9 @@ A task has at most one owner session. A session can own only one task across all
 
 Another session cannot change an owned task's title, status, or notes. It can post messages.
 
-The board does not release claims automatically. A claim stays until its owner releases it, the task is done, or the operator unassigns it.
+The board and the `list` and `get` reads release a claim automatically only when its owner is closed. They walk each owner session to its native tree root, and treat a session that this process has open as open. The store then reads the root's session lock and the Herdr pane inventory. A claim is released only when the lock is free, Herdr is reachable and shows no live Yuke pane for the session, and both still agree after a grace period. Idle, blocked, unknown, and deleted sessions keep their claims. A released task gets a system message, and its status and notes stay. Outside Herdr nothing is released automatically.
+
+Otherwise a claim stays until its owner releases it, the task is done, or the operator unassigns it.
 
 Claims coordinate task records. They are not file locks or a source-code sandbox. Agents still need distinct scopes and checkouts where appropriate.
 
@@ -98,7 +100,9 @@ The Issues and PRs tabs list items through the authenticated `gh` CLI. They list
 
 With a GitHub item selected, Alt+N opens a new task with that item's title and URL.
 
-`github_work` gives agents the same reads. `list` accepts `kind` (`issues` or `pulls`), `state` (`open`, `closed`, or `all`), and `cursor`.
+`github_work` gives agents the same reads. `list` reads the checkout's repository and accepts `kind` (`issues` or `pulls`), `state` (`open`, `closed`, or `all`), and `cursor`. `get` takes `number` with `kind`, or a github.com issue or PR `url` such as a task's `github_url`. A URL sets the repository and kind.
+
+The details view of a GitHub row reads the item by its URL.
 
 The plugin never posts reviews, comments, merges, or other GitHub writes. It supports github.com repositories only.
 

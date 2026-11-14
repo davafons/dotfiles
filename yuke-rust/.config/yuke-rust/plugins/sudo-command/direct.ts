@@ -10,7 +10,7 @@ import { run } from "./index.ts";
 export function install(ctx: PluginContext, tui: Tui): void {
   const chat = ctx.get("chat"),
     vim = ctx.get("composer-vim");
-  tui.widgets.watch((mount) => {
+  tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const extension = editor.extend(mount.signal);
@@ -22,13 +22,13 @@ export function install(ctx: PluginContext, tui: Tui): void {
       running = true;
       const release = new AbortController();
       try {
-        const id = await chat.start();
+        const id = await chat.ensureSession();
         if (id === undefined || editor.state !== draft || mount.signal.aborted) return;
         const cwd = chat.folder(mount.pane.view);
         if (cwd === undefined) throw new Error("The command has no working directory.");
         const handle = await ctx
           .get("sessions")
-          .open(id, { tail: 0, signal: AbortSignal.any([ctx.signal, release.signal]), event: () => {} });
+          .open(id, { tail: 0, signal: AbortSignal.any([ctx.signal, release.signal]), onEvent: () => {} });
         editor.reset(EMPTY);
         let output = "",
           status = "Running…",
@@ -39,12 +39,12 @@ export function install(ctx: PluginContext, tui: Tui): void {
         const dialog = tui.dialog({
           title: () => `Direct command · ${status}`,
           body: view,
-          rows: Math.max(8, tui.height - 2),
+          rows: Math.max(8, tui.size.height - 2),
           signal: ctx.signal,
           keys: [
             { key: "ctrl+c", label: "stop command", run: () => controller.abort() },
-            { key: "page_up", label: "scroll up", run: () => view.scroll.scrollBy(-10) },
-            { key: "page_down", label: "scroll down", run: () => view.scroll.scrollBy(10) },
+            { key: "pageup", label: "scroll up", run: () => view.scroll.scrollBy(-10) },
+            { key: "pagedown", label: "scroll down", run: () => view.scroll.scrollBy(10) },
           ],
         });
         const signal = AbortSignal.any([controller.signal, dialog.signal]);
@@ -150,7 +150,7 @@ export function install(ctx: PluginContext, tui: Tui): void {
         }
         const receipt = `Direct user command. This is a completed local action, not a request for an assistant reply.\nDirectory: ${cwd}\nCommand: ${source}\nStatus: ${status}\nExit code: ${code}\n\nOutput (last 48000 characters):\n${output}`;
         try {
-          await handle.record(`!${source}\n${status}\n\n${output}`, receipt);
+          await handle.record({ display: `!${source}\n${status}\n\n${output}`, text: receipt });
         } catch (error) {
           status = `The command attempt ended. Saving its receipt failed. Do not rerun it to repair this save. ${String(error)}`;
           paint();
@@ -161,7 +161,7 @@ export function install(ctx: PluginContext, tui: Tui): void {
         running = false;
       }
     };
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       if (!editor.state.text.startsWith("!") || strokeOf(event) !== "enter" || vim?.pending(editor)) return false;
       if (running) return true;
       void execute().catch((error: unknown) => ctx.notify("error", String(error)));

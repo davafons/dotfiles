@@ -1,5 +1,5 @@
 import { env } from "yuke:process";
-import { assert, createFrame, equal, test } from "yuke:test";
+import { assert, assertEquals, createFrame, test } from "yuke:test";
 import { Markdown, TextEditor, TextView } from "yuke:tui";
 
 const iterations = Number(env.get("YUKE_BENCH_ITERATIONS") ?? 300);
@@ -10,10 +10,10 @@ test("measure real transcript frames with scrolling and source mapping", () => {
   const markdown = new Markdown(text);
   const view = new TextView({
     document: {
-      key: "bench",
+      id: "bench",
       items: Array.from({ length: 120 }, (_, index) => ({
-        key: `i${index}`,
-        sections: [{ key: "body", kind: "text" as const, text, render: (width: number) => markdown.rows(width) }],
+        id: `i${index}`,
+        sections: [{ id: "body", kind: "text" as const, text, render: (width: number) => markdown.rows(width) }],
       })),
     },
   });
@@ -27,7 +27,7 @@ test("measure real transcript frames with scrolling and source mapping", () => {
     assert(position !== undefined);
     assert(view.rows.point(position) !== undefined);
   }
-  equal(cells, iterations * 30);
+  assertEquals(cells, iterations * 30);
 });
 
 test("measure real composer input and redraw", () => {
@@ -40,5 +40,5 @@ test("measure real composer input and redraw", () => {
     frame.key("backspace");
   }
   assert(editor.state.text.startsWith("A draft"));
-  equal(editor.state.text.length, "A draft with enough words to wrap. ".repeat(30).length);
+  assertEquals(editor.state.text.length, "A draft with enough words to wrap. ".repeat(30).length);
 });

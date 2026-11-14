@@ -1,5 +1,5 @@
 import type { PluginContext } from "yuke:plugins";
-import type { KeyEvent, TextPosition, Tui, WidgetMount } from "yuke:tui";
+import type { KeyEvent, PlacedWidget, TextPosition, Tui } from "yuke:tui";
 import { graphemes, measure, strokeOf, TextEditor, type TextView } from "yuke:tui";
 import { fileReferenceAt } from "../../herdr/file-locations.js";
 import type { Registers } from "./registers.ts";
@@ -32,7 +32,7 @@ export class TranscriptEditor {
 
   private readonly ctx: PluginContext;
   private readonly tui: Tui;
-  private readonly mount: WidgetMount;
+  private readonly mount: PlacedWidget;
   private readonly view: TextView;
   private readonly registers: Registers;
   private readonly marks: Map<string, Map<string, TextPosition>>;
@@ -40,7 +40,7 @@ export class TranscriptEditor {
   constructor(
     ctx: PluginContext,
     tui: Tui,
-    mount: WidgetMount,
+    mount: PlacedWidget,
     view: TextView,
     registers: Registers,
     marks: Map<string, Map<string, TextPosition>>,
@@ -51,14 +51,14 @@ export class TranscriptEditor {
     this.view = view;
     this.registers = registers;
     this.marks = marks;
-    this.documentKey = view.document.key;
+    this.documentKey = view.document.id;
     this.extension = view.extend(mount.signal);
     this.extension.setAppearance({ cursorShape: "block" });
-    this.extension.onKey((event) => this.key(event), "beforeKeymap");
-    this.extension.onChange((event) => {
+    this.extension.addKeyHandler((event) => this.key(event), "beforeKeymap");
+    this.extension.addChangeListener((event) => {
       if (event.kind === "document" || event.kind === "layout") this.dirty = true;
-      if (view.document.key !== this.documentKey) {
-        this.documentKey = view.document.key;
+      if (view.document.id !== this.documentKey) {
+        this.documentKey = view.document.id;
         this.last = undefined;
         this.anchor = undefined;
         this.previousVisual = undefined;
@@ -183,7 +183,7 @@ export class TranscriptEditor {
     if (this.view.compare(from, to) > 0) [from, to] = [to, from];
     const value = this.view.text({ from, to }, source ? "source" : "display");
     this.registers.save(value, lines, "y", this.register);
-    if (this.register !== "_") this.tui.copy(value);
+    if (this.register !== "_") this.tui.clipboard.writeText(value);
     this.remember();
     this.anchor = undefined;
     this.lines = false;
@@ -312,8 +312,8 @@ export class TranscriptEditor {
     if (this.phase === "mark") {
       const id =
         this.mount.pane === undefined
-          ? this.view.document.key
-          : (this.ctx.get("chat").session(this.mount.pane.view) ?? this.view.document.key);
+          ? this.view.document.id
+          : (this.ctx.get("chat").session(this.mount.pane.view) ?? this.view.document.id);
       let marks = this.marks.get(id);
       if (this.prefix === "m") {
         if (marks === undefined) {
@@ -414,8 +414,8 @@ export class TranscriptEditor {
     }
     if (motion === "gf") {
       const section = this.view.document.items
-        .find((item) => item.key === origin.item)
-        ?.sections.find((section) => section.key === origin.section);
+        .find((item) => item.id === origin.item)
+        ?.sections.find((section) => section.id === origin.section);
       const ref = section === undefined ? null : fileReferenceAt(section.text, origin.offset);
       if (ref !== null)
         void this.ctx
@@ -514,7 +514,7 @@ export class TranscriptEditor {
         lines = true;
       } else if (motion === "J" || motion === "K") {
         const sections = this.view.document.items.flatMap((item) =>
-          item.sections.map((section) => ({ item: item.key, section: section.key, offset: 0 })),
+          item.sections.map((section) => ({ item: item.id, section: section.id, offset: 0 })),
         );
         const index = sections.findIndex((value) => value.item === origin.item && value.section === origin.section);
         let next = index;

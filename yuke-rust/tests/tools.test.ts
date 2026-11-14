@@ -1,5 +1,5 @@
 import { mkdir, writeTextFile } from "yuke:fs";
-import { assert, createHost, equal, folder, reply, settled, test } from "yuke:test";
+import { assert, assertEquals, createHost, folder, reply, test, waitForSettled } from "yuke:test";
 import { apply as agentApply, session as agentSession } from "../.config/yuke-rust/plugins/agent-tools/src/index.ts";
 import { session as skillSession } from "../.config/yuke-rust/plugins/dollar-skills/index.ts";
 import { session as personalSession } from "../.config/yuke-rust/plugins/personal/index.ts";
@@ -15,7 +15,7 @@ test("the personal prompt replaces the base and retains workspace instructions",
     replies: [reply.text("done")],
   });
   const session = await host.openSession();
-  await session.send("Check the prompt.");
+  await session.sendMessage("Check the prompt.");
   const system = host.requests[0]?.system;
   assert(system !== undefined);
   assert(system.includes("Request several independent reads or searches in one response."));
@@ -46,7 +46,7 @@ test("project tasks retain scope through claimed progress and completion", async
   const read = await session.call("project_work", { action: "get", id: task.id });
   assert(!read.isError, read.text);
   const saved = JSON.parse(read.text).task;
-  equal([saved.notes, saved.status, saved.owner_session], ["Keep scope.", "done", ""]);
+  assertEquals([saved.notes, saved.status, saved.owner_session], ["Keep scope.", "done", ""]);
   const stale = await session.call("project_work", {
     action: "notes",
     id: task.id,
@@ -104,19 +104,19 @@ test("two explicit skills reach the model while the visible prompt keeps its ori
   });
   const session = await host.openSession({ cwd });
   const input = "Use $migration-alpha and $migration-beta. Keep `$ignored` literal.";
-  await session.send(input);
+  await session.sendMessage(input);
   const request = host.requests[0];
   assert(request !== undefined);
   const text = request.messages.map((message) => message.text).join("\n");
   assert(text.includes("Instructions for migration-alpha.") && text.includes("Instructions for migration-beta."), text);
   const entry = session.transcript.entries.find((item) => item.kind === "input");
   assert(entry?.kind === "input");
-  equal(entry.content, [{ user_text: input }]);
+  assertEquals(entry.content, [{ kind: "userText", text: input }]);
 });
 
 test("clarification tools persist pending receipts without answering or starting a model request", async () => {
   await using host = await createHost({
-    plugins: [{ name: "yuke-clarify", apply: clarifyApply, session: clarifySession }],
+    plugins: [{ name: "yuke-clarify", apply: clarifyApply, session: clarifySession, provides: ["yuke-clarify"] }],
   });
   const session = await host.openSession();
   const question = await session.call("ask_question", {
@@ -125,26 +125,26 @@ test("clarification tools persist pending receipts without answering or starting
     options: [{ label: "Fresh chats", recommended: true }, { label: "Import" }],
   });
   assert(!question.isError, question.text);
-  equal(JSON.parse(question.text).status, "pending");
+  assertEquals(JSON.parse(question.text).status, "pending");
   const batch = await session.call("request_user_input", {
     questions: [
       { id: "storage", header: "Storage", question: "Use a new store?", options: [{ label: "Yes" }, { label: "No" }] },
     ],
   });
   assert(!batch.isError, batch.text);
-  equal(JSON.parse(batch.text).status, "pending");
-  equal(host.requests.length, 0);
+  assertEquals(JSON.parse(batch.text).status, "pending");
+  assertEquals(host.requests.length, 0);
 });
 
 test("declining a sudo request never launches its executable", async () => {
   await using host = await createHost({
     plugins: [{ name: "sudo-command", session: sudoSession }],
-    answer: () => [{ id: "approve", values: ["Do not run"] }],
+    onQuestion: () => [{ id: "approve", values: ["Do not run"] }],
   });
   const session = await host.openSession();
   const result = await session.call("sudo_command", { argv: ["/usr/bin/false"], reason: "Exercise the decline path." });
   assert(result.isError && result.text.includes("No command ran"), result.text);
-  equal(host.requests.length, 0);
+  assertEquals(host.requests.length, 0);
 });
 
 test("recorded direct work reaches the next prompt without starting a model turn", async () => {
@@ -158,7 +158,7 @@ test("recorded direct work reaches the next prompt without starting a model turn
           native = ctx.get("sessions");
         },
         session: (s) => {
-          s.hook("input.before", () => {
+          s.addHook("input.before", () => {
             admissions += 1;
             return undefined;
           });
@@ -171,16 +171,16 @@ test("recorded direct work reaches the next prompt without starting a model turn
   assert(native !== undefined);
   const controller = new AbortController();
   try {
-    const handle = await native.open(source.id, { tail: 0, signal: controller.signal, event: () => {} });
-    await handle.record("!pwd\n/workspace", "Completed direct command: /workspace");
-    await handle.idle();
-    equal([host.requests.length, admissions], [0, 0]);
-    await source.send("Use the earlier command output.");
-    equal(admissions, 1);
+    const handle = await native.open(source.id, { tail: 0, signal: controller.signal, onEvent: () => {} });
+    await handle.record({ display: "!pwd\n/workspace", text: "Completed direct command: /workspace" });
+    await handle.waitForIdle();
+    assertEquals([host.requests.length, admissions], [0, 0]);
+    await source.sendMessage("Use the earlier command output.");
+    assertEquals(admissions, 1);
     assert(JSON.stringify(host.requests[0]?.messages).includes("Completed direct command: /workspace"));
     const entry = source.transcript.entries.find((entry) => entry.kind === "input");
     assert(entry?.kind === "input");
-    equal(entry.content, [{ user_text: "!pwd\n/workspace" }]);
+    assertEquals(entry.content, [{ kind: "userText", text: "!pwd\n/workspace" }]);
   } finally {
     controller.abort();
   }
@@ -224,7 +224,7 @@ test("a destination fork uses the target instructions and leaves the source prom
     originalPrompt.includes("ALPHA_SOURCE_ONLY") && !originalPrompt.includes("BETA_DESTINATION_ONLY"),
     "The source prompt changed.",
   );
-  equal(host.requests.length, 0);
+  assertEquals(host.requests.length, 0);
 });
 
 test("a recurring tick reaches its owning session once and stops when requested", async () => {
@@ -245,7 +245,7 @@ test("a recurring tick reaches its owning session once and stops when requested"
     await new Promise<void>((resolve) => setTimeout(resolve, 20));
   const stopped = await session.call("loop", { action: "stop" });
   assert(!stopped.isError, stopped.text);
-  equal(host.requests.length, 1);
+  assertEquals(host.requests.length, 1);
   assert(JSON.stringify(host.requests[0]?.messages).includes("Check the exit condition for the fixture."));
 });
 
@@ -255,29 +255,29 @@ test("round hooks filter offered tools without a request to an external provider
       {
         name: "filter",
         session: (s) => {
-          s.tools.define({
+          s.tools.add({
             name: "visible",
             description: "Visible fixture",
             concurrency: "parallel",
-            parameters: { type: "object", properties: {} },
+            inputSchema: { type: "object", properties: {} },
             execute: () => "ok",
           });
-          s.tools.define({
+          s.tools.add({
             name: "hidden",
             description: "Hidden fixture",
             concurrency: "parallel",
-            parameters: { type: "object", properties: {} },
+            inputSchema: { type: "object", properties: {} },
             execute: () => "ok",
           });
-          s.hook("round.before", () => ({ tools: ["visible"] }));
+          s.addHook("round.before", () => ({ tools: ["visible"] }));
         },
       },
     ],
     replies: [reply.text("done")],
   });
   const session = await host.openSession();
-  await session.send("Inspect the tool list.");
-  equal(host.requests[0]?.tools, ["visible"]);
+  await session.sendMessage("Inspect the tool list.");
+  assertEquals(host.requests[0]?.tools, ["visible"]);
 });
 
 test("a canceled delegate reports cancellation instead of completion", async () => {
@@ -293,11 +293,11 @@ test("a canceled delegate reports cancellation instead of completion", async () 
         },
         session: async (s) => {
           await agentSession(s);
-          s.tools.define({
+          s.tools.add({
             name: "cancellation_gate",
             description: "Hold the fixture until cancellation",
             concurrency: "parallel",
-            parameters: { type: "object", properties: {} },
+            inputSchema: { type: "object", properties: {} },
             execute: async (_args, context) => {
               const aborted = new Promise<void>((resolve) =>
                 context.signal.addEventListener("abort", () => resolve(), { once: true }),
@@ -309,24 +309,27 @@ test("a canceled delegate reports cancellation instead of completion", async () 
         },
       },
     ],
-    replies: [reply.toolCall("cancellation_gate", {}), reply.text("Received the cancellation report.")],
+    replies: [
+      reply.toolCalls([{ name: "cancellation_gate", args: {} }]),
+      reply.text("Received the cancellation report."),
+    ],
   });
   const parent = await host.openSession();
   assert(sessions !== undefined);
   const parentScope = new AbortController();
-  await sessions.open(parent.id, { tail: 0, signal: parentScope.signal, event: () => {} });
+  await sessions.open(parent.id, { tail: 0, signal: parentScope.signal, onEvent: () => {} });
   try {
     await parent.call("spawn_agent", { agent: "dav-agent", message: "Wait at the fixture gate.", background: true });
-    await settled();
+    await waitForSettled();
     assert(sessions !== undefined);
     const children = (await sessions.list({ parent: parent.id })).sessions;
-    equal(children.length, 1);
-    const id = children[0]?.session.sessionId;
+    assertEquals(children.length, 1);
+    const id = children[0]?.sessionId;
     assert(id !== undefined);
     const controller = new AbortController();
-    const child = await sessions.open(id, { tail: 0, signal: controller.signal, event: () => {} });
+    const child = await sessions.open(id, { tail: 0, signal: controller.signal, onEvent: () => {} });
     child.cancel();
-    await settled();
+    await waitForSettled();
     controller.abort();
     for (let attempt = 0; attempt < 100 && host.requests.length < 2; attempt += 1)
       await new Promise<void>((resolve) => setTimeout(resolve, 5));

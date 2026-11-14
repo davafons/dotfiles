@@ -18,7 +18,6 @@ async function request(method: string, params: unknown, signal: AbortSignal): Pr
   const path = env.get("HERDR_SOCKET_PATH");
   if (path === undefined) throw new Error("No Herdr socket is configured.");
   using socket = await connect({
-    transport: "unix",
     path,
     signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]),
   });
@@ -91,11 +90,11 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
     ctx.signal.addEventListener("abort", remove, { once: true });
   }
   if (tui === undefined) return;
-  tui.widgets.watch((mount) => {
+  tui.widgets.addWatcher((mount) => {
     const view = mount.widget;
     if (!(view instanceof TextView) || view.role !== "transcript") return;
     const extension = view.extend(mount.signal);
-    extension.onMouse((event) => {
+    extension.addMouseHandler((event) => {
       if (
         !inside ||
         event.button !== "left" ||
@@ -109,8 +108,8 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
       const position = view.hitTest(event);
       if (position === undefined) return false;
       const section = view.document.items
-        .find((item) => item.key === position.item)
-        ?.sections.find((section) => section.key === position.section);
+        .find((item) => item.id === position.item)
+        ?.sections.find((section) => section.id === position.section);
       if (section === undefined) return false;
       const location = fileReferenceAt(section.text, position.offset);
       if (location === null) return false;
@@ -182,24 +181,29 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
       })
       .finally(() => {
         active = undefined;
-        if (!ctx.signal.aborted && acknowledged !== desired) tui.after(250, refresh);
+        if (!ctx.signal.aborted && acknowledged !== desired) tui.addTimer(250, refresh);
       });
   };
-  ctx.on("session.opened", (event) => {
-    const state = { busy: event.state === "running", failed: false, questions: new Set(event.questions), summary: "" };
+  ctx.addListener("session.opened", (event) => {
+    const state = {
+      busy: event.state === "running",
+      failed: false,
+      questions: new Set<number>(event.interactions),
+      summary: "",
+    };
     states.set(event.sessionId, state);
     void ctx
       .get("sessions")
       .get(event.sessionId)
       .then(
         (row) => {
-          state.summary = (row.session.preview ?? "").slice(0, 72);
+          state.summary = (row.title ?? "").slice(0, 72);
           refresh();
         },
         () => {},
       );
   });
-  ctx.on("session.update", (event) => {
+  ctx.addListener("session.update", (event) => {
     const state = states.get(event.sessionId);
     if (state === undefined) return;
     const update = event.update;
@@ -207,9 +211,9 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
       state.busy = update.state === "running";
       if (state.busy) state.failed = false;
     } else if (update.sessionUpdate === "commit") {
-      if (update.commit.end !== null && "failed" in update.commit.end) state.failed = true;
+      if (update.commit.end?.kind === "failed") state.failed = true;
     } else if (
-      update.sessionUpdate === "input_accepted" &&
+      update.sessionUpdate === "inputAccepted" &&
       update.input.source.kind === "user" &&
       state.summary === ""
     ) {
@@ -218,23 +222,23 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
         .get(event.sessionId)
         .then(
           (row) => {
-            state.summary = (row.session.preview ?? "").slice(0, 72);
+            state.summary = (row.title ?? "").slice(0, 72);
             refresh();
           },
           (error: unknown) => console.log("Herdr summary failed", String(error)),
         );
-    } else if (update.sessionUpdate === "interaction_requested") state.questions.add(update.interactionId);
-    else if (update.sessionUpdate === "interaction_closed") state.questions.delete(update.interactionId);
+    } else if (update.sessionUpdate === "interactionRequested") state.questions.add(update.interactionId);
+    else if (update.sessionUpdate === "interactionClosed") state.questions.delete(update.interactionId);
     else return;
     refresh();
   });
-  ctx.get("chat").onChange(refresh);
+  ctx.get("chat").addChangeListener(refresh);
   const stopQuestions = ctx.get("yuke-clarify").onChange(refresh);
   ctx.signal.addEventListener("abort", stopQuestions, { once: true });
-  tui.widgets.watch(() => {
+  tui.widgets.addWatcher(() => {
     if (!ready) {
       ready = true;
-      tui.after(0, refresh);
+      tui.addTimer(0, refresh);
     }
     return undefined;
   });

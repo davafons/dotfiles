@@ -45,13 +45,23 @@ def item(raw, kind):
 
 
 def read(args):
-    if not isinstance(args, dict) or set(args) - {"root", "repo", "action", "kind", "state", "cursor", "number"}:
+    if not isinstance(args, dict) or set(args) - {"root", "repo", "action", "kind", "state", "cursor", "number", "url"}:
         raise ValueError("unknown GitHub read field")
     root = Path(args["root"]).resolve(strict=True)
     if not root.is_dir():
         raise ValueError("project root must be a directory")
     action = args.get("action")
     kind = args.get("kind", "issues")
+    url = args.get("url")
+    if url is not None:
+        # A linked issue or PR URL names its repository, kind, and number.
+        match = re.fullmatch(r"https://github\.com/([A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+)/(issues|pull)/([1-9][0-9]{0,9})/?(?:[?#].*)?", url) if isinstance(url, str) else None
+        if match is None or action != "get":
+            raise ValueError("url must be a github.com issue or pull request URL, and goes with get")
+        if args.get("number") is not None and args["number"] != int(match.group(3)):
+            raise ValueError("url and number name different items")
+        args = dict(args, repo=match.group(1), number=int(match.group(3)))
+        kind = "issues" if match.group(2) == "issues" else "pulls"
     state = args.get("state", "open")
     cursor = args.get("cursor", "")
     if action not in ("list", "get") or kind not in ("issues", "pulls") or state not in ("open", "closed", "all"):
@@ -60,7 +70,7 @@ def read(args):
         raise ValueError("invalid GitHub cursor")
     number = args.get("number")
     if action == "get" and (type(number) is not int or number < 1):
-        raise ValueError("get requires a positive issue or PR number")
+        raise ValueError("get requires a positive issue or PR number, or a github.com issue or PR url")
     repo = args.get("repo")
     if repo is None:
         metadata = gh(root, "repo", "view", "--json", "nameWithOwner,url")

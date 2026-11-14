@@ -1,5 +1,5 @@
 import { env } from "yuke:process";
-import { assert, createHost, equal, test } from "yuke:test";
+import { assert, assertEquals, createHost, test } from "yuke:test";
 import { session as webSession } from "../.config/yuke-rust/plugins/web/index.ts";
 
 test("web search and fetch preserve their request shapes and bound returned text", async () => {
@@ -37,14 +37,14 @@ test("web search and fetch preserve their request shapes and bound returned text
     const session = await host.openSession();
     const search = await session.call("web_search", { query: "migration fixture" });
     assert(!search.isError, search.text);
-    equal((search.text.match(/^\d\./gm) ?? []).length, 5);
+    assertEquals((search.text.match(/^\d\./gm) ?? []).length, 5);
     assert(!search.text.includes("Result 5"));
     const page = await session.call("web_fetch", { url: "https://example.com/source" });
     assert(!page.isError, page.text);
     assert(
       page.text.includes("https://example.com/final") && page.text.endsWith("[truncated]") && page.text.length < 4100,
     );
-    equal(requests, [
+    assertEquals(requests, [
       { provider: "tinyfish", endpoint: "/free/search", input: { queryParams: { query: "migration fixture" } } },
       {
         provider: "tinyfish",
@@ -52,7 +52,7 @@ test("web search and fetch preserve their request shapes and bound returned text
         input: { body: { urls: ["https://example.com/source"], format: "markdown" } },
       },
     ]);
-    equal(host.requests.length, 0);
+    assertEquals(host.requests.length, 0);
   } finally {
     globalThis.fetch = original;
   }

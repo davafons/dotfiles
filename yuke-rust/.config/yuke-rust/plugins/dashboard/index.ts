@@ -1,4 +1,3 @@
-import type { EmptyChatContext } from "yuke:chat";
 import type { PluginContext } from "yuke:plugins";
 import { env } from "yuke:process";
 import { strokeOf, TextEditor, TextView } from "yuke:tui";
@@ -22,32 +21,36 @@ export function apply(ctx: PluginContext): undefined {
   if (tui === undefined) return;
   const chat = ctx.get("chat"),
     vim = ctx.get("composer-vim");
-  tui.styles.set({
+  tui.styles.add({
     "dashboard.logo": { fg: "accent", bold: true },
     "dashboard.action": { fg: "strongFg" },
     "dashboard.key": { fg: "accent" },
-    "dashboard.context": { link: "chat.meta" },
+    "dashboard.context": { inherits: "chat.meta" },
   });
-  const stop = chat.setEmptyView((pane) => {
+  // The chat shows the model of the focused pane, also of an unsent draft, in its status item.
+  const modelText = (): string | undefined => tui.status.list().find((item) => item.id === "chat:model")?.text;
+  const stop = chat.setEmptyView((_mount, pane) => {
     const home = env.get("HOME");
-    let folder = pane.cwd.replace(/[\x00-\x1f\x7f-\x9f]/gu, " ");
+    let folder = (chat.folder(pane.view) ?? tui.startup.cwd).replace(/[\x00-\x1f\x7f-\x9f]/gu, " ");
     if (home !== undefined && folder.startsWith(`${home}/`)) folder = `~${folder.slice(home.length)}`;
     const dashboard = new Dashboard(HOME, folder, (name) => {
       tui.focus(pane.composer);
       tui.commands.run(name);
     });
-    let previous: EmptyChatContext["model"];
+    let previous: string | undefined;
+    let shown = false;
     return {
       draw: (canvas) => {
         if (vim?.mode(pane.composer) !== "normal") return;
-        const pick = pane.model;
-        if (pick !== previous) {
+        const pick = modelText();
+        if (!shown || pick !== previous) {
+          shown = true;
           previous = pick;
-          dashboard.model(pick === undefined ? "no model yet" : `${pick.model.model} ${pick.reasoning}`);
+          dashboard.model(pick ?? "no model yet");
         }
         dashboard.draw(canvas);
       },
-      mouse: (event) => vim?.mode(pane.composer) === "normal" && dashboard.mouse(event),
+      onMouse: (event) => vim?.mode(pane.composer) === "normal" && dashboard.onMouse(event),
     };
   });
   ctx.signal.addEventListener("abort", stop, { once: true });
@@ -101,7 +104,7 @@ export function apply(ctx: PluginContext): undefined {
       if (!dialog.signal.aborted) throw error;
     }
   });
-  tui.widgets.watch((mount) => {
+  tui.widgets.addWatcher((mount) => {
     const editor = mount.widget;
     if (!(editor instanceof TextEditor) || editor.role !== "composer") return;
     const fresh = (): boolean =>
@@ -111,7 +114,7 @@ export function apply(ctx: PluginContext): undefined {
       chat.session(mount.pane.view) === undefined;
     if (fresh()) vim?.setMode(editor, "normal");
     const extension = editor.extend(mount.signal);
-    extension.onKey((event) => {
+    extension.addKeyHandler((event) => {
       if (!fresh() || vim?.mode(editor) !== "normal" || vim.pending(editor)) return false;
       const key = strokeOf(event);
       const row = HOME.find((row) => row.key === key);
