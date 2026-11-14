@@ -15,9 +15,9 @@ or performing an idle reload after saving the draft.
 
 ## Driving it with the repository driver
 
-Run `python3 -B yuke/tests/check-agent-tools.py --binary "$YUKE_BIN" 2>&1 | tee "$EVIDENCE/agent-tools.log"`.
-Require all four routing cases to PASS. Read its printed artifact directory,
-`result.json`, native parent/child histories, RPC receipts, and `requests.json`.
+Run `python3 -B yuke-rust/tests/check-agent-tools.py --binary "$YUKE_BIN" 2>&1 | tee "$EVIDENCE/agent-tools.log"`.
+Require all four routing cases and the stored-settings check to PASS. Read its printed artifact directory,
+`result.json`, the RPC log, and `requests.json`.
 The test goes through the native spawn tool and child engine, not an internal
 setter. Check that its native process stopped and evidence survives cleanup.
 

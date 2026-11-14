@@ -5,7 +5,10 @@ Failures (exit 1):
 - a dangling symlink in a folder an agent harness reads skills, agents or commands from;
 - ~/.mcporter/mcporter.json is not the agents package's copy, or has a secret written into it;
 - a server from the mcporter manifest is also defined in Codex or in Claude Code's user scope;
-- a setting in codex/.codex/dotfiles.toml differs from ~/.codex/config.toml.
+- a setting in codex/.codex/dotfiles.toml differs from ~/.codex/config.toml;
+- with ~/.config/yuke-rust present: a yuke-rust profile file that is not a link to dotfiles,
+  a dangling link in that profile, or a secret in the yuke-rust package (an auth.json, or a literal
+  credential value in its JSON files).
 
 Warnings: ~/.hermes/config.yaml differs from hermes/.hermes/config.yaml. Hermes rewrites its own
 config and ~/.hermes syncs from Tower, so the dotfiles copy is a reference, not an install.
@@ -60,8 +63,51 @@ def differences(want, have, prefix=""):
             yield f"codex {path} is {have.get(key)!r}, dotfiles.toml says {value!r}"
 
 
+def json_secrets(value, where):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            # A key such as api_key_env names the variable that holds the secret.
+            if isinstance(item, str) and SECRET_NAME.search(key) and not key.lower().endswith("_env") and not INDIRECT.match(item):
+                yield f"{where} has a literal {key}; keep credentials in ~/.local/share/yuke-rust/auth.json"
+            else:
+                yield from json_secrets(item, where)
+    elif isinstance(value, list):
+        for item in value:
+            yield from json_secrets(item, where)
+
+
+def yuke_problems(home, dotfiles):
+    package, profile = dotfiles / "yuke-rust", home / ".config/yuke-rust"
+    source = package / ".config/yuke-rust"
+    if not source.is_dir() or not profile.is_dir():
+        return
+    unlinked = []
+    for path in sorted(source.rglob("*")):
+        if path.is_dir() or "__pycache__" in path.parts or path.suffix == ".pyc":
+            continue
+        target = profile / path.relative_to(source)
+        if not (target.is_symlink() and target.resolve() == path.resolve()):
+            unlinked.append(target)
+    if unlinked:
+        yield f"yuke-rust: {len(unlinked)} profile files are not links to dotfiles, first {unlinked[0]} (run make install)"
+    for path in sorted(profile.rglob("*")):
+        if path.is_symlink() and not path.exists():
+            yield f"dangling link: {path} -> {path.readlink()}"
+    for path in sorted(package.rglob("*")):
+        if path.is_dir() or "node_modules" in path.parts:
+            continue
+        if path.name == "auth.json":
+            yield f"{path} is a credential file inside the yuke-rust package"
+        elif path.suffix == ".json":
+            try:
+                yield from json_secrets(json.loads(path.read_text()), path)
+            except (ValueError, UnicodeDecodeError):
+                pass
+
+
 def check(home, dotfiles):
     failures, warnings = list(dangling_links(home)), []
+    failures += yuke_problems(home, dotfiles)
 
     manifest = dotfiles / "agents/.mcporter/mcporter.json"
     live = home / ".mcporter/mcporter.json"

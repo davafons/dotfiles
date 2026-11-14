@@ -24,6 +24,7 @@ checks = [
     ('vim', [str(binary), 'test', str(root / '.config/yuke-rust/plugins/vim/tests')]),
     ('stores', ['python3', '-m', 'unittest', 'discover', '-s', str(root / 'tests'), '-p', 'test_*.py']),
     ('terminal', ['python3', str(root / 'tests/terminal.py')]),
+    ('agent-tools', ['python3', str(root / 'tests/check-agent-tools.py'), '--binary', str(binary)]),
 ]
 if args.native:
     checks += [

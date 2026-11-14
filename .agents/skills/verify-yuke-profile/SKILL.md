@@ -1,94 +1,71 @@
 ---
 name: verify-yuke-profile
-description: "Drive the dotfiles Yuke profile in isolated terminals. Use after changing profile plugins, composer input, model controls, status rendering, or reload behavior."
+description: "Drive the dotfiles yuke-rust profile in isolated terminals. Use after changing profile plugins, composer input, model controls, status rendering, or reload behavior."
 ---
 
 # Verify Yuke profile
 
+The profile is `yuke-rust/.config/yuke-rust`. Stow links it into `~/.config/yuke-rust`.
+Every driver below copies the profile from this checkout into a private home, so it never
+touches the user's live profile, sessions, or credentials.
+
 ## Launch
 
-From the dotfiles root, create evidence and select the installed release:
+From the dotfiles root, create evidence and select the binary:
 
 ```sh
 set -eu
 set -o pipefail
-DOTFILES_ROOT="$PWD"
-YUKE_BIN="$(command -v yuke)"
-YUKE_TYPES="$HOME/.local/lib/yuke/types"
+YUKE_BIN="$HOME/.local/lib/yuke-rust/bin/yuke"
+YUKE_SOURCE="$HOME/workspace/yuke"
 EVIDENCE="$(mktemp -d "${TMPDIR:-/tmp}/verify-yuke-profile.XXXXXX")"
 printf '%s\n' "$EVIDENCE"
 ```
 
-The full-profile driver needs working `tsc`. If the mise shim has no selected
-version, use the already-installed TypeScript for this shell only:
-
-```sh
-TSC_ROOT="$(mise where npm:typescript@7.0.2)"
-PATH="$TSC_ROOT/bin:$PATH"
-export PATH
-```
-
-Do not install a compiler or change global mise settings as part of verification.
-`check-profile.py` copies the manifest into fresh homes and runs both logical and
-display motion variants. Other drives create their own private profiles. No
-long-lived server is shared between drives.
+To check a candidate build before installing it, set `YUKE_BIN` to its
+`target/release/yuke` instead. Use the SDK and source of that same build.
 
 ## Doctor
 
 ```sh
 "$YUKE_BIN" --version | tee "$EVIDENCE/version.log"
-test -f "$YUKE_TYPES/yuke.d.ts"
-test -f "$YUKE_TYPES/yuke-modules.d.ts"
-tsc --version | tee "$EVIDENCE/typescript.log"
-python3 -B yuke/tests/check-profile.py --help > "$EVIDENCE/driver-help.log"
+test -f "$HOME/.local/lib/yuke-rust/tsconfig.json"
+git -C "$YUKE_SOURCE" log -1 --oneline | tee "$EVIDENCE/source.log"
 ```
 
-Use declarations from the same installed build. Do not run `yuke check` in the
-normal profile. After a surprising drive, rerun Doctor and inspect that drive's
-private log before launching a fresh drive.
+Do not run `/reload` or plugin commands in the user's real session as part of verification.
 
 ## Drive
 
-Start with the composer and reload feature:
+Run the whole profile check first:
 
 ```sh
-python3 -B yuke/tests/check-profile.py --binary "$YUKE_BIN" \
-  --types-dir "$YUKE_TYPES" --output "$EVIDENCE/profile" \
-  2>&1 | tee "$EVIDENCE/drive.log"
+python3 -B yuke-rust/scripts/verify.py --source "$YUKE_SOURCE" --binary "$YUKE_BIN" \
+  2>&1 | tee "$EVIDENCE/verify.log"
 ```
 
-Require both variants to report input, native reload, disposal, and headless
-success. Retain `profile/{logical,display}/terminal.raw`, `terminal.log`, and
-`headless.log`. The driver presses Ctrl+G only in its own PTY, not your session.
+Require a `PASS` line for every stage: profile-types, profile-biome, profile-tools, vim,
+stores, terminal, and agent-tools. On a failure, the script prints the stage's log path under
+`$YUKE_SOURCE/target/migration-verification`; keep it. Add `--native` after a native source change.
+
+Use the [feature map](features/README.md) to drive one area on its own.
 
 ## Evidence
 
-Keep each drive in its own fresh directory outside the checkout. Capture the
-exact command, source revision, stdout, stderr, exit status, and any driver-owned
-artifact path. Use `set -o pipefail` when piping a drive through `tee`.
-A zero exit without the driver's explicit completion report is not proof.
+Keep each drive in its own fresh directory outside the checkout. Capture the exact command,
+the source revision, stdout, stderr, exit status, and any artifact directory a driver prints.
+A zero exit without the driver's explicit `PASS` lines is not proof.
 
-The feature map names the required entry points. One successful mapped feature
-proves generation, not complete feature coverage. For maintenance, drive every
-mapped feature. Native fixture providers prove local integration, not real model
-quality, external credentials, or provider routing.
+The scripted local providers prove routing and integration, not real model quality, external
+credentials, or provider behavior.
 
 ## Cleanup
 
-Each driver owns its private process/session teardown. It must finish before
-another drive starts. On failure, inspect that drive's saved logs and confirm
-its owned processes stopped before retrying. Never kill by process name or stop
-the user's Herdr, tmux, Neovim, or Yuke session. Retain the evidence directory,
-including after failures. Confirm `drive.log` and any named artifacts still exist.
-
-Native GUI activation and system-wide input require permission for that run.
-These drives use background PTYs, detached private tmux, or headless Neovim.
-They do not use the clipboard or play test audio. Do not activate a desktop app.
+Each driver owns its private process teardown. Never kill by process name or stop the user's
+Herdr, tmux, Neovim, or Yuke session. Keep the evidence directory after failures too.
+These drives use background PTYs. They do not use the clipboard, play audio, or activate a desktop app.
 
 ## Helpers
 
-Use the repository's existing drivers below. Do not create a competing harness.
-Read a driver before running it after source changes. Do not copy provider files
-or credentials into test profiles. Paths below are relative to the dotfiles root.
-
-See [the feature map](features/README.md) for other drives.
+Use the existing drivers. Do not create a competing harness. Read a driver before running it
+after source changes. Do not copy `auth.json`, `monid.key`, or other credentials into test profiles.

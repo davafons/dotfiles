@@ -78,5 +78,62 @@ class AgentDoctorTests(unittest.TestCase):
         self.assertEqual(len(warnings), 1)
 
 
+class YukeDoctorTests(AgentDoctorTests):
+    def setUp(self):
+        super().setUp()
+        self.source = self.dotfiles / "yuke-rust/.config/yuke-rust"
+        self.profile = self.home / ".config/yuke-rust"
+        self.write(self.source / "config.json", json.dumps({"plugins": [{"path": "./plugins/models", "options": {"startupModel": "m", "tokenSpeed": True}}]}))
+        self.write(self.source / "providers.json", json.dumps({"providers": [{"id": "bridge", "base_url": "http://127.0.0.1:1/v1", "api_key_env": "BRIDGE_KEY"}]}))
+        self.write(self.source / "plugins/models/index.ts", "export {};\n")
+        self.write(self.source / "plugins/models/__pycache__/x.pyc", "")
+        for path in ("config.json", "providers.json", "plugins/models/index.ts"):
+            (self.profile / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.profile / path).symlink_to(self.source / path)
+        self.write(self.profile / "monid.key", "live-secret")
+        self.write(self.profile / "tsconfig.json", "{}")
+
+    def test_matching_setup_passes(self):
+        self.assertEqual(self.check(), ([], []))
+
+    def test_without_an_installed_profile_yuke_is_skipped(self):
+        import shutil
+        shutil.rmtree(self.profile)
+        self.assertEqual(self.check(), ([], []))
+
+    def test_profile_file_copied_instead_of_linked_fails(self):
+        (self.profile / "config.json").unlink()
+        self.write(self.profile / "config.json", (self.source / "config.json").read_text())
+        failures, _ = self.check()
+        self.assertEqual(len(failures), 1)
+        self.assertIn("1 profile files are not links", failures[0])
+        self.assertIn("config.json", failures[0])
+
+    def test_profile_file_missing_fails(self):
+        (self.profile / "plugins/models/index.ts").unlink()
+        failures, _ = self.check()
+        self.assertTrue(any("not links to dotfiles" in line for line in failures))
+
+    def test_dangling_link_in_profile_fails(self):
+        (self.profile / "plugins/old").mkdir(parents=True)
+        (self.profile / "plugins/old/index.ts").symlink_to(self.source / "plugins/old/index.ts")
+        failures, _ = self.check()
+        self.assertEqual(len(failures), 1)
+        self.assertIn("dangling link", failures[0])
+        self.assertIn("plugins/old/index.ts", failures[0])
+
+    def test_literal_credential_in_tracked_json_fails(self):
+        (self.source / "providers.json").write_text(json.dumps({"providers": [{"id": "x", "api_key": "sk-live"}]}))
+        failures, _ = self.check()
+        self.assertEqual(len(failures), 1)
+        self.assertIn("literal api_key", failures[0])
+
+    def test_auth_file_in_package_fails(self):
+        self.write(self.dotfiles / "yuke-rust/state/auth.json", "{}")
+        failures, _ = self.check()
+        self.assertEqual(len(failures), 1)
+        self.assertIn("credential file", failures[0])
+
+
 if __name__ == "__main__":
     unittest.main()
