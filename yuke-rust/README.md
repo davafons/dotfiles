@@ -23,7 +23,7 @@ Linked from dotfiles (settings you edit):
 | Path | Contents |
 | --- | --- |
 | `config.json` | Plugin list and plugin options, including `startupModel` and `startupEffort` for the models plugin |
-| `providers.json` | Custom providers and model metadata. It holds no credentials |
+| `providers.json` | Custom providers and model metadata. It holds no credentials. The `claude-bridge` entry follows the README of `~/workspace/yuke-claude-bridge` |
 | `plugins/*`, `helpers/*`, `*.ts` | Plugin and helper sources |
 | `plugins/personal/prompt.json` | Personal system prompt |
 
@@ -41,6 +41,11 @@ Live only (state or secrets, never in the repository):
 
 Skills come from `~/.agents/skills` and the workspace's `.agents/skills`. Global instructions come from `~/.agents/AGENTS.md`. Both are in the `agents` package.
 There is no `~/.config/yuke-rust/mcp.json`. Shared MCP servers are in `~/.mcporter/mcporter.json` and are reached through the mcporter skill.
+
+## Claude bridge
+
+`claude-bridge/*` models go through the local bridge from `~/workspace/yuke-claude-bridge` (upstream `xyaman/yuke-claude-bridge`).
+Update it with `git pull --ff-only && bin/install --stop-running`, then start it from the menu bar app or with `yuke-claude-bridge --start` while the app is open.
 
 ## Plugins
 
