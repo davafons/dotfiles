@@ -1,6 +1,6 @@
 ---
 name: mcporter
-description: Reach David's MCP servers on demand through the mcporter CLI - grafana (dashboards, Prometheus, Loki, alerts, incidents), victoriametrics (metrics/MetricsQL), victorialogs (logs/LogsQL), karakeep (bookmarks) and mobbin (UI design references). Use whenever a task needs monitoring data, metrics, logs, dashboards, alerts, saved bookmarks or app-design screens.
+description: Reach David's MCP servers on demand through the mcporter CLI - grafana (dashboards, Prometheus, Loki, alerts, incidents), victoriametrics (metrics/MetricsQL), victorialogs (logs/LogsQL), karakeep (bookmarks), mobbin (UI design references) and umami (web analytics for LOST COORDS' static sites). Use whenever a task needs monitoring data, metrics, logs, dashboards, alerts, saved bookmarks, app-design screens or site traffic.
 ---
 
 # MCP servers through mcporter
@@ -15,6 +15,7 @@ config is `~/.mcporter/mcporter.json` (holds tokens: never print it).
 | `victorialogs` | Logs: LogsQL queries, streams, field names and values, hits, stats (13 tools) |
 | `karakeep` | David's bookmarks, lists, tags and highlights (29 tools) |
 | `mobbin` | App screens, flows and UI sections for design reference (needs `mcporter auth mobbin` once, in a terminal the person runs) |
+| `umami` | Web analytics from umami.lostcoords.com: stats, traffic, top pages and referrers, events, sessions, funnels, journeys. Read-only; to create or change websites, call the REST API with the same key (Keychain item `com.davafons.codex.mcp-umami`) |
 
 ## Workflow
 

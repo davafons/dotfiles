@@ -27,6 +27,11 @@
     "mobbin": {
       "type": "http",
       "url": "https://api.mobbin.com/mcp"
+    },
+    "umami": {
+      "type": "stdio",
+      "command": "umami-mcp",
+      "args": []
     }
   }
 }
