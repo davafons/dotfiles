@@ -3,9 +3,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "allow": [
-      "mcp__pencil"
-    ],
+    "allow": [],
     "defaultMode": "bypassPermissions"
   },
   "model": "opus",
