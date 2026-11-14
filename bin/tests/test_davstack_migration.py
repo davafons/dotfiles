@@ -23,7 +23,9 @@ class DavstackMigration(unittest.TestCase):
             for harness in (".agents", ".claude"):
                 for name in names:
                     self.assertEqual((home / harness / "skills" / name).resolve(), SKILLS / name)
-            self.assertEqual({p.name for p in (home / ".claude/skills").iterdir()}, names)
+            # Claude Code gets every linked skill, the personal ones too, like ~/.agents/skills.
+            personal = {p.name for p in (ROOT / "agents/.agents/personal/skills").iterdir() if (p / "SKILL.md").is_file()}
+            self.assertEqual({p.name for p in (home / ".claude/skills").iterdir()}, names | personal)
             for harness, filename in ((".claude", "claude.md"), (".codex", "codex.toml")):
                 extension = Path(filename).suffix
                 agent = home / harness / "agents" / f"comment-sicko{extension}"

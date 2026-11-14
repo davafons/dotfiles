@@ -26,7 +26,8 @@ class InvestigationSkills(unittest.TestCase):
                     link = home / harness / "skills" / name
                     self.assertTrue(link.is_symlink())
                     self.assertEqual(link.resolve(), SKILLS / name)
-            self.assertEqual({p.name for p in (home / ".claude/skills").iterdir()}, set(DAVSTACK))
+            personal = {p.name for p in (ROOT / "agents/.agents/personal/skills").iterdir() if (p / "SKILL.md").is_file()}
+            self.assertEqual({p.name for p in (home / ".claude/skills").iterdir()}, set(DAVSTACK) | personal)
             self.assertFalse((home / ".agents/stacks").exists())
             self.assertFalse((home / ".claude/skills/poteto-mode").exists())
 

@@ -35,10 +35,13 @@ davstack_skills=(
   principle-test-behavior-not-implementation
   principle-type-system-discipline
 )
-personal_skills=(browser calendar mail notes plan tasks)
+personal_skills=(browser calendar mail mcporter notes plan tasks)
 linked_skills=("${personal_skills[@]}" "${davstack_skills[@]}")
 real_home="${HOME}"
 skill_root="${real_home}/.agents/skills"
+# Every linked skill goes to each of these. Codex, Yuke, Hermes and Grok read ~/.agents/skills; Claude
+# Code reads only its own folder.
+skill_roots=("$skill_root" "${real_home}/.claude/skills")
 script_path="$(realpath "${BASH_SOURCE[0]}")"
 dotfiles_root="$(cd "$(dirname "$script_path")/../.." && pwd)"
 
@@ -142,9 +145,9 @@ link_agent() {
 
 link_skills() {
   local skill
-  for skill in "${linked_skills[@]}"; do link_skill "$skill"; done
-  for skill in "${davstack_skills[@]}"; do
-    link_skill "$skill" "${real_home}/.claude/skills/${skill}"
+  local root
+  for root in "${skill_roots[@]}"; do
+    for skill in "${linked_skills[@]}"; do link_skill "$skill" "${root}/${skill}"; done
   done
   link_agent claude claude.md comment-sicko comment-sicko
   link_agent codex codex.toml comment-sicko comment-sicko
@@ -193,28 +196,19 @@ sync_provider() (
 )
 
 check() {
-  local failed=0 provider name skill legacy resolved expected harness filename agent_skill
-  for name in "${linked_skills[@]}"; do
-    skill="${skill_root}/${name}"
-    expected="$(skill_source "$name")"
-    if [[ ! -L "$skill" ]]; then
-      echo "agent-skills: skill must be a directory symlink: $skill (run make install)" >&2
-      failed=1
-    elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
-      echo "agent-skills: skill points to the wrong source: $skill" >&2
-      failed=1
-    fi
-  done
-  for name in "${davstack_skills[@]}"; do
-    skill="${real_home}/.claude/skills/${name}"
-    expected="$(skill_source "$name")"
-    if [[ ! -L "$skill" ]]; then
-      echo "agent-skills: missing Claude skill link: $skill (run agent-skills link)" >&2
-      failed=1
-    elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
-      echo "agent-skills: Claude skill points to the wrong source: $skill" >&2
-      failed=1
-    fi
+  local failed=0 provider name skill legacy resolved expected harness filename agent_skill root
+  for root in "${skill_roots[@]}"; do
+    for name in "${linked_skills[@]}"; do
+      skill="${root}/${name}"
+      expected="$(skill_source "$name")"
+      if [[ ! -L "$skill" ]]; then
+        echo "agent-skills: skill must be a directory symlink: $skill (run agent-skills link)" >&2
+        failed=1
+      elif [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
+        echo "agent-skills: skill points to the wrong source: $skill" >&2
+        failed=1
+      fi
+    done
   done
   for name in comment-sicko dav-agent; do
     case "$name" in
