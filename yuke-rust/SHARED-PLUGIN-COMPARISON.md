@@ -1,6 +1,6 @@
-The personal Vim and agent-tools plugins are upstream `lostcoords/yuke-plugins` at `c6324ac825ca8da12403162a33d590653db2a470` plus a personal delta. Upstream still lacks that delta, so neither plugin can be replaced by a Git entry without feature loss. The profile's native host is `ca9a66a` on `davafons/rust-plugins`.
+The personal Vim and agent-tools plugins are upstream `lostcoords/yuke-plugins` plus a personal delta. The comparison uses upstream main `39483ed`, which follows yuke `a3b9526`. Upstream still lacks that delta, so neither plugin can be replaced by a Git entry without feature loss. The profile's native host is `ca9a66a` on `davafons/rust-plugins`.
 
-Upstream `c6324ac` follows the beta wire format and plugin API (`2dfe53c`, `8e9e4ff`, `c6324ac`). It predates the API changes of the port (`a3b9526`), such as `inputSchema` and flat session rows. The personal copies carry those renames on top.
+Upstream `39483ed` follows the API changes of yuke `a3b9526` (`inputSchema`, async `readDir`, flat session rows, `WrappedRow`, `onQuestion`). The personal copies carry the same renames.
 
 | Vim capability | Upstream | Personal |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Seven plugins read `composer-vim`: controls, dashboard, dollar-skills, path-comp
 | Engine model receipt in spawn result | No | Yes |
 | Explicit-user-request delegation policy | General upstream guidance | Personal prompt policy |
 | Campaign quotas and tool restrictions | No | Enabled by `DAVSTACK_CAMPAIGN` |
-| One parent view shared by parallel child runs | Yes | No |
+| One parent view shared by parallel child runs | Yes | Yes |
 | Tool names | spawn_subagent, message_subagent, stop | spawn_agent, send_agent_input, stop |
 
 The list, model dialog, model settings, run log, and UI modules match upstream. The lifecycle differences are in the entry point, plus the personal `roles.ts` and `campaign.ts`. The personal tool names stay until the skills and campaign rules change in the same migration.
@@ -34,27 +34,28 @@ The local role implementation saves each child's role in `roles/<id>.json` and r
 
 | Plugin | Choice | Reason |
 | --- | --- | --- |
-| btw | Loaded as a Git plugin at `c6324ac` | No personal equivalent. `/btw` and `/btw:history` work. Its own `Ctrl+K B` chord is shadowed, because controls takes `Ctrl+K` for focus-up and prompt history uses it too. Controls binds `Ctrl+X B` to `btw:ask` instead. |
+| btw | Loaded as a Git plugin at `39483ed` | No personal equivalent. `/btw` and `/btw:history` work. Its own `Ctrl+K B` chord is shadowed, because controls takes `Ctrl+K` for focus-up and prompt history uses it too. Controls binds `Ctrl+X B` to `btw:ask` instead. |
 | titles | Not loaded | Native sessions already have renameable titles from the first message, which sessions-reworked shows. Titles adds a model request per session and needs its own model setup. |
 | mailbox | Not loaded | Adds model tools that push messages into other live sessions. That overlaps Herdr pane discovery and project-work messages, and widens what the model can do without a request from the user. |
 
 ## Check
 
 ```sh
-git -C ~/workspace/yuke-rust-plugins-upstream archive c6324ac plugins | tar -x -C /tmp/yuke-plugins-c6324ac
-python3 ~/dotfiles/yuke-rust/scripts/compare_shared_plugins.py --upstream /tmp/yuke-plugins-c6324ac
+mkdir -p /tmp/yuke-plugins-39483ed
+git -C ~/workspace/yuke-rust-plugins-upstream archive 39483ed plugins | tar -x -C /tmp/yuke-plugins-39483ed
+python3 ~/dotfiles/yuke-rust/scripts/compare_shared_plugins.py --upstream /tmp/yuke-plugins-39483ed
 ```
 
-The script uses the real widget and session test hosts with scripted model replies. It makes no external model requests. It writes source hashes, a source diff, generated comparison tests, and logs under `~/workspace/yuke/target/shared-plugin-comparison`. The upstream checkout itself is on `04f776f`, so the script reads an archive of `c6324ac`.
+The script uses the real widget and session test hosts with scripted model replies. It makes no external model requests. It writes source hashes, a source diff, generated comparison tests, and logs under `~/workspace/yuke/target/shared-plugin-comparison`. The script reads an archive so it does not depend on the checkout's branch.
 
 | Check | Result with the `ca9a66a` binary |
 | --- | --- |
 | Upstream Vim suite | 152 pass |
 | Personal Vim suite | 158 pass |
-| Upstream subagents suite | 14 pass, 41 expected failures: the upstream scaffold writes `JSON.stringify(undefined)` as the run log, and the plugin cannot parse it |
+| Upstream subagents suite | 55 pass |
 | Personal service and role requirements | 2 pass |
 | Same requirements with upstream packages | 2 expected failures |
 | Personal transcript checks with upstream Vim | 6 expected failures |
-| Upstream shared-parent-view check with personal subagents | 1 expected failure: the same scaffold defect stops session setup before it measures views |
+| Upstream shared-parent-view check with personal subagents | 1 pass: both share one parent view |
 
-The script checks each failure count and its diagnostic. The scaffold failures are a known gap of upstream `c6324ac` on this binary, not a personal regression. `tests/check-agent-tools.py` covers the personal roles, receipts, and stored settings over the real RPC wire instead.
+The script checks each expected failure's count and diagnostic. Each one names behavior that upstream lacks. `tests/check-agent-tools.py` covers the personal roles, receipts, and stored settings over the real RPC wire instead.

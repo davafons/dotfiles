@@ -12,7 +12,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--upstream', type=Path, default=Path.home() / 'workspace/yuke-rust-plugins-upstream',
-                    help='A tree of lostcoords/yuke-plugins at the pinned commit (c6324ac), such as a git archive.')
+                    help='A tree of lostcoords/yuke-plugins at the pinned commit (39483ed), such as a git archive.')
 parser.add_argument('--binary', type=Path, default=Path.home() / '.local/lib/yuke-rust/bin/yuke')
 parser.add_argument('--output', type=Path, default=Path.home() / 'workspace/yuke/target/shared-plugin-comparison')
 args = parser.parse_args()
@@ -128,20 +128,17 @@ parent_view_test = parent_view_test.replace('assertEquals(viewsOfParent(), 1);',
 checks = [
     ('upstream-vim', upstream / 'plugins/vim/tests', True),
     ('personal-vim', plugins / 'vim/tests', True),
-    ('upstream-subagents', upstream / 'plugins/subagents/tests', False),
+    ('upstream-subagents', upstream / 'plugins/subagents/tests', True),
     ('personal-contract', output / 'personal-contract.test.ts', True),
     ('upstream-contract', output / 'upstream-contract.test.ts', False),
     ('upstream-transcript', output / 'upstream-transcript.test.ts', False),
-    ('personal-parent-view', output / 'personal-parent-view.test.ts', False),
+    ('personal-parent-view', output / 'personal-parent-view.test.ts', True),
 ]
-# Upstream c6324ac predates the plugin API of the port binary (a3b9526). Its subagents scaffold writes
-# JSON.stringify(undefined) as the run log when a test gives no runs, so each such session setup fails to parse it.
-SCAFFOLD = "unexpected token: 'undefined'"
+# Each expected failure names missing upstream behavior: the composer-vim service, the personal role prompts,
+# and transcript navigation.
 expected_failures = {
-    'upstream-subagents': ('14 passed, 41 failed', [SCAFFOLD]),
-    'upstream-contract': ('0 passed, 2 failed', ['Vim does not provide the service', SCAFFOLD]),
+    'upstream-contract': ('0 passed, 2 failed', ['Vim does not provide the service', 'did not receive the configured role prompt']),
     'upstream-transcript': ('0 passed, 6 failed', ['at reader']),
-    'personal-parent-view': ('0 passed, 1 failed', [SCAFFOLD]),
 }
 failed = False
 for name, path, expected_success in checks:

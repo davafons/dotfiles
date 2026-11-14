@@ -45,7 +45,7 @@ There is no `~/.config/yuke-rust/mcp.json`. Shared MCP servers are in `~/.mcport
 ## Plugins
 
 `config.json` loads 26 local plugins through public APIs, and the upstream `btw` plugin as a Git plugin pinned in `plugins.lock`.
-The Vim and subagent implementations are upstream `lostcoords/yuke-plugins` at `c6324ac` plus a personal delta. `SHARED-PLUGIN-COMPARISON.md` lists that delta and why titles and mailbox are not loaded.
+The Vim and subagent implementations are upstream `lostcoords/yuke-plugins` plus a personal delta. btw is pinned to upstream main `39483ed`, which follows the current plugin API. `SHARED-PLUGIN-COMPARISON.md` lists that delta and why titles and mailbox are not loaded.
 Commands registered through `lib.ts` show as `/word` completions.
 After linking a profile with a changed `plugins.lock`, run `yuke plugin sync --locked` before `/reload`.
 
