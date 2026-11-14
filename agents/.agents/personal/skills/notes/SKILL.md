@@ -16,4 +16,4 @@ Use `rg --files` to discover Markdown notes and `rg -n -g '*.md'` to search them
 
 Before changing a note, find the exact target and read its surrounding context. Preserve its frontmatter, wikilinks, callouts, tags, and local formatting. Note creation, moves, deletion, and substantive edits change synced data: require an explicit request and confirm the target when it is ambiguous. After a write, reread the changed note and report its path.
 
-Never initialize or modify vault version-control metadata. Do not create duplicate tasks in notes: task state belongs to `tasks`, planned time to `calendar`, and day planning to `plan`. Use notes only when David wants durable context, a journal entry, reference material, or a project note.
+Never initialize or modify vault version-control metadata. Do not create duplicate tasks in notes: task state belongs to `tasks`, planned time to `calendar`, and day planning to `day-plan`. Use notes only when David wants durable context, a journal entry, reference material, or a project note.

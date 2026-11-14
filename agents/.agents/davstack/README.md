@@ -145,12 +145,12 @@ affected gates open; they do not count as successful verification.
 
 ## Personal skills outside davstack
 
-`browser`, `calendar`, `mail`, `notes`, `plan`, and `tasks` remain globally
+`browser`, `calendar`, `mail`, `notes`, `day-plan`, `mcporter`, and `tasks` remain globally
 available but are not part of davstack. Their sources have a separate personal
 group. Their discovery links share a directory with davstack links; that does
 not make them pstack workflows.
 
-The `plan` skill manages David's day and tasks. The
+The `day-plan` skill manages David's day and tasks. The
 `dav-mode/playbooks/multi-phase-plan.md` reference authors multi-phase or multi-PR
 software plans and stops before implementation.
 Provider manuals (`hey`, `fizzy`, `wariwari`) and the Yuke-owned `yuke` skill

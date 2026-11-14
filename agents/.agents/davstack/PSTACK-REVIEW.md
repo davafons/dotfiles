@@ -160,7 +160,7 @@ and may not work in other tools.
 
 Its setup diagnosis does not transfer directly. A missing Cursor role file does
 not mean Yuke is unconfigured. Option+Enter, Custom Modes, and `/loop` describe
-Cursor, not this harness. The local `plan` skill also means daily planning,
+Cursor, not this harness. The local `day-plan` skill also means daily planning,
 whereas a mode's Plan playbook means multi-session software work.
 
 Recommendation, not an adoption decision: use this as the organization guide.

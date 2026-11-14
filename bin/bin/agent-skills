@@ -35,7 +35,7 @@ davstack_skills=(
   principle-test-behavior-not-implementation
   principle-type-system-discipline
 )
-personal_skills=(browser calendar mail mcporter notes plan tasks)
+personal_skills=(browser calendar day-plan mail mcporter notes tasks)
 linked_skills=("${personal_skills[@]}" "${davstack_skills[@]}")
 real_home="${HOME}"
 skill_root="${real_home}/.agents/skills"

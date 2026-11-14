@@ -32,6 +32,6 @@ Interpret natural capture requests by their commitment:
 
 For a task-linked time block, keep a concise current `Planned:` line in the card description. Add the provider-returned calendar event permalink when one is available; otherwise record the HEY event ID, local date/time, and calendar name rather than constructing an unverified URL. The matching calendar event carries the direct Fizzy card link or number. If the user later completes the task, close the card; do not remove its planning history. On a meaningful reschedule, retain the old value as a brief `Previously planned:` line; otherwise keep only the current plan. Calendar-only activities retain their history in HEY and do not need a duplicate card.
 
-For a combined day plan, prioritization, or time-blocking request, use `plan`.
+For a combined day plan, prioritization, or time-blocking request, use `day-plan`.
 For board migrations, tags, columns, exports, and other structural changes,
 stay within this facade and apply the Fizzy adapter's advanced instructions.

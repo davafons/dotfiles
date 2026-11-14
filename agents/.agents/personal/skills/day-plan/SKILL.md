@@ -1,9 +1,9 @@
 ---
-name: plan
+name: day-plan
 description: "Plan and review David's day across Fizzy tasks, HEY Calendar, and HEY Habits. Use for daily planning, prioritization, time-blocking, routine cadence, and completed-work reviews."
 ---
 
-# Plan
+# Day plan
 
 Build a realistic day from three connected sources of truth:
 

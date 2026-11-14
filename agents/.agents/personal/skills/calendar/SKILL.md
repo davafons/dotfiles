@@ -30,4 +30,4 @@ facade.
   and reconcile once instead of blindly retrying. Different events may be
   handled in parallel.
 
-For ordinary task capture or completion use `tasks`. For a combined daily agenda, prioritization, or time-blocking request use `plan`. Direct HEY mail work belongs to `mail`.
+For ordinary task capture or completion use `tasks`. For a combined daily agenda, prioritization, or time-blocking request use `day-plan`. Direct HEY mail work belongs to `mail`.
