@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "revision": 4,
+  "presets": [
+    {
+      "alias": "sh",
+      "latest": {
+        "provider": "openai-codex",
+        "family": "sol"
+      },
+      "effort": "high",
+      "key": "ctrl+x s"
+    },
+    {
+      "alias": "lm",
+      "latest": {
+        "provider": "openai-codex",
+        "family": "luna"
+      },
+      "effort": "medium",
+      "key": "ctrl+x l"
+    },
+    {
+      "alias": "grok",
+      "model": "xai-grok/grok-4.7",
+      "effort": "high"
+    },
+    {
+      "alias": "opus",
+      "model": "claude-bridge/opus",
+      "effort": "medium"
+    }
+  ]
+}

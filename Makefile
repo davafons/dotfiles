@@ -78,6 +78,9 @@ install: check-stow check-profile
 	@case " $(PACKAGES) " in \
 		*" agents "*) "$(DOTFILES_DIR)/bin/bin/agent-skills" link ;; \
 	esac
+	@case " $(PACKAGES) " in \
+		*" yuke-rust "*) python3 -B "$(DOTFILES_DIR)/yuke-rust/scripts/setup-state.py" ;; \
+	esac
 	@echo "Installation complete!"
 
 uninstall: check-stow check-profile

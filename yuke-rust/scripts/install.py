@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install a verified Rust package beside Zig. Activate it only with --activate."""
+"""Install a verified native yuke-rust package. Activate it as the default `yuke` only with --activate."""
 import argparse
 import hashlib
 import importlib.util
@@ -39,7 +39,6 @@ def main():
     parser.add_argument('--archive', type=Path, required=True)
     parser.add_argument('--source', type=Path, default=Path.home() / 'workspace/yuke')
     parser.add_argument('--activate', action='store_true')
-    parser.add_argument('--update', action='store_true', help='Keep the installed profile and mutable Rust state after the initial migration.')
     args = parser.parse_args()
     source = args.source.resolve(strict=True)
     archive = args.archive.resolve(strict=True)
@@ -79,25 +78,14 @@ def main():
     public = local / 'lib/yuke-rust'
     # Verify the candidate before a running default command can resolve its public link.
     subprocess.run(['python3', str(ROOT / 'scripts/verify.py'), '--source', str(source), '--binary', str(release / 'bin/yuke')], check=True)
-    if not args.update:
-        subprocess.run(['python3', str(ROOT / 'scripts/prepare.py'), '--refresh-state'], check=True)
-        subprocess.run(['python3', str(ROOT / 'scripts/prepared-check.py'), '--binary', str(release / 'bin/yuke')], check=True)
     link(public, release)
     bin_dir = local / 'bin'
-    zig = local / 'lib/yuke-zig/bin/yuke'
     current = bin_dir / 'yuke'
-    if not zig.exists():
-        # Refuse to save a wrapper as the original Zig executable.
-        if current.read_bytes()[:2] == b'#!':
-            raise RuntimeError('The original Zig executable backup is missing.')
-        zig.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(current, zig)
-    atomic(bin_dir / 'yuke-zig', wrapper(zig, 'yuke'))
     atomic(bin_dir / 'yuke-rust', wrapper(public / 'bin/yuke', 'yuke-rust'))
     if args.activate:
         atomic(current, wrapper(public / 'bin/yuke', 'yuke-rust'))
         link(home / '.agents/skills/yuke', public / 'skills/yuke')
-    print(json.dumps(dict(version=identity['version'], sourceHash=source_hash, release=str(release), default='rust' if args.activate else 'unchanged', fallback=str(bin_dir / 'yuke-zig')), indent=2))
+    print(json.dumps(dict(version=identity['version'], sourceHash=source_hash, release=str(release), default='rust' if args.activate else 'unchanged'), indent=2))
 
 if __name__ == '__main__':
     main()

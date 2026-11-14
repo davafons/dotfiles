@@ -1,5 +1,28 @@
-^MIGRATION\.md$
-^biome\.json$
-^scripts$
-^tests$
-^skills$
+# Preserve Stow's default exclusions when adding package-specific rules.
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# Repository-only files: docs, tooling, tests, the state seed and the bundled skill.
+^/[^/]+\.md$
+^/biome\.json$
+^/scripts
+^/tests
+^/state
+^/skills
+^/docs
+__pycache__
+\.pyc$
