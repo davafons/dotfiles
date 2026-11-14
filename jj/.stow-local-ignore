@@ -1,0 +1,20 @@
+# Preserve Stow's default exclusions when adding package-specific rules.
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# jj writes its own repo metadata next to the per-repo config files; only config.toml is linked.
+metadata\.binpb
