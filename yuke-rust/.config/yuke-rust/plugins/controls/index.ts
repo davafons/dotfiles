@@ -11,6 +11,8 @@ export function apply(ctx: PluginContext): undefined {
   const run = (name: string): void => {
     tui.commands.run(`core:${name}`);
   };
+  // Ctrl+K moves pane focus, so btw's own ctrl+k b chord never reaches its second stroke.
+  tui.keys.add("ctrl+x b", "btw:ask", { in: "chat" });
   for (const name of ["exit", "close"]) command(ctx, tui, name, "Exit Yuke", () => run("quit"));
   command(ctx, tui, "clear", "Start an empty chat", () => ctx.get("chat").newSession());
   command(

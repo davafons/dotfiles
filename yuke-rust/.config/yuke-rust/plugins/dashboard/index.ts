@@ -115,7 +115,8 @@ export function apply(ctx: PluginContext): undefined {
     if (fresh()) vim?.setMode(editor, "normal");
     const extension = editor.extend(mount.signal);
     extension.addKeyHandler((event) => {
-      if (!fresh() || vim?.mode(editor) !== "normal" || vim.pending(editor)) return false;
+      // The second stroke of a pending sequence such as ctrl+x m belongs to the keymap.
+      if (!fresh() || vim?.mode(editor) !== "normal" || vim.pending(editor) || tui.keys.pending() !== "") return false;
       const key = strokeOf(event);
       const row = HOME.find((row) => row.key === key);
       if (row !== undefined) return tui.commands.run(row.command);

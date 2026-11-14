@@ -34,7 +34,7 @@ The local role implementation saves each child's role in `roles/<id>.json` and r
 
 | Plugin | Choice | Reason |
 | --- | --- | --- |
-| btw | Loaded as a Git plugin at `c6324ac` | No personal equivalent. `/btw` and `/btw:history` work. Its `Ctrl+K B` chord is shadowed: controls takes `Ctrl+K` for focus-up, and prompt history uses it too. |
+| btw | Loaded as a Git plugin at `c6324ac` | No personal equivalent. `/btw` and `/btw:history` work. Its own `Ctrl+K B` chord is shadowed, because controls takes `Ctrl+K` for focus-up and prompt history uses it too. Controls binds `Ctrl+X B` to `btw:ask` instead. |
 | titles | Not loaded | Native sessions already have renameable titles from the first message, which sessions-reworked shows. Titles adds a model request per session and needs its own model setup. |
 | mailbox | Not loaded | Adds model tools that push messages into other live sessions. That overlaps Herdr pane discovery and project-work messages, and widens what the model can do without a request from the user. |
 
