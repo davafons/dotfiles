@@ -1,0 +1,32 @@
+{
+  "imports": [],
+  "mcpServers": {
+    "grafana": {
+      "type": "stdio",
+      "command": "codex-mcp-grafana",
+      "args": [],
+      "env": { "GRAFANA_URL": "http://monitoring:3010" }
+    },
+    "victoriametrics": {
+      "type": "stdio",
+      "command": "mcp-victoriametrics",
+      "args": [],
+      "env": { "VM_INSTANCE_ENTRYPOINT": "http://monitoring:8428", "VM_INSTANCE_TYPE": "single" }
+    },
+    "victorialogs": {
+      "type": "stdio",
+      "command": "mcp-victorialogs",
+      "args": [],
+      "env": { "VL_INSTANCE_ENTRYPOINT": "http://monitoring:9428", "VL_INSTANCE_TYPE": "single" }
+    },
+    "karakeep": {
+      "type": "stdio",
+      "command": "karakeep-mcp",
+      "args": []
+    },
+    "mobbin": {
+      "type": "http",
+      "url": "https://api.mobbin.com/mcp"
+    }
+  }
+}

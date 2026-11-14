@@ -34,26 +34,14 @@ chmod 600 "${XDG_CONFIG_HOME:-$HOME/.config}/karakeep/api-key"
 
 Set `KARAKEEP_API_ADDR` to override the server address.
 
-## Register with Claude Code
+## Use from agents
 
-Run this on each machine after installing the launcher and credentials:
+Karakeep is one of the servers in `~/.mcporter/mcporter.json`, which the `agents` package installs.
+Claude Code, Codex and the other harnesses reach it through the `mcporter` skill, so it is not
+registered with any harness. Check it with:
 
 ```sh
-claude mcp add --scope user --transport stdio karakeep -- "$HOME/bin/karakeep-mcp"
-claude mcp get karakeep
+mcporter list karakeep
 ```
 
-Restart Claude Code and check `/mcp` for the connection status.
-
-## Register with Codex
-
-Add this block to `~/.codex/config.toml`, using the machine's absolute home path:
-
-```toml
-[mcp_servers.karakeep]
-command = "/Users/davafons/bin/karakeep-mcp"
-```
-
-On Tower, replace `/Users/davafons` with its home path. Restart Codex after
-changing the configuration. The existing Mac configuration uses
-`~/.local/bin/karakeep-mcp`, which now links to the launcher in this checkout.
+`mcporter` starts `karakeep-mcp` from `PATH`, which is `~/bin/karakeep-mcp` from the `bin` package.
