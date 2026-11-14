@@ -1,0 +1,40 @@
+# The Codex settings these dotfiles own. Codex writes ~/.codex/config.toml itself (trusted projects,
+# app versions, UI state), so that file stays out of the repository. `make doctor` (agent-doctor)
+# reports where it differs from the values here; apply a difference with `codex mcp add` or by
+# editing config.toml.
+#
+# MCP servers that every harness shares live in ~/.mcporter/mcporter.json (agents package) and are
+# reached through the mcporter skill. Only servers that need a native connection are listed here.
+
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+
+[features]
+hooks = true
+
+[plugins."split-revset@personal"]
+enabled = true
+
+# Messages from the Hermes container on Tower.
+[mcp_servers.personal_messages]
+command = "ssh"
+args = ["-o", "BatchMode=yes", "qtower", "docker", "exec", "-i", "hermes", "/usr/local/bin/messages", "mcp"]
+startup_timeout_sec = 15.0
+tool_timeout_sec = 60.0
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[mcp_servers.blender]
+command = "blender-mcp"
+
+[mcp_servers.freecad]
+command = "uvx"
+args = ["freecad-mcp"]
+startup_timeout_sec = 120.0
+
+[mcp_servers.xcode]
+command = "xcrun"
+args = ["mcpbridge"]
