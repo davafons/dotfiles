@@ -123,7 +123,7 @@ class NativeAuthoring(unittest.TestCase):
 
     def enable_campaign(self):
         profile = self.root / "config/yuke"
-        shutil.copytree(ROOT / "yuke/.config/yuke/plugins/agent-tools", profile / "agent-tools")
+        shutil.copytree(ROOT / "yuke-rust/.config/yuke-rust/plugins/agent-tools", profile / "agent-tools")
         (profile / "config.json").write_text('{"plugins":["./agent-tools"]}')
         path = profile / "providers.json"
         config = json.loads(path.read_text())

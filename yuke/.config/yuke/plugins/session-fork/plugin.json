@@ -1,4 +1,0 @@
-{
-  "name": "session-fork",
-  "extensions": { "sh.yuke": { "entry": "./index.js" } }
-}

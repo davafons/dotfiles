@@ -23,19 +23,19 @@ class PublishHygiene(unittest.TestCase):
     @unittest.skipUnless(shutil.which("git"), "Git is required for ignore checks")
     def test_credentials_and_generated_files_are_ignored(self):
         ignored = [
-            "yuke/.config/yuke/monid.key",
-            "yuke/.config/yuke/providers.json",
-            "yuke/.config/yuke/.env",
-            "yuke/.config/yuke/.env.local",
+            "yuke-rust/.config/yuke-rust/monid.key",
+            "yuke-rust/.config/yuke-rust/tsconfig.json",
+            "yuke-rust/.config/yuke-rust/.env",
+            "yuke-rust/.config/yuke-rust/.env.local",
             "gh/.config/gh/hosts.yml",
             "ssh/.ssh/id_ed25519",
             "git-work/.gitconfig.local",
             "hermes/config.local.yaml",
             "bin/tests/__pycache__/fixture.pyc",
             "fxwald1le1.tmp",
-            "yuke/.config/yuke/questions.sqlite3",
         ]
-        visible = ["yuke/.config/yuke/.env.example", "yuke/.config/yuke/config.json"]
+        visible = ["yuke-rust/.config/yuke-rust/.env.example", "yuke-rust/.config/yuke-rust/config.json",
+                   "yuke-rust/.config/yuke-rust/providers.json"]
         with tempfile.TemporaryDirectory(prefix="dotfiles-ignore-tests-") as directory:
             checkout = Path(directory)
             self.assertFalse((checkout / ".jj").exists())
@@ -70,20 +70,21 @@ class PublishHygiene(unittest.TestCase):
             self.assertFalse((Path(home) / ".ruby-lsp").exists())
 
     @unittest.skipUnless(shutil.which("stow"), "GNU Stow is required")
-    def test_yuke_stow_plan_does_not_link_documentation_into_home(self):
+    def test_yuke_stow_plan_links_only_the_profile(self):
+        self.assertFalse((ROOT / "yuke").exists())
         with tempfile.TemporaryDirectory(prefix="dotfiles-stow-tests-") as home:
             result = subprocess.run(
-                ["stow", "--no-folding", "-n", "-v", "-d", str(ROOT), "-t", home, "yuke"],
+                ["stow", "--no-folding", "-n", "-v", "-d", str(ROOT), "-t", home, "yuke-rust"],
                 capture_output=True, text=True, check=True,
             )
             output = result.stdout + result.stderr
-            self.assertIn("LINK: .config/yuke/config.json =>", output)
-            self.assertIn("LINK: .config/yuke/plugins/vim-mode/plugin.json =>", output)
-            for obsolete in ("profile.js", "index.js"):
-                self.assertNotIn(f"LINK: .config/yuke/{obsolete} =>", output)
-            for private in ("tests/", "experimental/", "migration/"):
+            self.assertIn("LINK: .config/yuke-rust/config.json =>", output)
+            self.assertIn("LINK: .config/yuke-rust/providers.json =>", output)
+            self.assertIn("LINK: .config/yuke-rust/plugins/vim/plugin.json =>", output)
+            for private in ("tests/", "scripts/", "state/", "skills/", "docs/", "biome.json"):
                 self.assertNotIn(f"LINK: {private}", output)
-            for document in (ROOT / "yuke").glob("*.md"):
+            self.assertNotIn("__pycache__", output)
+            for document in (ROOT / "yuke-rust").glob("*.md"):
                 self.assertNotIn(f"LINK: {document.name} =>", output)
             self.assertEqual(list(Path(home).iterdir()), [])
 

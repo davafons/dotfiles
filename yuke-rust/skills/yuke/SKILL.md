@@ -28,10 +28,10 @@ python3 ~/dotfiles/yuke-rust/tests/typecheck.py --source ~/workspace/yuke
 python3 ~/dotfiles/yuke-rust/scripts/verify.py --source ~/workspace/yuke --binary ~/.local/lib/yuke-rust/bin/yuke
 ```
 
-Use `scripts/prepare.py` to copy canonical profile files to the installed profile.
-Its default preserves mutable Rust state.
-`--refresh-state` refreshes only migrated files that Rust has not changed.
-Keep `providers.json`, `auth.json`, and `monid.key` private.
+The installed profile links to the canonical files through Stow, so edits apply after `/reload`.
+Run `make install PROFILE=mb` from `~/dotfiles` after adding or removing a profile file.
+That also runs `scripts/setup-state.py`, which only creates missing state and never replaces it.
+`providers.json` is tracked and holds no credentials. Keep `auth.json` and `monid.key` private.
 Never print their values.
 Rust stores credentials in `$XDG_DATA_HOME/yuke-rust/auth.json`.
 Its session IDs are hyphenated UUIDs.
@@ -42,5 +42,3 @@ Wait for active work before `/reload`.
 Check UI changes in a private terminal using `tests/terminal.py`.
 That test uses no credentials or external model requests.
 
-For an explicit `yuke-zig` task, use the Zig guide at `~/.local/lib/yuke/skills/yuke/SKILL.md` and its matching declarations.
-Do not use that guide for Rust.

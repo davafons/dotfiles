@@ -10,7 +10,7 @@ Start Yuke inside a Herdr pane. A pending clarification appears in the Herdr not
 
 ## Driving it with the repository driver
 
-Run `python3 -B yuke/tests/check-herdr.py --binary "$(command -v yuke)" 2>&1 | tee "$EVIDENCE/yuke-notifications.log"`. Require explicit PASS lines and read the printed artifact directory with `result.json`, `captures.txt`, and `notification-screen.txt`.
+Run `YUKE_BINARY="$HOME/.local/lib/yuke-rust/bin/yuke" python3 -B -m unittest -v yuke-rust/tests/test_herdr.py 2>&1 | tee "$EVIDENCE/yuke-notifications.log"` and `"$HOME/.local/lib/yuke-rust/bin/yuke" test yuke-rust/scripts/herdr.test.ts 2>&1 | tee -a "$EVIDENCE/yuke-notifications.log"`. Require every test to pass. These cover the framed Herdr transport and pane state. Check question notifications by hand in a real Herdr pane: ask a fixture question and confirm it appears and clears.
 
 ## Gotchas
 

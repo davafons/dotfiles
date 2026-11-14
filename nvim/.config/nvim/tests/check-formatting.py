@@ -222,7 +222,7 @@ with tempfile.TemporaryDirectory(prefix="nvim-formatting-tests-") as temporary:
         "sample.vim": "let g:value = )\n",
         "project/sample.js": "const value={a:1,b:2}\n",
         "project/control.js": "export const control = /[\\x00-\\x1f]/u;\n",
-        "project/yuke/.config/yuke/plugins/control.js": "export const control = /[\\x00-\\x1f]/u;\n",
+        "project/yuke-rust/.config/yuke-rust/plugins/control.js": "export const control = /[\\x00-\\x1f]/u;\n",
         "rust/src/main.rs": "fn main() {}\n",
         "Makefile": "all: clean test\n.PHONY: all clean test\nclean:\n\trm -f temporary\ntest:\n\techo okay\ntest:\n\techo duplicate\n",
         "shell/.bashrc": "#!/bin/bash\necho hello\n",
@@ -270,7 +270,7 @@ with tempfile.TemporaryDirectory(prefix="nvim-formatting-tests-") as temporary:
             environment.pop(key)
     try:
         biome = Path.home() / ".local/share/nvim/personal/mason/bin/biome"
-        for name, expected in [("control.js", True), ("yuke/.config/yuke/plugins/control.js", False)]:
+        for name, expected in [("control.js", True), ("yuke-rust/.config/yuke-rust/plugins/control.js", False)]:
             check = subprocess.run(
                 [str(biome), "lint", "--reporter=json", name],
                 cwd=root / "project",

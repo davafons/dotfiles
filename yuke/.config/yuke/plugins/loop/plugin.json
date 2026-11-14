@@ -1,9 +1,0 @@
-{
-  "name": "loop",
-  "extensions": {
-    "sh.yuke": {
-      "entry": "./index.js",
-      "uses": ["tui"]
-    }
-  }
-}

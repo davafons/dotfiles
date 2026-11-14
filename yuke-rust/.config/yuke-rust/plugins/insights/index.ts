@@ -1,4 +1,4 @@
-import { FileSystemError, readTextFile, remove, writeTextFile } from "yuke:fs";
+import { remove, writeTextFile } from "yuke:fs";
 import type { PluginContext, SessionInspection } from "yuke:plugins";
 import { Command, env } from "yuke:process";
 import { Transcript } from "yuke:transcript";
@@ -240,15 +240,6 @@ export function apply(ctx: PluginContext): undefined {
       all = true,
       busy = false;
     let usage: Usage | undefined;
-    let archive:
-      | {
-          asOf: string;
-          totals: Bucket & { cache_read: number; cache_write: number };
-          models: (Bucket & { name: string })[];
-          chatCount: number;
-          childCount: number;
-        }
-      | undefined;
     const cwd =
       tui.panes.active === undefined ? tui.startup.cwd : (chat.folder(tui.panes.active.view) ?? tui.startup.cwd);
     const view = new TextView({ document: markdown("usage", "Reading…") });
@@ -303,16 +294,11 @@ export function apply(ctx: PluginContext): undefined {
         text = `## Block kinds\n| Kind | Count |\n| --- | ---: |\n${table(value.roles)}\n\n## Outcomes\n| Outcome | Count |\n| --- | ---: |\n${table(value.outcomes)}\n\n## Finish reasons\n| Finish | Count |\n| --- | ---: |\n${table(value.finishes)}\n\n## Effort\n| Effort | Count |\n| --- | ---: |\n${table(value.efforts)}`;
       else if (tab === 3)
         text = `## Tool calls\n| Tool | Calls | Errors |\n| --- | ---: | ---: |\n${value.tools.map((row) => `| ${row.name} | ${row.calls} | ${row.errors} |`).join("\n")}`;
-      else if (tab === 6)
-        text =
-          archive === undefined
-            ? "No Zig usage archive was prepared."
-            : `## Zig usage archive\nCaptured ${archive.asOf}\n\n${number(archive.totals.input)} input · ${number(archive.totals.output)} output · ${number(archive.totals.reasoning)} reasoning · ${number(archive.totals.cache_read)} cache read\n\nSaved cost: $${archive.totals.cost.toFixed(4)} · ${archive.totals.unpriced} unpriced\n\n${archive.chatCount} chats · ${archive.childCount} children. Chat records were not imported.\n\n${archive.models.map((row) => `### ${row.name}\n${number(row.input)} input · ${number(row.output)} output · saved cost $${row.cost.toFixed(4)}`).join("\n\n")}\n\nThis archive stays fixed. The other tabs read the new Rust history.`;
       else if (tab === 4) text = `## Admitted skills\n| Skill | Invocations |\n| --- | ---: |\n${table(value.skills)}`;
       view.setDocument(
         markdown(
           "usage",
-          `# ${["Overview", "Usage", "Messages", "Plugins", "Skills", "Chats", "Zig archive"][tab]}\n${text}`,
+          `# ${["Overview", "Usage", "Messages", "Plugins", "Skills", "Chats"][tab]}\n${text}`,
         ),
       );
       picker.setItems(tab === 5 ? value.chats : []);
@@ -334,13 +320,6 @@ export function apply(ctx: PluginContext): undefined {
           { createNew: true, mode: 0o600 },
         );
         usage = await helper<Usage>("usage-rust", [path], dialog.signal);
-        if (archive === undefined) {
-          try {
-            archive = JSON.parse(await readTextFile(`${ctx.dataDir}/zig-usage.json`));
-          } catch (error) {
-            if (!(error instanceof FileSystemError && error.code === "ENOENT")) throw error;
-          }
-        }
         if (!dialog.signal.aborted) render();
       } finally {
         await remove(path, { force: true });
@@ -364,12 +343,12 @@ export function apply(ctx: PluginContext): undefined {
       },
       rows: Math.max(10, tui.height - 2),
       keys: [
-        ...Array.from({ length: 7 }, (_, index) => ({
+        ...Array.from({ length: 6 }, (_, index) => ({
           key: `alt+${index + 1}`,
-          label: ["overview", "usage", "messages", "plugins", "skills", "chats", "Zig archive"][index] ?? "",
+          label: ["overview", "usage", "messages", "plugins", "skills", "chats"][index] ?? "",
           run: () => choose(index),
         })),
-        { key: "tab", label: "next tab", run: () => choose((tab + 1) % 7) },
+        { key: "tab", label: "next tab", run: () => choose((tab + 1) % 6) },
         {
           key: "ctrl+r",
           label: "refresh",

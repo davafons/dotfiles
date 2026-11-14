@@ -6,7 +6,7 @@
   "assist": { "enabled": false },
   "overrides": [
     {
-      "includes": ["yuke/.config/yuke/plugins/**"],
+      "includes": ["yuke-rust/.config/yuke-rust/plugins/**"],
       "linter": { "rules": { "suspicious": { "noControlCharactersInRegex": "off" } } }
     }
   ]

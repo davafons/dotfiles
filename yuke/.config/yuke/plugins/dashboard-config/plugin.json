@@ -1,9 +1,0 @@
-{
-  "name": "dashboard-config",
-  "extensions": {
-    "sh.yuke": {
-      "entry": "./index.js",
-      "uses": ["yuke-dashboard"]
-    }
-  }
-}
