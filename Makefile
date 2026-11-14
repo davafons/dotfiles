@@ -32,7 +32,7 @@ help:
 	@printf "  \e[32minstall\e[0m             Install the selected profile\n"
 	@printf "  \e[32muninstall\e[0m           Uninstall the selected profile\n"
 	@printf "  \e[32mstatus\e[0m              Alias for plan\n"
-	@printf "  \e[32mdoctor\e[0m              Check Stow and profile package definitions\n"
+	@printf "  \e[32mdoctor\e[0m              Check profile packages, agent skills and harness config\n"
 	@printf "  \e[32mcheck\e[0m               Run lightweight skill, shell, and wrapper tests\n"
 	@printf "  \e[32mskills-sync\e[0m         Refresh externally managed provider skills\n"
 	@printf "  \e[32mupgrade-skills\e[0m      Refresh skills embedded in installed provider CLIs\n"
@@ -97,13 +97,13 @@ doctor: check-stow check-profile
 	done
 	@echo "Profile '$(PROFILE)' is valid. Run 'make plan PROFILE=$(PROFILE)' to check its Stow links."
 	@case " $(PACKAGES) " in \
-		*" agents "*) "$(DOTFILES_DIR)/bin/bin/agent-skills" check ;; \
+		*" agents "*) "$(DOTFILES_DIR)/bin/bin/agent-skills" check && "$(DOTFILES_DIR)/bin/bin/agent-doctor" ;; \
 	esac
 
 check:
 	@shellcheck "$(DOTFILES_DIR)/bin/bin/karakeep-mcp"
 	@shellcheck "$(DOTFILES_DIR)/bin/bin/playwright-cli" "$(DOTFILES_DIR)/bin/bin/playwright-brave-launcher" "$(DOTFILES_DIR)/bin/bin/agent-skills" "$(DOTFILES_DIR)/bin/bin/codex-mcp-grafana" "$(DOTFILES_DIR)/agents/.agents/davstack/skills/show-me-your-work/scripts/log.sh"
-	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py bin/tests/test_pstack_inventory.py bin/tests/test_decision_log.py bin/tests/test_workspace_audit.py bin/tests/test_skill_creator_native.py bin/tests/test_tower_ssh_proxy.py
+	@python3 -B -m unittest -v bin/tests/test_playwright_focus.py bin/tests/test_investigation_skills.py bin/tests/test_davstack_migration.py bin/tests/test_publish_hygiene.py bin/tests/test_pstack_inventory.py bin/tests/test_decision_log.py bin/tests/test_workspace_audit.py bin/tests/test_skill_creator_native.py bin/tests/test_tower_ssh_proxy.py bin/tests/test_agent_doctor.py
 
 skills-sync:
 	@"$(DOTFILES_DIR)/bin/bin/agent-skills" sync

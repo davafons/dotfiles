@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Check that the agent harnesses still match these dotfiles.
+
+Failures (exit 1):
+- a dangling symlink in a folder an agent harness reads skills, agents or commands from;
+- ~/.mcporter/mcporter.json is not the agents package's copy, or has a secret written into it;
+- a server from the mcporter manifest is also defined in Codex or in Claude Code's user scope;
+- a setting in codex/.codex/dotfiles.toml differs from ~/.codex/config.toml.
+
+Warnings: ~/.hermes/config.yaml differs from hermes/.hermes/config.yaml. Hermes rewrites its own
+config and ~/.hermes syncs from Tower, so the dotfiles copy is a reference, not an install.
+"""
+
+import argparse
+import json
+from pathlib import Path
+import re
+import sys
+import tomllib
+
+LINK_DIRS = [
+    ".agents/skills",
+    ".claude/skills",
+    ".claude/agents",
+    ".claude/commands",
+    ".codex/skills",
+    ".codex/agents",
+    ".grok/skills",
+    ".mcporter",
+]
+SECRET_NAME = re.compile(r"token|secret|password|api[_-]?key|authorization", re.IGNORECASE)
+# Values that point elsewhere instead of holding the secret: ${VAR}, $env:VAR, or nothing.
+INDIRECT = re.compile(r"^(\$\{[^}]+\}|\$env:\w+|)$")
+
+
+def dangling_links(home):
+    for relative in LINK_DIRS:
+        folder = home / relative
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.iterdir()):
+            if path.is_symlink() and not path.exists():
+                yield f"dangling link: {path} -> {path.readlink()}"
+
+
+def written_secrets(servers):
+    for name, server in servers.items():
+        for table in ("env", "headers"):
+            for key, value in (server.get(table) or {}).items():
+                if SECRET_NAME.search(key) and not INDIRECT.match(str(value)):
+                    yield f"mcporter server {name} has {table}.{key} written into the manifest; read it from the Keychain or ${{VAR}} instead"
+
+
+def differences(want, have, prefix=""):
+    for key, value in want.items():
+        path = f"{prefix}{key}"
+        if isinstance(value, dict) and isinstance(have.get(key), dict):
+            yield from differences(value, have[key], f"{path}.")
+        elif have.get(key) != value:
+            yield f"codex {path} is {have.get(key)!r}, dotfiles.toml says {value!r}"
+
+
+def check(home, dotfiles):
+    failures, warnings = list(dangling_links(home)), []
+
+    manifest = dotfiles / "agents/.mcporter/mcporter.json"
+    live = home / ".mcporter/mcporter.json"
+    servers = json.loads(manifest.read_text())["mcpServers"]
+    if not (live.is_symlink() and live.resolve() == manifest.resolve()):
+        failures.append(f"{live} is not a link to {manifest} (run make install)")
+    failures += written_secrets(servers)
+
+    codex = home / ".codex/config.toml"
+    codex_config = tomllib.loads(codex.read_text()) if codex.is_file() else {}
+    claude = home / ".claude.json"
+    claude_servers = json.loads(claude.read_text()).get("mcpServers", {}) if claude.is_file() else {}
+    for name in servers:
+        if name in codex_config.get("mcp_servers", {}):
+            failures.append(f"MCP server {name} is in mcporter and also in {codex}: codex mcp remove {name}")
+        if name in claude_servers:
+            failures.append(f"MCP server {name} is in mcporter and also in Claude Code: claude mcp remove {name} -s user")
+
+    owned = dotfiles / "codex/.codex/dotfiles.toml"
+    if codex.is_file():
+        failures += differences(tomllib.loads(owned.read_text()), codex_config)
+
+    hermes, reference = home / ".hermes/config.yaml", dotfiles / "hermes/.hermes/config.yaml"
+    if hermes.is_file() and hermes.read_bytes() != reference.read_bytes():
+        warnings.append(f"{hermes} differs from {reference}; copy it over to keep the reference current")
+
+    return failures, warnings
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--dotfiles", type=Path, default=Path(__file__).resolve().parents[2])
+    args = parser.parse_args()
+    failures, warnings = check(args.home, args.dotfiles)
+    for line in warnings:
+        print(f"agent-doctor: warning: {line}", file=sys.stderr)
+    for line in failures:
+        print(f"agent-doctor: {line}", file=sys.stderr)
+    if not failures:
+        print("agent-doctor: agent harnesses match the dotfiles")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
