@@ -28,7 +28,7 @@ Seven plugins read `composer-vim`: controls, dashboard, dollar-skills, path-comp
 
 The list, model dialog, model settings, run log, and UI modules match upstream. The lifecycle differences are in the entry point, plus the personal `roles.ts` and `campaign.ts`. The personal tool names stay until the skills and campaign rules change in the same migration.
 
-The local role implementation writes role files but never reads them. Its in-memory role map therefore cannot restore the role prompt in a fresh process. This is a source finding, not a completed restart test.
+The local role implementation saves each child's role in `roles/<id>.json` and reads it back when a child of an earlier process opens, so the role prompt survives a restart. An unknown saved role falls back to general. `tools.test.ts` covers the read; a full restart in a real terminal is not tested.
 
 ## Upstream plugins that are not vim or subagents
 

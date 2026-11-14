@@ -1,6 +1,10 @@
 import { mkdir, writeTextFile } from "yuke:fs";
 import { assert, assertEquals, createHost, folder, reply, test, waitForSettled } from "yuke:test";
-import { apply as agentApply, session as agentSession } from "../.config/yuke-rust/plugins/agent-tools/src/index.ts";
+import {
+  apply as agentApply,
+  session as agentSession,
+  savedRole,
+} from "../.config/yuke-rust/plugins/agent-tools/src/index.ts";
 import { session as skillSession } from "../.config/yuke-rust/plugins/dollar-skills/index.ts";
 import { session as personalSession } from "../.config/yuke-rust/plugins/personal/index.ts";
 import { apply as workApply, session as workSession } from "../.config/yuke-rust/plugins/project-work/index.ts";
@@ -86,6 +90,16 @@ test("an inherited delegate gets its role prompt and returns a model receipt wit
     !request.tools.includes("spawn_agent") && !request.tools.includes("send_agent_input"),
     JSON.stringify(request.tools),
   );
+});
+
+test("a child of an earlier process gets its saved role back, and an unknown role falls back", async () => {
+  const roles = `${folder()}/roles`;
+  await mkdir(roles, { recursive: true });
+  await writeTextFile(`${roles}/child-a.json`, JSON.stringify("reviewer"));
+  await writeTextFile(`${roles}/child-b.json`, JSON.stringify("retired-role"));
+  assertEquals(await savedRole(roles, "child-a"), "reviewer");
+  assertEquals(await savedRole(roles, "child-b"), undefined);
+  assertEquals(await savedRole(roles, "child-c"), undefined);
 });
 
 test("two explicit skills reach the model while the visible prompt keeps its original text", async () => {

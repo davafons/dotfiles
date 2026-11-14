@@ -1,4 +1,4 @@
-import { mkdir, writeTextFile } from "yuke:fs";
+import { FileSystemError, mkdir, readTextFile, writeTextFile } from "yuke:fs";
 import type { JobReport, PluginContext, SessionContext, SessionHandle, Sessions } from "yuke:plugins";
 import type { InputId, SessionId, SessionRow, SessionSettings } from "yuke:protocol";
 import type { ToolContext, ToolExecuteResult } from "yuke:tools";
@@ -109,11 +109,29 @@ export async function apply(ctx: PluginContext): Promise<undefined> {
   });
 }
 
+/** The role saved for `id`, or undefined when there is no file or it names no current role. */
+export async function savedRole(directory: string, id: string): Promise<keyof typeof AGENTS | undefined> {
+  let text: string;
+  try {
+    text = await readTextFile(`${directory}/${id}.json`);
+  } catch (error) {
+    if (error instanceof FileSystemError && error.code === "ENOENT") return undefined;
+    throw error;
+  }
+  const role: unknown = JSON.parse(text);
+  return typeof role === "string" && Object.hasOwn(AGENTS, role) ? (role as keyof typeof AGENTS) : undefined;
+}
+
 export async function session(s: SessionContext): Promise<undefined> {
   campaign.attach(s);
   if (s.parent !== undefined) {
     // A pane can open a subagent of an earlier process, which has no label here.
     if (!subagents.has(s.sessionId)) subagents.set(s.sessionId, { parent: s.parent, label: undefined });
+    // A child of an earlier process gets its role back from the file written at its creation.
+    if (!roles.has(s.sessionId)) {
+      const saved = await savedRole(roleDirectory, s.sessionId);
+      if (saved !== undefined) roles.set(s.sessionId, saved);
+    }
     s.addHook("prompt.build", (event) => ({
       sections: {
         ...event.sections,
