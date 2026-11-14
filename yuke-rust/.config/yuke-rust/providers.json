@@ -1,0 +1,138 @@
+{
+  "providers": [
+    {
+      "id": "claude-bridge",
+      "base_url": "http://127.0.0.1:4123/v1",
+      "session_header": "session_id",
+      "endpoints": [
+        {
+          "protocol": "anthropic_messages",
+          "cache_breakpoint": true
+        }
+      ],
+      "models": [
+        {
+          "id": "opus",
+          "upstream_id": "opus",
+          "limits": {
+            "context_window": 1000000,
+            "max_output_tokens": 128000
+          },
+          "cost": [
+            {
+              "min_prompt_tokens": 0
+            }
+          ],
+          "reasoning_levels": [
+            null,
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "flags": {
+            "anthropic_thinking": "adaptive"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ],
+          "tools": true
+        },
+        {
+          "id": "sonnet",
+          "upstream_id": "sonnet",
+          "limits": {
+            "context_window": 1000000,
+            "max_output_tokens": 128000
+          },
+          "cost": [
+            {
+              "min_prompt_tokens": 0
+            }
+          ],
+          "reasoning_levels": [
+            null,
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "flags": {
+            "anthropic_thinking": "adaptive"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ],
+          "tools": true
+        },
+        {
+          "id": "haiku",
+          "upstream_id": "haiku",
+          "limits": {
+            "context_window": 200000,
+            "max_output_tokens": 64000
+          },
+          "cost": [
+            {
+              "min_prompt_tokens": 0
+            }
+          ],
+          "reasoning_levels": [
+            null
+          ],
+          "flags": {},
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ],
+          "tools": true
+        },
+        {
+          "id": "fable",
+          "upstream_id": "fable",
+          "limits": {
+            "context_window": 1000000,
+            "max_output_tokens": 128000
+          },
+          "cost": [
+            {
+              "min_prompt_tokens": 0
+            }
+          ],
+          "reasoning_levels": [
+            null,
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "flags": {
+            "anthropic_thinking": "adaptive"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ],
+          "tools": true
+        }
+      ]
+    }
+  ]
+}

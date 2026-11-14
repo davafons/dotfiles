@@ -7,7 +7,13 @@
     "./plugins/web",
     "./plugins/project-work",
     "./plugins/controls",
-    "./plugins/models",
+    {
+      "path": "./plugins/models",
+      "options": {
+        "startupModel": "openai-codex/gpt-6.1-sol",
+        "startupEffort": "medium"
+      }
+    },
     "./plugins/prompt-history",
     "./plugins/path-completion",
     "./plugins/workspace",
