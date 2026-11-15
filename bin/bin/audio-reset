@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Reset what makes the Mac speakers crackle: CPU load from simulators, and a stuck audio daemon.
+set -euo pipefail
+
+echo "Load before: $(sysctl -n vm.loadavg)"
+
+if command -v xcrun >/dev/null; then
+  echo "Shutting down all iOS simulators..."
+  xcrun simctl shutdown all 2>/dev/null || true
+fi
+pkill -x Simulator 2>/dev/null || true
+
+# SIP blocks launchctl kickstart of coreaudiod; killall works, and launchd starts it again at once.
+echo "Restarting the audio daemon (admin)..."
+restart_audio='killall coreaudiod'
+# Without a terminal (for example `!` in Claude Code), sudo cannot ask; a macOS dialog can.
+if [ -t 0 ]; then
+  sudo $restart_audio
+else
+  osascript -e "do shell script \"$restart_audio\" with administrator privileges"
+fi
+
+echo "Audio output: $(system_profiler SPAudioDataType 2>/dev/null | awk '/Default Output Device: Yes/{print prev} {prev=$0}' | sed 's/^ *//; s/:$//')"
+echo "Load after:  $(sysctl -n vm.loadavg)"
+echo "The load average drops over a few minutes. Reboot if the noise stays."
