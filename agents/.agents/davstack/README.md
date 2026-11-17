@@ -115,7 +115,6 @@ reading and copying the method do not execute it.
 | `create-verification-skill` | Generate a project-local driving and verification skill with retained proof | A runnable app and safe control harness |
 | `maintain-verification-skill` | Audit every mapped feature from source and live behavior | Project verification skill, authorized source readers, and coordinator-owned driving |
 | `control-cli` | Drive, inspect, and profile an interactive terminal app | Existing project harness or isolated PTY/private tmux |
-| `skill-creator` | Full authoring, paired evals, human review, iteration, and description optimization | Authorized bounded native model runs, feedback, and its full helpers/templates |
 | `swarm` | Parallel coverage, races, and consolidated evidence with explicit gaps | Authorized native workers and owned outputs |
 | `arena` | Independent candidates, cross-judging, base selection, and synthesis | Configured candidate/judge seats and verified output isolation |
 | `architect` | Usage-first designs, distinct sketches, and implementation against synthesis | `how`, `why`, `arena`, and its three design templates |
@@ -123,7 +122,7 @@ reading and copying the method do not execute it.
 | `correct` | Make demonstrated repeat mistakes structurally impossible within the requested scope | Real repeated evidence, architecture or executable checks, and past-mistake reproduction |
 | `ketchup` | Recap this chat since the user's last message and explain user-only decisions | Read-only current-chat evidence and `bro` |
 | `bro` | Restate the last assistant reply in plain language | The previous reply |
-| `automate-me` | Capture working conventions in a personal mode | Authorized history, `skill-creator`, `unslop` and user feedback |
+| `automate-me` | Capture working conventions in a personal mode | Authorized history, the runtime's skill-creator, `unslop` and user feedback |
 | `typescript-best-practices` | Apply the complete TypeScript rules and examples | Referenced principles and the documented duration erratum |
 | `setup-pstack` | Detect, confirm and configure model roles and budgets | Actual native role configuration, not a decorative Cursor rule |
 | `poteto-help` | Explain the skill map and hand back a suitable prompt without starting work | Complete router, prompting/recipe references and native mappings |
@@ -211,7 +210,6 @@ agents/.agents/
 │       ├── why/{SKILL.md,LICENSE,references/}
 │       ├── teach/{SKILL.md,LICENSE}
 │       ├── recall/{SKILL.md,LICENSE}
-│       ├── skill-creator/{SKILL.md,LICENSE.txt,NOTICE.md,agents/,assets/,eval-viewer/,references/,scripts/}
 │       ├── swarm/{SKILL.md,LICENSE}
 │       ├── arena/{SKILL.md,LICENSE}
 │       ├── architect/{SKILL.md,LICENSE,references/}
@@ -298,7 +296,6 @@ use `/reload` when idle, or start a new chat. Explicit invocation examples:
 /skill:teach explain the boundary
 /skill:recall my importer work
 /skill:control-cli
-/skill:skill-creator
 /skill:maintain-verification-skill
 /skill:create-verification-skill
 /skill:swarm
@@ -449,12 +446,7 @@ not a completed delegated maintenance wave or real model review.
 The [batch report](VERIFICATION-BATCH.md) records evidence and limits.
 
 The imported [authoring playbook](skills/dav-mode/playbooks/authoring-a-skill.md)
-now uses the installed [skill-creator](skills/skill-creator/SKILL.md). The user
-approved the complete public Anthropic method at `dbd4588f9e1033efb41dad4bef2f7947c8993d44`,
-with Apache-2.0 license and all supporting files. It is not Cursor's unpublished
-built-in. Native helpers were exercised with bounded real Codex tasks and
-selection/proposal trials; full campaigns and human feedback are not implied.
-See [the authoring port report](AUTHORING-PORT.md). The imported
+uses the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex). The imported
 [cleanup playbook](skills/dav-mode/playbooks/worktree-cleanup.md) uses a native
 read-only jj audit. It never infers safe deletion from an empty snapshot or old
 commit. PR/chat usage, unsaved buffers, and untracked/ignored data need separate

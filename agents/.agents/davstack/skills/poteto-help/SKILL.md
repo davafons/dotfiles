@@ -18,7 +18,7 @@ read-only and do not launch a workflow, model panel or setup operation merely to
 explain it. Use native structured questions when a real decision is needed.
 
 Map upstream `poteto-mode` to installed `dav-mode`, `poteto-agent` to `dav-agent`,
-and `create-skill` to `skill-creator`. Slash forms and Custom Mode shortcuts below
+and `create-skill` to the runtime's own skill-creator. Slash forms and Custom Mode shortcuts below
 are Cursor examples, not commands to promise in another frontend. Use the actual
 frontend's invocation or an ordinary-language request. Read the installed skill
 before describing its current local behavior.

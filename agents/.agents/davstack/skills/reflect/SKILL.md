@@ -25,11 +25,9 @@ selection, or that a read-only flag controls MCP access in this runtime.
 Without delegation permission, apply all three templates serially yourself,
 then synthesize. Label this as direct review, not independent or cross-model proof.
 
-The `create-skill` routing labels below map to the installed
-[skill-creator](../skill-creator/SKILL.md), the user-approved complete public
-Anthropic authoring workflow. It is not Cursor's unpublished built-in. Follow
-its draft/test/iterate and description-optimization loops through the native
-adapter. No ad hoc edit replaces those loops. Creating a verification skill
+The `create-skill` routing labels below map to the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex). Follow its
+draft/test/iterate and description-optimization loops; no ad hoc edit replaces
+them. Creating a verification skill
 remains a separate specialized workflow. Missing model, budget, human-review,
 or independent-role capabilities keep the affected execution gate open.
 

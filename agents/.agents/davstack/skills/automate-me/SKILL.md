@@ -14,7 +14,7 @@ Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) b
 
 Read the [shared working rules](../dav-mode/references/working-rules.md) and
 [playbook runtime](../dav-mode/references/playbook-runtime.md). Map upstream
-`create-skill` to the installed [skill-creator](../skill-creator/SKILL.md),
+`create-skill` to the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex),
 `unslop` to [its local source](../unslop/SKILL.md), and `poteto-mode` to
 [dav-mode](../dav-mode/SKILL.md).
 

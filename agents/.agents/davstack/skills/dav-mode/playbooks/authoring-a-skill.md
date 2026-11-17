@@ -6,12 +6,9 @@ Select each delegate's reasoning level and speed per [dav-mode's Subagents rules
 
 ## Runtime adaptation
 
-Use the installed [skill-creator](../../skill-creator/SKILL.md) as the native
-runtime's general authoring dependency. It is the user-approved complete public
-Anthropic workflow, not a claim that Cursor's unpublished built-in was recovered.
-Follow its draft, paired-task evaluation, human review, iteration, and description
-optimization loops. Its native adapter supplies bounded Yuke execution and
-retained evidence. Reading or installing it is not proof that a full campaign ran.
+Use the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex) as the general authoring dependency. Follow its draft, evaluation,
+human review, iteration, and description optimization loops. Reading it is not
+proof that an evaluation ran.
 
 For project verification skills, the installed
 [create-verification-skill](../../create-verification-skill/SKILL.md) remains the
@@ -33,7 +30,7 @@ Without publication authority, hand back the scoped verified diff instead.
 
 **You own the skill's voice.**
 
-1. Use the installed **skill-creator** workflow. This is the native mapping of the upstream Cursor **create-skill** dependency.
+1. Use the runtime's own **skill-creator** workflow. This is the native mapping of the upstream Cursor **create-skill** dependency.
 2. Validate the skill: frontmatter has `name` and `description`, referenced files exist, cross-skill links resolve.
 3. Test cases if structural. Skip if subjective.
 4. Run **Opening a PR**.

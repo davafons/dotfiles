@@ -62,8 +62,7 @@ examples, not native calls. `Task`, `TaskOutput`, `AskQuestion`, `readonly`,
 `environment`, and `run_in_background` do not add fields to this harness. Use its
 actual child, follow-up, stop, clarification, job and scheduling tools. Never
 run a Cursor transcript search on native history or create `.mdc` rules expecting
-them to configure native roles. `create-skill` maps to the installed public
-[skill-creator](../../skill-creator/SKILL.md), not a recovered Cursor built-in.
+them to configure native roles. `create-skill` maps to the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex), not a recovered Cursor built-in.
 
 Resolve each named logical model role to an available configured native role.
 The upstream model tables are not provider configuration or permission to guess
@@ -209,13 +208,8 @@ does not grant authority or satisfy an independent-verdict gate.
 
 ## Skill authoring and cleanup
 
-[Authoring a skill](../playbooks/authoring-a-skill.md) now maps the upstream
-Cursor dependency to the installed [skill-creator](../../skill-creator/SKILL.md).
-The user explicitly approved the complete public Anthropic workflow under
-Apache-2.0, not a claim that Cursor's built-in source was recovered. Its native
-Yuke/macOS helpers provide authorized bounded model trials, private stores,
-sandboxed writes, retained histories and budgets. Full paired/human-review and
-20-query repeated description campaigns remain separate execution gates.
+[Authoring a skill](../playbooks/authoring-a-skill.md) maps the upstream
+Cursor dependency to the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex).
 Verification-skill generation keeps its specialized installed workflow.
 
 [Workspace cleanup](../playbooks/worktree-cleanup.md) uses
