@@ -19,10 +19,10 @@ class OwnedBrowser(unittest.TestCase):
         self.log = self.root / "calls.jsonl"
         self.env_file = self.root / "env"
         self.env_file.write_text("export PLAYWRIGHT_MCP_EXTENSION_TOKEN=synthetic-test-token\n")
-        backend = self.root / "npx"
+        backend = self.root / "node"
         backend.write_text(f"#!{sys.executable}\n" + '''import json, os, sys
 from pathlib import Path
-args = sys.argv[3:]
+args = sys.argv[2:]
 Path(os.environ["FOCUS_TEST_LOG"]).with_suffix(".environment").write_text(json.dumps({
     "entrypoint": args[0] if args else None,
     "background": os.environ.get("PLAYWRIGHT_MCP_BACKGROUND")
@@ -51,13 +51,11 @@ else:
     print("synthetic backend: " + " ".join(args))
 ''')
         backend.chmod(0o755)
-        aerospace = self.root / "aerospace"
-        aerospace.write_text(f"#!{sys.executable}\n" + '''import json, os, sys
-with open(os.environ["FOCUS_TEST_LOG"], "a") as log:
-    log.write(json.dumps(["aerospace", *sys.argv[1:]]) + "\\n")
-print("60" if "list-windows" in sys.argv else "1")
-''')
-        aerospace.chmod(0o755)
+
+        installed = self.root / "data" / "playwright-cli"
+        for version in ("1.66.0-alpha-2026-11-17",):
+            (installed / version).mkdir(parents=True)
+            (installed / version / ".focus-patched").touch()
 
         script = WRAPPER.read_text()
         assignment = 'ENV_FILE="${HOME}/.config/playwright-cli/env"'
@@ -69,7 +67,10 @@ print("60" if "list-windows" in sys.argv else "1")
         env = {**os.environ, "PATH": f"{self.root}:/opt/homebrew/bin:/usr/bin:/bin",
                "FOCUS_TEST_LOG": str(self.log), "FOCUS_TEST_ENV_FILE": str(self.env_file),
                "FOCUS_TEST_SESSION": session, "PLAYWRIGHT_CLI_SESSION": "focus-test",
-               "PLAYWRIGHT_CLI_CONTROL_DIR": str(self.root / "control")}
+               "PLAYWRIGHT_CLI_CONTROL_DIR": str(self.root / "control"),
+               "XDG_DATA_HOME": str(self.root / "data")}
+        env.pop("CODEX_SESSION_ID", None)
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
         if extra_env:
             env.update(extra_env)
         result = subprocess.run(["/bin/bash", str(self.wrapper), *args], env=env,
@@ -98,7 +99,6 @@ print("60" if "list-windows" in sys.argv else "1")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(["cli", "attach", "--extension=chrome", "--session=focus-test"], calls)
         self.assertIn("verified Brave group", result.stdout)
-        self.assertFalse(any(call[0] == "aerospace" for call in calls))
 
     def test_verified_attached_session_is_reused_without_focus(self):
         for session in ("open", "welcome"):
@@ -106,7 +106,7 @@ print("60" if "list-windows" in sys.argv else "1")
                 result, calls = self.run_wrapper("attach", "--extension", session=session)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("reusing attached", result.stdout)
-                self.assertFalse(any("attach" in call or call[0] == "aerospace" for call in calls))
+                self.assertFalse(any("attach" in call for call in calls))
 
     def test_open_but_unattached_session_is_not_reused(self):
         result, calls = self.run_wrapper("attach", "--extension", session="unattached")
@@ -135,9 +135,8 @@ print("60" if "list-windows" in sys.argv else "1")
     def test_explicit_owned_attach_is_verified(self):
         result, calls = self.run_wrapper("-s=focus-test", "attach", "--extension")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn(["cli", "-s=focus-test", "attach", "--extension=chrome"], calls)
+        self.assertIn(["cli", "attach", "--extension=chrome", "--session=focus-test"], calls)
         self.assertIn("verified Brave group", result.stdout)
-        self.assertFalse(any(call[0] == "aerospace" for call in calls))
 
     def test_tab_selection_remains_available_in_background(self):
         result, calls = self.run_wrapper("tab-select", "2")

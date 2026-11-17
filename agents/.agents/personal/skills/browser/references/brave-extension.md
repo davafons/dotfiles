@@ -1,80 +1,55 @@
 # Local Brave extension backend
 
-Use David's existing Brave profile through the exact wrapper:
+Drive David's Brave Beta through `~/bin/playwright-cli`, never the global
+`playwright-cli` binary. Each activity is its own background tab group in his
+profile:
 
 ```bash
 ~/bin/playwright-cli --activity=shopping attach --extension
+~/bin/playwright-cli --activity=shopping goto https://example.com
+~/bin/playwright-cli --activity=shopping snapshot
 ```
 
-Attach verifies the controller-owned session and tab group before returning.
-The wrapper supplies the Brave executable and token, locks the entire command
-per activity, and derives an isolated session from `CODEX_SESSION_ID`. Activity
-names are lowercase slugs of at most 40 characters. Reuse one name throughout a
-flow and use separate names for parallel stateful work:
+Activity names are lowercase slugs of at most 40 characters. Reuse one name
+throughout a flow and use separate names for parallel stateful work. Attaching
+again reuses the live group.
 
-```bash
-~/bin/playwright-cli --activity=product-a ...
-~/bin/playwright-cli --activity=product-b ...
-```
+The wrapper names the session from `CODEX_SESSION_ID` or `CLAUDE_CODE_SESSION_ID`.
+Other controllers set a unique `PLAYWRIGHT_CLI_SESSION` on every call: Yuke uses
+`yuke-<current-session-id>`, kept for the whole chat and never stored as a
+shared default. Never pass `-s`/`--session` or fake a session ID. Pass
+`DAVAFONS_BROWSER_BACKEND=brave-extension` when the backend came from the
+private configuration rather than the environment.
 
-Never pass a session name or invoke the global `playwright-cli` binary. A
-non-Codex controller must set a unique `PLAYWRIGHT_CLI_SESSION` on every call.
-For Yuke, use `yuke-<current-session-id>`, substituting this chat's actual session
-ID. Reuse that value for this chat, including across tool calls, and never store
-it as a shared profile default. If the ID is unavailable, generate a UUID once
-and retain it for this chat. Pass `DAVAFONS_BROWSER_BACKEND=brave-extension`
-when the backend was resolved from the wrapper's private configuration rather
-than inherited. Do not set a fake `CODEX_SESSION_ID`.
+Run `~/bin/playwright-cli <command> --help` for syntax. The official skill's
+workflow guides (tracing, request mocking, storage state, running code) are in
+[playwright-cli/](playwright-cli/); read one only when the task needs it.
+`open`, `close`, `detach` and session flags are replaced by `attach --extension`
+and `--activity`.
 
-Use absolute paths for uploads, scripts, and named artifacts.
+Attaching and all later commands run in the background, including clicks and
+typing in inactive tabs. When David says an activity is done, run
+`detach --close-tabs` for it. The
+wrapper pins the CLI and patches focus emulation for that (microsoft/playwright
+#44096). If background input breaks, verify on a test page before adding window
+management or bypassing click stability checks.
 
-The groups share David's normal Brave profile but remain separate tab groups.
-Do not create another browser window, minimize Brave, or substitute a headless
-browser. Reattaching reuses the existing group.
-
-The wrapper runs the upstream CLI from
-`playwright-core@1.66.0-alpha-2026-11-04` with
-`PLAYWRIGHT_MCP_BACKGROUND=1`. Upstream suppresses browser activation when
-selecting tabs and creates new tabs in the background. Keep background mode
-enabled. The control directory has a separate `background` namespace, so an
-old foreground daemon cannot be reused. Existing foreground groups stay open.
-
-Background mode requires Playwright Extension 0.5.0 or later. Opening the
-initial connection page without activating Brave also requires Chromium
-158.0.8127.2 or later and an already running browser. Earlier Brave versions
-can still take focus during the initial attachment. `doctor` checks the CLI
-and configuration without attaching.
-
-Live verification on Brave 1.98.63 found that inactive agent tabs report
-`visibility: hidden` and stop animation frames. Normal button and link clicks
-can time out while Playwright waits for element stability. Navigation, trusted
-typing, tab creation, and tab selection worked. Background mode is not yet a
-reliable solution for all browser interaction on this Brave version.
-
-The focus monitor recorded application changes during the live check, but
-their cause was not established. David did not observe Brave activating.
-Do not describe those events as confirmed focus stealing.
-
-An [upstream maintainer reports working inactive-tab clicks, typing, and
-animation frames on Chromium 158.0.8127.2](https://github.com/microsoft/playwright/issues/43868)
-with Playwright's focus emulation. Verify the failure on that browser version
-before adding custom window management or bypassing click stability checks.
+For checking an app you are developing locally, use the project's own headless
+Playwright (its system tests or screenshot script), not this backend.
 
 ## Work
 
-Prefer the existing page, but use new tabs, popups, and tab selection when the
-task requires them. Before interacting, take a fresh snapshot. Refresh the tab
-list and snapshot after navigation, redirects, authentication, or a popup.
-
-For debugging, use `console`, `requests`, `request`, `eval`, and tracing in the
-affected tab. Do not open native DevTools through UI automation.
+Take a fresh snapshot before interacting, and again after navigation,
+redirects, authentication, or a popup. Use absolute paths for uploads, scripts,
+and named artifacts. For debugging, use `console`, `requests`, `request`,
+`eval`, and tracing in the affected tab; do not open native DevTools.
 
 ## Boundaries
 
 Do not use raw CDP, Selenium, a browser MCP, AppleScript, Computer Use, CUA,
 `open -a`, or a fresh Playwright browser for web-page interaction. Computer Use
-is allowed only for browser chrome that the extension cannot reach.
+is allowed only for browser chrome that the extension cannot reach. Do not
+create another window or minimize Brave.
 
 Never print the extension token, connection URL, or raw browser command line.
-The wrapper disables browser-closing commands. Use
-`~/bin/playwright-cli doctor` for a read-only configuration check.
+`~/bin/playwright-cli doctor` is a read-only configuration check.
