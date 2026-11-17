@@ -2,10 +2,6 @@
 name: principle-redesign-from-first-principles
 description: "Apply when integrating a new requirement into an existing design."
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/principle-redesign-from-first-principles
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
 # Redesign From First Principles

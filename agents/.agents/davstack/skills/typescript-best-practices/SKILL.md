@@ -3,37 +3,16 @@ name: typescript-best-practices
 description: TypeScript best practices. Use when reading or editing any .ts or .tsx file.
 paths: ["**/*.ts", "**/*.tsx"]
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/typescript-best-practices
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
-
-Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
-
-## Runtime adaptation
-
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-Project conventions and validated domain requirements take precedence over an
-illustrative example. The referenced principle sources remain pinned references:
-[type-system discipline](../principle-type-system-discipline/SKILL.md)
-and [boundary discipline](../principle-boundary-discipline/SKILL.md).
-
-Known upstream erratum: the plain-number `TimeRange` in `references/patterns.md`
-does not prevent negative or nonfinite durations, invalid dates, or Date-range
-overflow. Its negative-range comment is not a proven invariant. Keep the complete
-example as source material, but enforce the actual domain requirements at the
-boundary instead of claiming that `number` proves them. This limitation was
-reproduced with compiled code; the upstream examples below are not rewritten.
 
 # TypeScript best practices
 
 Apply the **type-system-discipline** principle skill first.
 
 | Rule | Summary |
-| ------ | --------- |
+|------|---------|
 | Discriminated unions | Model variants with a `kind` literal discriminant so impossible states can't be represented. No optional-field bags. |
-| Branded types | Brand primitives with `& { readonly __brand: "X" }` so they can't be mixed up. Validate once at the boundary. |
+| Branded types | Brand primitives with `& { readonly __brand: "X" }` so they can't be mixed up. Validate once at the boundary. A brand comes from a verifying type guard (`input is AgentId`), never from `as`. |
 | Constructive modeling | Build the shape so the illegal value can't be constructed. `[T, ...T[]]` for non-empty, `[T, T][]` for even length, `start` plus `duration` for a range. Not a runtime guard, not a wish for refinement types. |
 | Simplest total type | Keep `T[]` while every operation on it stays total. Strengthen to `NonEmpty<T>` only where the loose type forces `!`, a cast, or a "should never happen" throw. |
 | `unknown` over `any` | External data is `unknown`. |

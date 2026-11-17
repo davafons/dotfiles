@@ -1,36 +1,8 @@
-# Authoring or modifying a skill
-
-Read [Playbook runtime](../references/playbook-runtime.md) before executing these steps.
-
-Select each delegate's reasoning level and speed per [dav-mode's Subagents rules](../SKILL.md#subagents), using only controls the current harness actually supports.
-
-## Runtime adaptation
-
-Use the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex) as the general authoring dependency. Follow its draft, evaluation,
-human review, iteration, and description optimization loops. Reading it is not
-proof that an evaluation ran.
-
-For project verification skills, the installed
-[create-verification-skill](../../create-verification-skill/SKILL.md) remains the
-specialized generator. Improve an existing source rather than duplicate it.
-
-Native project sources belong in `.agents/skills/<name>/`. Claude Code uses
-`.claude/skills/<name>/`; prefer a link to the same source when both are needed.
-Global development sources belong in dotfiles' davstack group and must be
-explicitly registered in `bin/bin/agent-skills`. Inspect and improve an existing
-source rather than create a competing skill. Use the native catalog and a real
-mapped drive to prove discovery and behavior. Mechanical metadata/link checks
-are validation, not behavior tests; respect the project's prohibition on tests
-of skill prose, metadata, and reference structure. Subjective prose has no
-synthetic test cases.
-
-Use jj and `jj diff --git`, preserving unrelated working-copy changes. Step 4
-uses [the native PR handoff](../references/playbook-runtime.md#pr-handoff).
-Without publication authority, hand back the scoped verified diff instead.
+### Authoring or modifying a skill
 
 **You own the skill's voice.**
 
-1. Use the runtime's own **skill-creator** workflow. This is the native mapping of the upstream Cursor **create-skill** dependency.
+1. Use the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).
 2. Validate the skill: frontmatter has `name` and `description`, referenced files exist, cross-skill links resolve.
 3. Test cases if structural. Skip if subjective.
 4. Run **Opening a PR**.

@@ -2,36 +2,11 @@
 name: automate-me
 description: "Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my preferences or working style into a skill\", or wanting agents to follow how the user works. Drafts or revises a personal -mode skill via create-skill + unslop, optionally pulling fresh evidence from recent transcripts."
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/automate-me
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
-
-## Runtime adaptation
-
-Read the [shared working rules](../dav-mode/references/working-rules.md) and
-[playbook runtime](../dav-mode/references/playbook-runtime.md). Map upstream
-`create-skill` to the runtime's own skill-creator (`anthropic-skills:skill-creator` in Claude Code, the built-in one in Codex),
-`unslop` to [its local source](../unslop/SKILL.md), and `poteto-mode` to
-[dav-mode](../dav-mode/SKILL.md).
-
-Search actual project `.agents/skills/` sources and global discovery links, not
-assumed Cursor paths. Preserve an existing source category and register its native
-discovery link rather than create a competing mode. Use jj history in colocated
-repositories; never run the example Git command there. Use native structured
-questions and treat pending questions as unanswered.
-
-Use only the active workspace's authorized native history API/export or supplied
-conversation. If unavailable, state that limit and interview the user; do not
-scan other chats or invent patterns. Delegated mining needs explicit permission.
-Without it, apply the same slices serially and do not claim independent mining.
-Creating or updating a personal mode requires that request, not merely importing
-this skill. Follow the native PR handoff; no publication without authorization.
-
 # Automate me
+
+In Claude Code, read [the Claude Code adapter](~/dotfiles/agents/.agents/davstack/docs/harness/claude-code.md) once per session before you follow this skill. It maps the Cursor names in pstack skills to Claude Code.
 
 A guided flow for turning the user's working conventions into a skill agents will follow. The output is one `-mode` skill tailored to them (e.g. `jay-mode`, `priya-mode`).
 
@@ -47,8 +22,7 @@ Look recursively for `.cursor/skills/**/*-mode/SKILL.md` and `~/.cursor/skills/*
 - Start fresh (rare, ask why before doing it)
 
 Update mode changes the rest of the flow:
-
-- Step 1 mines only history since the skill was last edited (`jj log --no-graph --limit 1 -T committer.timestamp <path>`).
+- Step 1 mines only history since the skill was last edited (`git log -1 --format=%cI <path>`).
 - Step 2 asks what's changed or missing, not what to capture from zero.
 - Step 4 edits the existing file in place. Preserve sections the user hasn't contradicted. Revise ones with new evidence. Add new sections only for genuinely new rules.
 
@@ -56,7 +30,7 @@ Update mode changes the rest of the flow:
 
 Locate the active workspace's transcripts before fanning out. The system prompt names the workspace's `agent-transcripts/` directory. Use only that path. Don't glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
 
-Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
+Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level for the job, per the Subagents section of the **dav-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
 
 - Response preferences (length, tone, format, "dumb it down" corrections)
 - Delegation habits (subagents, models, specialized workflows, parallelism)
@@ -85,7 +59,7 @@ Group the combined signals into sections. Common ones (use only what applies):
 - **Subagents**: default, parallelism, model-to-task, specialized workflows.
 - **Prose / code discipline**: principles, lint tools, style guides.
 - **Review and verify**: repro posture, verification skills, live-testing tools.
-- **Process**: isolated jj workspaces, commits, PRs, review/merge tooling.
+- **Process**: git worktrees, commits, PRs, review/merge tooling.
 - **Skills**: skill-authoring habits, fix-the-skill-first, proposing new skills.
 
 The **dav-mode** skill shows the shape. Read it for granularity. Don't copy its content. The user's rules are not the same as dav-mode's.
@@ -129,3 +103,4 @@ Run a description-optimization loop only if the skill's trigger accuracy turns o
 
 - User wants a task-specific skill (not working conventions): `create-skill` alone, no mining required.
 - User wants to capture one narrow workflow (e.g. "how I write commit messages"). That's a regular skill, not a mode skill.
+

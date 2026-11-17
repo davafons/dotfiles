@@ -2,28 +2,7 @@
 name: correct
 description: "Find the mistakes agents keep repeating in this repo and make each one impossible. Try architecture first, then types, then a lint whose error names the fix, then a test, and write docs last. Prove each check fails on a real past mistake. Repeat this each time the operator corrects you. Use for /correct."
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/correct
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
-
-Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
-
-## Runtime adaptation
-
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-Apply this method to the repository and mistake classes the user requested.
-A correction alone does not authorize an unsolicited repository-wide refactor.
-Use evidence of two actual occurrences, not hypothetical mistakes.
-
-Check for `.jj/` before history operations. Use jj in colocated repositories and
-`jj diff --git` for patches. Preserve unrelated changes and give each accepted
-class its own owned change. Reproduce past mistakes in private fixtures rather
-than rewriting published history. Use only in-scope history, review evidence,
-and current-chat material; do not search unrelated chats or credentials.
-Human-approved exceptions still require actual approval. Do not invent approval,
-change global agent rules, publish, or perform destructive actions under this skill.
 
 # Correct
 

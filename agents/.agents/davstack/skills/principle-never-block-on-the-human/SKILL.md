@@ -2,10 +2,6 @@
 name: principle-never-block-on-the-human
 description: "Apply when tempted to ask 'should I do X?' on reversible work."
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/principle-never-block-on-the-human
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
 # Never Block on the Human

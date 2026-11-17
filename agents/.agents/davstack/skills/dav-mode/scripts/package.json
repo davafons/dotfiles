@@ -1,9 +1,9 @@
 {
-  "name": "@davstack/dav-mode-tools",
+  "name": "@cursor-skill/dav-mode-tools",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test orch watch-pr check-plan.test.ts patch-id.test.ts",
+    "test": "bun test watch-pr",
     "typecheck": "tsc --project watch-pr/tsconfig.json --noEmit --strict"
   },
   "dependencies": {

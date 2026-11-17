@@ -161,7 +161,7 @@ const reviewDecision = (value: unknown): T.ReviewDecision =>
     REVIEW_DECISIONS,
     "pull request.reviewDecision"
   );
-export function parseRemote(value: string): T.Repository | null {
+function parseRemote(value: string): T.Repository | null {
   let normalized = value.trim();
   if (normalized.startsWith("git@github.com:"))
     normalized = `https://github.com/${normalized.slice(15)}`;
@@ -457,11 +457,8 @@ function graphqlArgs(
 
 export class GhGitHubReader implements T.GitHubReader {
   async originRepo(): Promise<T.Repository | null> {
-    const root = await run(["jj", "root"]);
-    if (root.code !== 0) return null;
-    const result = await run(["jj", "git", "remote", "list"]);
-    const origin = result.stdout.match(/^origin\s+([^\r\n]+)$/m)?.[1];
-    return result.code === 0 && origin !== undefined ? parseRemote(origin) : null;
+    const result = await run(["git", "remote", "get-url", "origin"]);
+    return result.code === 0 ? parseRemote(result.stdout) : null;
   }
   async currentPr(pr: T.PrNumber | null): Promise<T.PrContext> {
     const argv: [string, ...string[]] = ["gh", "pr", "view"];
@@ -503,11 +500,14 @@ export class GhGitHubReader implements T.GitHubReader {
       "--limit",
       "300",
       "--json",
-      "number,headRefName,baseRefName",
+      "number,headRefName,baseRefName,isCrossRepository",
     ]);
     return list(value, "open PRs").map((item, index) => {
       const object = record(item, `open PRs[${index}]`);
+      if (typeof object.isCrossRepository !== "boolean")
+        missing(`open PRs[${index}].isCrossRepository`, object.isCrossRepository);
       return {
+        isCrossRepository: object.isCrossRepository,
         number: parsePrNumber(object.number, `open PRs[${index}].number`),
         headRefName: string(
           object.headRefName,
@@ -674,7 +674,11 @@ export function orderStack(
   open: readonly T.OpenPullRequest[]
 ): T.NonEmpty<T.PrContext> {
   const byNumber = new Map(open.map((pr) => [pr.number, pr]));
-  const byHead = new Map(open.map((pr) => [pr.headRefName, pr]));
+  // A base ref belongs to this repository. A fork head with the same name
+  // cannot be its parent, even when that name is the default branch.
+  const byHead = new Map(
+    open.filter((pr) => !pr.isCrossRepository).map((pr) => [pr.headRefName, pr])
+  );
   const children = new Map<string, T.OpenPullRequest[]>();
   for (const pr of open)
     children.set(pr.baseRefName, [...(children.get(pr.baseRefName) ?? []), pr]);
@@ -696,6 +700,7 @@ export function orderStack(
   ]);
   const up: T.OpenPullRequest[] = [];
   const visit = (parent: T.OpenPullRequest): void => {
+    if (parent.isCrossRepository) return;
     for (const child of children.get(parent.headRefName) ?? []) {
       if (seen.has(child.number)) continue;
       seen.add(child.number);

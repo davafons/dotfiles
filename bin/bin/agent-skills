@@ -5,36 +5,13 @@ set -euo pipefail
 
 command_name="${1:-status}"
 providers=(hey fizzy wariwari)
-davstack_skills=(
-  how why teach recall create-verification-skill maintain-verification-skill control-cli
-  swarm arena architect interrogate correct ketchup bro
-  automate-me typescript-best-practices setup-pstack poteto-help make-bot-ui in-your-own-words sharpen
-  dav-mode blast-radius comment-sicko no-comments reflect tdd unslop technical-writing deslop loop figure-it-out benchmark-checklist show-me-your-work
-  principle-attack-the-premise
-  principle-boundary-discipline
-  principle-build-the-lever
-  principle-encode-lessons-in-structure
-  principle-exhaust-the-design-space
-  principle-experience-first
-  principle-explain-the-number
-  principle-fix-root-causes
-  principle-foundational-thinking
-  principle-guard-the-context-window
-  principle-laziness-protocol
-  principle-make-operations-idempotent
-  principle-migrate-callers-then-delete-legacy-apis
-  principle-minimize-reader-load
-  principle-model-the-domain
-  principle-never-block-on-the-human
-  principle-outcome-oriented-execution
-  principle-prove-it-works
-  principle-redesign-from-first-principles
-  principle-separate-before-serializing-shared-state
-  principle-sequence-verifiable-units
-  principle-subtract-before-you-add
-  principle-test-behavior-not-implementation
-  principle-type-system-discipline
-)
+script_path="$(realpath "${BASH_SOURCE[0]}")"
+dotfiles_root="$(cd "$(dirname "$script_path")/../.." && pwd)"
+davstack_root="${dotfiles_root}/agents/.agents/davstack"
+# davstack-sync owns the set, so every skill folder is linked.
+davstack_skills=()
+for skill_dir in "${davstack_root}"/skills/*/; do davstack_skills+=("$(basename "$skill_dir")"); done
+davstack_agents=(comment-sicko dav-agent)
 personal_skills=(browser calendar day-plan mail mcporter notes tasks)
 linked_skills=("${personal_skills[@]}" "${davstack_skills[@]}")
 real_home="${HOME}"
@@ -42,9 +19,6 @@ skill_root="${real_home}/.agents/skills"
 # Every linked skill goes to each of these. Codex, Yuke, Hermes and Grok read ~/.agents/skills; Claude
 # Code reads only its own folder.
 skill_roots=("$skill_root" "${real_home}/.claude/skills")
-script_path="$(realpath "${BASH_SOURCE[0]}")"
-dotfiles_root="$(cd "$(dirname "$script_path")/../.." && pwd)"
-
 provider_version() {
   "$1" --version 2>/dev/null | head -n 1
 }
@@ -124,13 +98,10 @@ link_skill() {
 }
 
 link_agent() {
-  local harness="$1" filename="$2" name="$3" package="$4" source destination
-  source="$(skill_source "$package")/agents/${filename}"
-  destination="${real_home}/.${harness}/agents/${name}.${filename##*.}"
+  local name="$1" source destination
+  source="${davstack_root}/agents/${name}.md"
+  destination="${real_home}/.claude/agents/${name}.md"
   [[ -f "$source" ]] || { echo "agent-skills: missing agent source: $source" >&2; return 1; }
-  if [[ "$harness" == claude && "$name" == comment-sicko ]]; then
-    migrate_owned_link "$source" "$destination" "${dotfiles_root}/agents/.agents/skills/comment-sicko/agents/claude.md"
-  fi
   if [[ -L "$destination" && "$(realpath "$destination")" == "$(realpath "$source")" ]]; then
     return
   fi
@@ -143,16 +114,28 @@ link_agent() {
   echo "agent-skills: linked $destination"
 }
 
+# A skill or agent removed from dotfiles leaves its link dangling; only links
+# into dotfiles' agents tree are ours to remove.
+prune_links() {
+  local dir link
+  for dir in "${skill_roots[@]}" "${real_home}/.claude/agents" "${real_home}/.codex/agents"; do
+    [[ -d "$dir" ]] || continue
+    for link in "$dir"/*; do
+      [[ -L "$link" && ! -e "$link" && "$(readlink "$link")" == "${dotfiles_root}/agents/.agents/"* ]] || continue
+      rm -- "$link"
+      echo "agent-skills: removed dangling $link"
+    done
+  done
+}
+
 link_skills() {
   local skill
   local root
   for root in "${skill_roots[@]}"; do
     for skill in "${linked_skills[@]}"; do link_skill "$skill" "${root}/${skill}"; done
   done
-  link_agent claude claude.md comment-sicko comment-sicko
-  link_agent codex codex.toml comment-sicko comment-sicko
-  link_agent claude claude.md dav-agent dav-mode
-  link_agent codex codex.toml dav-agent dav-mode
+  prune_links
+  for skill in "${davstack_agents[@]}"; do link_agent "$skill"; done
 }
 
 sync_provider() (
@@ -196,7 +179,7 @@ sync_provider() (
 )
 
 check() {
-  local failed=0 provider name skill legacy resolved expected harness filename agent_skill root
+  local failed=0 provider name skill legacy resolved expected root
   for root in "${skill_roots[@]}"; do
     for name in "${linked_skills[@]}"; do
       skill="${root}/${name}"
@@ -210,22 +193,12 @@ check() {
       fi
     done
   done
-  for name in comment-sicko dav-agent; do
-    case "$name" in
-      comment-sicko) agent_skill=comment-sicko ;;
-      dav-agent) agent_skill=dav-mode ;;
-    esac
-    for harness in Claude Codex; do
-      case "$harness" in
-        Claude) filename=claude.md; skill="${real_home}/.claude/agents/${name}.md" ;;
-        Codex) filename=codex.toml; skill="${real_home}/.codex/agents/${name}.toml" ;;
-      esac
-      expected="$(skill_source "$agent_skill")/agents/${filename}"
-      if [[ ! -L "$skill" ]] || [[ "$(realpath "$skill")" != "$(realpath "$expected")" ]]; then
-        echo "agent-skills: missing or incorrect $harness agent link: $skill (run agent-skills link)" >&2
-        failed=1
-      fi
-    done
+  for name in "${davstack_agents[@]}"; do
+    skill="${real_home}/.claude/agents/${name}.md"
+    if [[ ! -L "$skill" ]] || [[ "$(realpath "$skill")" != "$(realpath "${davstack_root}/agents/${name}.md")" ]]; then
+      echo "agent-skills: missing or incorrect Claude agent link: $skill (run agent-skills link)" >&2
+      failed=1
+    fi
   done
   for provider in "${providers[@]}"; do
     skill="${skill_root}/${provider}/SKILL.md"

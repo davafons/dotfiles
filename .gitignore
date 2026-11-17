@@ -37,3 +37,6 @@ gh/.config/gh/hosts.yml
 *.db
 *.sqlite
 *.sqlite3
+
+# Bun installs davstack script dependencies on first use.
+agents/.agents/davstack/**/node_modules/

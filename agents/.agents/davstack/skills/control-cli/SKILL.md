@@ -1,33 +1,9 @@
 ---
 name: control-cli
 description: Build or adapt a local harness to drive, inspect, and profile an interactive CLI or TUI without external services. Use for CLI UX checks, startup regressions, memory leaks, hangs, prompt flows, or terminal demos.
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/cursor-team-kit/skills/control-cli
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
 # Control CLI
-
-## Runtime adaptation
-
-Read [shared working rules](../dav-mode/references/working-rules.md) and
-[playbook runtime](../dav-mode/references/playbook-runtime.md). Reuse a project's
-verification skill and existing driver before assembling another harness.
-
-Use a private tmux server with `-L "$SESSION"` on every tmux command, or an
-owned PTY. Never attach to or send input to the user's terminals. Native GUI
-activation and system-wide input need explicit permission for that run.
-Preserve the clipboard and do not play test audio. Remove inherited session
-routing variables, including `HERDR_*`, before launching an isolated instance.
-Keep profiles, data, state, caches, and provider fixtures separate from the user.
-Do not copy credentials. Scope cleanup to processes and sessions this run owns.
-
-Retain proof artifacts after cleanup. The final guardrail below applies to
-throwaway demo artifacts, not transcripts and profiles used as evidence.
-Validate session/process exit and artifact survival, including after failure.
-Use jj for source revisions in a colocated repository. The tmux examples below
-include the private-server adaptation.
 
 Use a repeatable local harness to exercise an interactive CLI instead of poking at it manually. First reuse the repo's own test/demo harness if it exists; otherwise assemble a temporary harness from standard local tools.
 
@@ -62,17 +38,17 @@ Use a repeatable local harness to exercise an interactive CLI instead of poking 
 
 ```bash
 SESSION="cli-harness-$(date +%s)"
-tmux -L "$SESSION" new-session -d -s "$SESSION" -- <command-under-test>
-tmux -L "$SESSION" capture-pane -pt "$SESSION"
-tmux -L "$SESSION" send-keys -t "$SESSION" "help" Enter
-tmux -L "$SESSION" capture-pane -pt "$SESSION"
-tmux -L "$SESSION" kill-session -t "$SESSION"
+tmux new-session -d -s "$SESSION" -- <command-under-test>
+tmux capture-pane -pt "$SESSION"
+tmux send-keys -t "$SESSION" "help" Enter
+tmux capture-pane -pt "$SESSION"
+tmux kill-session -t "$SESSION"
 ```
 
 For Node CLIs:
 
 ```bash
-NODE_OPTIONS="--inspect=127.0.0.1:0" tmux -L "$SESSION" new-session -d -s "$SESSION" -- <node-cli-command>
+NODE_OPTIONS="--inspect=127.0.0.1:0" tmux new-session -d -s "$SESSION" -- <node-cli-command>
 ```
 
 Read the terminal output to find the inspector URL, then use Chrome DevTools-compatible tooling if profiling is needed.

@@ -2,15 +2,11 @@
 name: show-me-your-work
 description: "Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result). Local by default; commit it when a reviewer needs the trail to trust the result. Use for /show-me-your-work, autonomous or multi-phase runs, or work a human reviews after stepping away."
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/show-me-your-work
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
 
-Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
-
 # Show me your work
+
+In Claude Code, read [the Claude Code adapter](~/dotfiles/agents/.agents/davstack/docs/harness/claude-code.md) once per session before you follow this skill. It maps the Cursor names in pstack skills to Claude Code.
 
 Keep one canonical log.
 
@@ -29,12 +25,12 @@ Copy `references/decision-log-template.tsv` (the header row) to start a clean lo
 
 An example, plain-spoken so a reviewer reads it at a glance.
 
-```text
-ts phase decision why evidence result
-2026-05-24T09:02:00Z frame counted the work first, about 100 components and roughly 75 hours wanted to know the size before starting a long run commit 3a9f1c2 found 5 things to sort out before starting
-2026-05-24T09:40:00Z harness took screenshots of the old version before changing anything so we can compare old against new and catch any visual change scripts/snapshot.sh, baseline/ saved 120 reference screenshots
-2026-05-24T11:15:00Z widget moved the widget styles over without changing how it looks keep the change small and the result identical commit 7c21e0a, pixel-diff 0 looks identical, tests pass
-2026-05-24T12:30:00Z widget threw out a helper's work because its screenshots were blank checked the real files instead of trusting its summary worktree reset reverted, tightened the instructions for next time
+```
+ts	phase	decision	why	evidence	result
+2026-05-24T09:02:00Z	frame	counted the work first, about 100 components and roughly 75 hours	wanted to know the size before starting a long run	commit 3a9f1c2	found 5 things to sort out before starting
+2026-05-24T09:40:00Z	harness	took screenshots of the old version before changing anything	so we can compare old against new and catch any visual change	scripts/snapshot.sh, baseline/	saved 120 reference screenshots
+2026-05-24T11:15:00Z	widget	moved the widget styles over without changing how it looks	keep the change small and the result identical	commit 7c21e0a, pixel-diff 0	looks identical, tests pass
+2026-05-24T12:30:00Z	widget	threw out a helper's work because its screenshots were blank	checked the real files instead of trusting its summary	worktree reset	reverted, tightened the instructions for next time
 ```
 
 ## Logging a row
@@ -70,7 +66,7 @@ Correct the log, not the story. The audit never edits or removes a row, even an 
 
 ## Cross-model review of the trail
 
-Before handing back, spawn a subagent on a different model family from the one that did the work. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **dav-mode** skill.
+Before handing back, spawn a subagent on another vendor's model than the one that did the work. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky. Pick each subagent's reasoning level for the job, per the Subagents section of the **dav-mode** skill.
 
 - Decisions logged with weak or absent evidence.
 - Verification steps skipped or claimed without proof in the transcript.

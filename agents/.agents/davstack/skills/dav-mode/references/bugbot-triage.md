@@ -1,8 +1,5 @@
 # Bugbot triage
 
-Read [Playbook runtime](playbook-runtime.md). These are upstream candidates, not locally verified learnings.
-Do not introduce or run tests over skill prose, metadata, or reference structure. The historical prose-test example below does not override that restriction.
-
 Use this reference when the Babysit playbook (`../playbooks/babysit.md`) handles Bugbot or review-automation comments. The goal is not to ignore Bugbot by default. The goal is to stop treating every comment as a required code change.
 
 ## Decision rubric

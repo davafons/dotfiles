@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Update davstack from upstream pstack's Claude Code tree, keeping local edits.
+
+davstack is pstack's generated Claude Code tree (harness/pstack/claude-code in
+cursor/plugins) plus control-cli and deslop from cursor-team-kit, renamed for
+David and installed as plain skills by agent-skills. Local edits live directly
+in the files. An update three-way merges upstream's change between the pinned
+commit and the new one into those files, so a local edit survives unless
+upstream changed the same lines; then the file keeps conflict markers.
+
+  davstack-sync              merge upstream main
+  davstack-sync <sha>        merge that commit
+  davstack-sync --status     show the pin and the newest upstream commit
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import urllib.request
+from pathlib import Path
+
+REPO = "cursor/plugins"
+DAVSTACK = Path(__file__).resolve().parents[2] / "agents/.agents/davstack"
+PIN = DAVSTACK / "UPSTREAM"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "davstack"
+ADAPTER = "~/dotfiles/agents/.agents/davstack/docs/harness/claude-code.md"
+DOCS = "~/dotfiles/agents/.agents/davstack/docs/"
+# Upstream paths copied into davstack, by davstack path.
+SOURCES = {
+    "skills": "harness/pstack/claude-code/skills",
+    "agents": "harness/pstack/claude-code/agents",
+    "docs": "harness/pstack/claude-code/docs",
+    "LICENSE": "harness/pstack/claude-code/LICENSE",
+    "skills/control-cli": "cursor-team-kit/skills/control-cli",
+    "skills/deslop": "cursor-team-kit/skills/deslop",
+}
+MANAGED = ("skills", "agents", "docs", "LICENSE")
+RENAMES = [("poteto-mode", "dav-mode"), ("poteto-agent", "dav-agent")]
+TEXT_RULES = [
+    # Skills are linked into ~/.claude/skills, where a relative link to docs/
+    # resolves against the link instead of this tree.
+    (re.compile(r"\]\((?:\.\./)+docs/"), "](" + DOCS),
+    (re.compile(r"`/pstack:"), "`/"),
+    (re.compile(r"pstack:(dav-agent|comment-sicko)"), r"\1"),
+]
+
+
+def resolve(ref):
+    request = urllib.request.Request(f"https://api.github.com/repos/{REPO}/commits/{ref}",
+                                     headers={"Accept": "application/vnd.github.sha"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return response.read().decode().strip()
+
+
+def fetch(sha):
+    CACHE.mkdir(parents=True, exist_ok=True)
+    archive = CACHE / f"{sha}.tar.gz"
+    if not archive.exists():
+        with urllib.request.urlopen(f"https://codeload.github.com/{REPO}/tar.gz/{sha}", timeout=300) as response:
+            data = response.read()
+        archive.write_bytes(data)
+    return archive
+
+
+def upstream_tree(sha, destination):
+    """Extract the davstack view of upstream `sha` into `destination`."""
+    with tarfile.open(fetch(sha)) as archive:
+        members = archive.getmembers()
+        prefix = members[0].name.split("/")[0] + "/"
+        for target, source in SOURCES.items():
+            root = prefix + source
+            for member in members:
+                if not (member.name == root or member.name.startswith(root + "/")) or not member.isfile():
+                    continue
+                relative = target + member.name[len(root):]
+                path = destination / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(archive.extractfile(member).read())
+                if member.mode & 0o111:
+                    path.chmod(0o755)
+    transform(destination)
+
+
+def transform(root):
+    for old, new in RENAMES:
+        for path in sorted(root.rglob(f"*{old}*"), key=lambda p: len(p.parts), reverse=True):
+            path.rename(path.with_name(path.name.replace(old, new)))
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        original = text
+        for old, new in RENAMES:
+            text = text.replace(old, new)
+        if path.suffix == ".md":
+            for pattern, replacement in TEXT_RULES:
+                text = pattern.sub(replacement, text)
+        if path.parent.name == "agents" and path.parent.parent == root:
+            # A Cursor model slug in agent frontmatter is rejected by Claude
+            # Code; the adapter passes model and effort on each Agent call.
+            text = re.sub(r"^(model|is_background): .*\n", "", text, flags=re.M)
+        if text != original:
+            path.write_text(text)
+
+
+def files(root):
+    return {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
+
+
+def merge(base, theirs):
+    """Three-way merge upstream's base→theirs change into DAVSTACK."""
+    ours_root = DAVSTACK
+    ours = {f for f in files(ours_root) if f.split("/")[0] in MANAGED}
+    changed, conflicts, kept = [], [], []
+    for name in sorted(files(base) | files(theirs) | ours):
+        b, t, o = base / name, theirs / name, ours_root / name
+        b_data = b.read_bytes() if b.exists() else None
+        t_data = t.read_bytes() if t.exists() else None
+        o_data = o.read_bytes() if o.exists() else None
+        if b_data == t_data or t_data == o_data:
+            continue  # upstream did not change it, or we already match
+        if o_data == b_data:  # untouched locally: take upstream
+            if t_data is None:
+                o.unlink()
+            else:
+                o.parent.mkdir(parents=True, exist_ok=True)
+                o.write_bytes(t_data)
+                if os.access(t, os.X_OK):
+                    o.chmod(0o755)
+            changed.append(name)
+            continue
+        if t_data is None:
+            kept.append(name)  # upstream deleted a file we edited
+            continue
+        with tempfile.TemporaryDirectory() as scratch:
+            empty = Path(scratch) / "empty"
+            empty.write_bytes(b"")
+            result = subprocess.run(["diff3", "-m", "-L", "davstack", "-L", "upstream-base", "-L", "upstream",
+                                     str(o) if o.exists() else str(empty), str(b) if b.exists() else str(empty), str(t)],
+                                    capture_output=True)
+        if result.returncode > 1:
+            raise SystemExit(f"davstack-sync: diff3 failed on {name}: {result.stderr.decode()}")
+        o.parent.mkdir(parents=True, exist_ok=True)
+        o.write_bytes(result.stdout)
+        (conflicts if result.returncode == 1 else changed).append(name)
+    return changed, conflicts, kept
+
+
+def main(argv):
+    pinned = PIN.read_text().split()[0] if PIN.exists() else None
+    if argv[:1] == ["--status"]:
+        latest = resolve("main")
+        print(f"pinned {pinned}\nupstream main {latest}" + (" (up to date)" if latest == pinned else ""))
+        return 0
+    target = resolve(argv[0] if argv else "main")
+    if target == pinned:
+        print(f"davstack-sync: already at {target}")
+        return 0
+    with tempfile.TemporaryDirectory() as scratch:
+        base, theirs = Path(scratch) / "base", Path(scratch) / "theirs"
+        base.mkdir()
+        theirs.mkdir()
+        if pinned:
+            upstream_tree(pinned, base)
+        upstream_tree(target, theirs)
+        changed, conflicts, kept = merge(base, theirs)
+    PIN.write_text(target + "\n")
+    print(f"davstack-sync: {pinned or 'nothing'} -> {target}: {len(changed)} files updated")
+    for name in kept:
+        print(f"  kept (deleted upstream, edited here): {name}")
+    for name in conflicts:
+        print(f"  CONFLICT: {name}")
+    return 1 if conflicts else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

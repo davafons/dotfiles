@@ -5,34 +5,10 @@ description: >-
   Grok Bot over a webhook, when the user must provide a webhook sender key, or
   when exposing that UI on Tailscale.
 disable-model-invocation: true
-license: MIT
-metadata:
-  upstream: https://github.com/cursor/plugins/tree/101b274dd991f694e1f7024be2157e5f3adf07de/pstack/skills/make-bot-ui
-  revision: 101b274dd991f694e1f7024be2157e5f3adf07de
 ---
-
-Read [the native runtime contract](../dav-mode/references/playbook-runtime.md) before executing. It maps the Cursor tools, model examples, configuration paths and cloud placements below to actual native capabilities. Those examples do not authorize unsupported calls, delegation, model campaigns, publication or desktop access. Keep the full method and report an unavailable required capability as a gap.
-
-## Runtime adaptation
-
-Read the [shared working rules](../dav-mode/references/working-rules.md).
-The complete procedure below targets Cursor/Grok Bot. Its `update_state` routine
-API and `SendToUser` secret-request card are not provided by the current native
-adapter. Stop those steps until a verified equivalent and the required user
-authorization exist. Do not fabricate tool calls or ask for sender keys in chat.
-
-Importing this skill authorizes no webhook creation, external probe, server,
-network exposure, Tailscale installation, credential access or deployment.
-Use only the approved secret-delivery mechanism and keep keys out of model input,
-logs and browser code. Binding to `0.0.0.0` is an exposure decision, not a default
-permission. Native GUI/input, clipboard and audio retain their separate gates.
-
-Check the actual operating system. The upstream Linux install example is not a
-macOS command to run unchanged. Any privileged command needs the native approval
-mechanism; never request a password in chat. If the bot or secret infrastructure
-is unavailable, report that blocker rather than install unrelated services.
-
 # How to make a bot UI
+
+In Claude Code, read [the Claude Code adapter](~/dotfiles/agents/.agents/davstack/docs/harness/claude-code.md) once per session before you follow this skill. It maps the Cursor names in pstack skills to Claude Code.
 
 Build a page the user clicks. A server on this computer POSTs JSON to a webhook routine. The bot wakes with that JSON. Keep the sender key on the server. Do not put the sender key in the browser, in chat, or in this skill.
 
@@ -66,7 +42,7 @@ The URL looks like `https://api2.cursor.sh/automations/webhook/<id>` with no que
 
 Do not accept the sender key in chat. Send a secret-request, then stop. That card is the whole turn.
 
-```text
+```
 SendToUser
 type: secret-request
 secret.label: webhook sender key
@@ -111,13 +87,13 @@ Use HTTP. Do not add HTTPS unless the user asks.
 
 If Tailscale is not installed, install it:
 
-```text
+```
 curl -fsSL https://tailscale.com/install.sh | sudo sh
 ```
 
 Then start the node with a short hostname:
 
-```text
+```
 sudo tailscale up --hostname=<short-name> --accept-dns=false --ssh=false
 ```
 
