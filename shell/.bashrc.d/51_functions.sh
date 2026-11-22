@@ -133,3 +133,13 @@ _display_completion() {
 complete -F _display_completion set_2k
 complete -F _display_completion set_4k
 complete -F _display_completion set_1080
+
+yuke() {
+  # The web plugin reads MONID_API_KEY. The key stays out of the environment of other commands.
+  local key_file="${XDG_DATA_HOME:-$HOME/.local/share}/yuke/monid.key"
+  if [ -r "$key_file" ]; then
+    MONID_API_KEY="$(<"$key_file")" command yuke "$@"
+  else
+    command yuke "$@"
+  fi
+}

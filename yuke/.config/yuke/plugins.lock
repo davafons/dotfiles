@@ -1,0 +1,80 @@
+{
+  "plugins": [
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/btw",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3",
+      "commit": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/mailbox",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3",
+      "commit": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/questions",
+      "ref": "davafons/questions",
+      "commit": "3c5a635f93ba792d8055cd5dc3e461f42a75ad1a"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/shell",
+      "ref": "davafons/shell",
+      "commit": "02558d16d4bc8365bf24922d9386ae9112bb36ba"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/skills",
+      "ref": "davafons/skills",
+      "commit": "ace458fe1eafa90b00aa192e4fffbe9cd5e7cfce"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/speed",
+      "ref": "davafons/speed",
+      "commit": "ac44529b4a812fbef45383b3fed09dce888bc8c1"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/subagents",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3",
+      "commit": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/titles",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3",
+      "commit": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/usage",
+      "ref": "davafons/usage",
+      "commit": "d96d24a19fdadfe33ccae77cfed27de6aac3dbe4"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/vim",
+      "ref": "davafons/vim-ctrl-c",
+      "commit": "446a06b6189eb1f325a1c93c0ccea29679e081db"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "themes/solarized",
+      "ref": "davafons/solarized-theme",
+      "commit": "90095a758fa54dec6cc3ef3a931bfe69202d4662"
+    },
+    {
+      "git": "https://github.com/xyaman/dotfiles",
+      "folder": "yuke/.config/yuke/plugins/herdr",
+      "commit": "5d6e339bfa078fdcd19e19818e40cb213e9fef77"
+    },
+    {
+      "git": "https://github.com/xyaman/dotfiles",
+      "folder": "yuke/.config/yuke/plugins/web",
+      "commit": "5d6e339bfa078fdcd19e19818e40cb213e9fef77"
+    }
+  ]
+}

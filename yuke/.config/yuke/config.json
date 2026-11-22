@@ -1,0 +1,69 @@
+{
+  "plugins": [
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/vim",
+      "ref": "davafons/vim-ctrl-c"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/btw",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/subagents",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/titles",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/mailbox",
+      "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "themes/solarized",
+      "ref": "davafons/solarized-theme"
+    },
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/skills","ref":"davafons/skills"},
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/speed","ref":"davafons/speed"},
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/questions","ref":"davafons/questions"},
+    {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/web"},
+    {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/herdr"},
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/usage","ref":"davafons/usage"},
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/shell","ref":"davafons/shell"}
+  ],
+  "bundled": {
+    "chat": {
+      "favorites": [
+        {
+          "name": "sh",
+          "model": "openai-codex/gpt-*-sol",
+          "reasoning": "high",
+          "key": "ctrl+x s"
+        },
+        {
+          "name": "lm",
+          "model": "openai-codex/gpt-*-luna",
+          "reasoning": "medium",
+          "key": "ctrl+x l"
+        },
+        {
+          "name": "grok",
+          "model": "xai-grok/grok-4.7",
+          "reasoning": "high"
+        },
+        {
+          "name": "opus",
+          "model": "claude-bridge/opus",
+          "reasoning": "medium"
+        }
+      ]
+    }
+  }
+}
