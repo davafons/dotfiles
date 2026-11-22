@@ -116,7 +116,7 @@ test("two explicit skills reach the model while the visible prompt keeps its ori
     plugins: [{ name: "dollar-skills", session: skillSession }],
     replies: [reply.text("done")],
   });
-  const session = await host.openSession({ cwd });
+  const session = await host.openSession({ folder: cwd });
   const input = "Use $migration-alpha and $migration-beta. Keep `$ignored` literal.";
   await session.sendMessage(input);
   const request = host.requests[0];
@@ -221,7 +221,7 @@ test("a destination fork uses the target instructions and leaves the source prom
       { name: "personal", session: personalSession },
     ],
   });
-  const source = await host.openSession({ cwd: `${base}/source` });
+  const source = await host.openSession({ folder: `${base}/source` });
   const result = await source.call("fork_session", { workspace_path: `${base}/target` });
   assert(!result.isError, result.text);
   assert(native !== undefined);
@@ -342,7 +342,7 @@ test("a canceled delegate reports cancellation instead of completion", async () 
     assert(id !== undefined);
     const controller = new AbortController();
     const child = await sessions.open(id, { tail: 0, signal: controller.signal, onEvent: () => {} });
-    child.cancel();
+    child.cancelTurn();
     await waitForSettled();
     controller.abort();
     for (let attempt = 0; attempt < 100 && host.requests.length < 2; attempt += 1)

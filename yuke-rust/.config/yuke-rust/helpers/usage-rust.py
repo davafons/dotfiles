@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Read one SQLite snapshot. Price estimates use the current catalog, never a guessed historical rate."""
+"""Read one snapshot of the session logs. Price estimates use the current catalog, never a guessed historical rate."""
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
-import sqlite3
+import re
 import sys
 import uuid
 
@@ -49,88 +49,108 @@ def estimate(usage, costs):
     return cost, (usage['input'] * band['input'] + usage['output'] * band['output']) / 1_000_000
 
 
+def lines(path):
+    """The JSON objects of the complete lines of `path`. A torn last line of a running write is no line."""
+    with path.open('rb') as file:
+        for line in file:
+            if line.endswith(b'\n'):
+                yield json.loads(line)
+
+
+def sessions(data):
+    """The newest facts of each session in the index, without deleted sessions."""
+    facts = {}
+    if not (data / 'sessions.jsonl').exists():
+        return facts
+    for line in lines(data / 'sessions.jsonl'):
+        if line.get('deleted'):
+            facts.pop(line['id'], None)
+        elif line.get('meta') is not None:
+            facts[line['id']] = line['meta']
+    return facts
+
+
 def snapshot(request):
     catalog = {(provider['id'], model['id']): model for provider in request['providers'] for model in provider['models']}
-    database = Path(request['database']).resolve()
-    db = sqlite3.connect(database.as_uri() + '?mode=ro', uri=True, timeout=5)
-    db.row_factory = sqlite3.Row
+    data = Path(request['data']).resolve()
     totals = bucket()
     daily, models, providers = defaultdict(bucket), defaultdict(bucket), defaultdict(bucket)
     tools = defaultdict(lambda: dict(calls=0, errors=0, durationMs=0))
     roles, finishes, outcomes, efforts, skills = Counter(), Counter(), Counter(), Counter(), Counter()
     chats = []
-    try:
-        db.execute('BEGIN')
-        for session in db.execute('SELECT * FROM sessions WHERE (? IS NULL OR cwd=?)', (request.get('workspace'), request.get('workspace'))):
-            current = json.loads(session['settings'])
-            chat = dict(id=str(uuid.UUID(bytes=session['id'])), title=session['title'] or '(empty chat)', root=session['cwd'],
-                        kind='child' if session['parent'] else 'chat', input=0, output=0, messages=0,
-                        created=session['created_at'], updated=session['updated_at'])
-            for event in db.execute('SELECT * FROM events WHERE session_id=? ORDER BY seq', (session['id'],)):
-                if event['kind'] == 'settings':
-                    current = json.loads(event['settings'])
-                    continue
-                blocks = json.loads(event['blocks'] or '[]')
-                display = json.loads(event['display'] or '{}')
-                for block in blocks:
-                    kind = block.get('kind')
-                    roles[kind] += 1
-                    if kind == 'toolCall':
-                        tools[block['name']]['calls'] += 1
-                    if kind == 'toolResult' and block['isError']:
-                        call_id = block['callId']
-                        # A bounded lookup inside the session identifies a result, without reading another store.
-                        row = db.execute("SELECT json_extract(value, '$.name') FROM events, json_each(events.blocks) WHERE session_id=? AND json_extract(value, '$.kind')='toolCall' AND json_extract(value, '$.callId')=? LIMIT 1", (session['id'], call_id)).fetchone()
-                        if row:
-                            tools[row[0]]['errors'] += 1
-                    if kind == 'userText':
-                        import re
-                        for name in re.findall(r'<skill name="([^"]+)"', block['text']):
-                            skills[name] += 1
-                if event['end_kind']:
-                    outcomes[event['end_kind']] += 1
-                if event['model'] is None:
-                    continue
-                usage = {field: event[column] for field, column in zip(FIELDS, ('input_tokens', 'output_tokens', 'reasoning_tokens', 'cache_read_tokens', 'cache_write_tokens'))}
-                provider = current['model']['provider']
-                model = event['model']
-                # A round hook can change the upstream model. No exact catalog id means no price estimate.
-                known = catalog.get((provider, model))
-                price = estimate(usage, known.get('cost', [])) if known else None
-                day = datetime.fromtimestamp(event['created_at'] / 1000).astimezone().date().isoformat()
-                for target in (totals, daily[day], models[model], providers[provider]):
-                    add(target, usage, price)
-                chat['messages'] += 1
-                chat['input'] += usage['input'] or 0
-                chat['output'] += usage['output'] or 0
-                finishes[event['finish_reason']] += 1
-                efforts[(current.get('settings', {}).get('reasoning') or {}).get('effort') or 'default'] += 1
-            chats.append(chat)
-        days = sorted(daily)
-        longest = streak = 0
-        previous = None
-        for value in days:
-            today = date.fromisoformat(value)
-            streak = streak + 1 if previous is not None and today - previous == timedelta(days=1) else 1
-            longest = max(longest, streak)
-            previous = today
-        current_streak = streak if previous is not None and date.today() - previous <= timedelta(days=1) else 0
-        def ranked(values):
-            return sorted((dict(value, name=name) for name, value in values.items()), key=lambda value: -value['input'])
-        return dict(totals=totals, daily=[dict(value, date=key) for key, value in sorted(daily.items())],
-                    models=ranked(models), providers=ranked(providers), roles=dict(roles), finishes=dict(finishes), outcomes=dict(outcomes),
-                    efforts=dict(efforts), tools=[dict(value, name=name) for name, value in sorted(tools.items())], skills=dict(skills),
-                    chats=sorted(chats, key=lambda chat: -chat['updated']), currentStreak=current_streak, longestStreak=longest,
-                    notes=['Costs are estimates at current catalog prices. Unknown rates stay unpriced.',
-                           'Input includes cache tokens. Output includes reasoning. Fork copies are counted as retained history.',
-                           'Provider labels follow saved session settings. A round hook can use another route.'])
-    finally:
-        db.close()
+    for ident, meta in sessions(data).items():
+        if request.get('workspace') is not None and meta['folder'] != request['workspace']:
+            continue
+        session = uuid.UUID(ident)
+        chat = dict(id=ident, title=meta.get('title') or '(empty chat)', root=meta['folder'],
+                    kind='child' if meta.get('parent') else 'chat', input=0, output=0, messages=0,
+                    # A version 7 id starts with the millisecond of its creation.
+                    created=session.int >> 80, updated=meta['position'] // 1000)
+        current = {}
+        names = {}
+        try:
+            events = list(lines(data / 'sessions' / session.hex / 'events.jsonl'))
+        except FileNotFoundError:
+            continue
+        for event in events:
+            if event['kind'] == 'settings':
+                current = event
+                continue
+            commit = event['commit']
+            for block in commit.get('blocks', []):
+                kind = block.get('kind')
+                roles[kind] += 1
+                if kind == 'toolCall':
+                    tools[block['name']]['calls'] += 1
+                    names[block['callId']] = block['name']
+                if kind == 'toolResult' and block['isError'] and block['callId'] in names:
+                    tools[names[block['callId']]]['errors'] += 1
+                if kind == 'userText':
+                    for name in re.findall(r'<skill name="([^"]+)"', block['text']):
+                        skills[name] += 1
+            if commit.get('end'):
+                outcomes[commit['end']['kind']] += 1
+            answer = commit.get('answer')
+            if answer is None:
+                continue
+            usage = {field: answer['usage'].get(field) for field in FIELDS}
+            provider = current['model']['provider']
+            model = answer['origin']['model']
+            # A round hook can change the upstream model. No exact catalog id means no price estimate.
+            known = catalog.get((provider, model))
+            price = estimate(usage, known.get('cost', [])) if known else None
+            day = datetime.fromtimestamp(event['at'] / 1000).astimezone().date().isoformat()
+            for target in (totals, daily[day], models[model], providers[provider]):
+                add(target, usage, price)
+            chat['messages'] += 1
+            chat['input'] += usage['input'] or 0
+            chat['output'] += usage['output'] or 0
+            finishes[answer['finishReason']] += 1
+            efforts[(current.get('settings', {}).get('reasoning') or {}).get('effort') or 'default'] += 1
+        chats.append(chat)
+    days = sorted(daily)
+    longest = streak = 0
+    previous = None
+    for value in days:
+        today = date.fromisoformat(value)
+        streak = streak + 1 if previous is not None and today - previous == timedelta(days=1) else 1
+        longest = max(longest, streak)
+        previous = today
+    current_streak = streak if previous is not None and date.today() - previous <= timedelta(days=1) else 0
+    def ranked(values):
+        return sorted((dict(value, name=name) for name, value in values.items()), key=lambda value: -value['input'])
+    return dict(totals=totals, daily=[dict(value, date=key) for key, value in sorted(daily.items())],
+                models=ranked(models), providers=ranked(providers), roles=dict(roles), finishes=dict(finishes), outcomes=dict(outcomes),
+                efforts=dict(efforts), tools=[dict(value, name=name) for name, value in sorted(tools.items())], skills=dict(skills),
+                chats=sorted(chats, key=lambda chat: -chat['updated']), currentStreak=current_streak, longestStreak=longest,
+                notes=['Costs are estimates at current catalog prices. Unknown rates stay unpriced.',
+                       'Input includes cache tokens. Output includes reasoning. Fork copies are counted as retained history.',
+                       'Provider labels follow saved session settings. A round hook can use another route.'])
 
 
 if __name__ == '__main__':
     try:
         print(json.dumps(snapshot(json.loads(Path(sys.argv[1]).read_text()))))
-    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError):
         sys.stderr.write('Cannot read the Rust usage snapshot.\n')
         sys.exit(1)

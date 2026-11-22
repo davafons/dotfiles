@@ -55,8 +55,8 @@ export function session(s: SessionContext): () => Promise<void> {
           transcript.apply(event);
           if (event.kind !== "update") return;
           const update = event.update;
-          if (update.sessionUpdate === "inputRemoved") loops.canceled(s.sessionId, update.inputId);
-          if (update.sessionUpdate === "commit" && update.commit.end !== undefined) {
+          if (update.kind === "inputRemoved") loops.canceled(s.sessionId, update.inputId);
+          if (update.kind === "commit" && update.commit.end !== undefined) {
             const end = update.commit.end;
             const reason =
               end.kind === "failed"
@@ -86,7 +86,7 @@ export function session(s: SessionContext): () => Promise<void> {
             mount.widget.role === "composer" &&
             mount.widget.state.text !== "" &&
             mount.pane !== undefined &&
-            chat.session(mount.pane.view) === s.sessionId
+            chat.sessionIdOf(mount.pane.view) === s.sessionId
           ) {
             draft = true;
             break;

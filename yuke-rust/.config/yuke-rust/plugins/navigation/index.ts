@@ -23,12 +23,13 @@ export function apply(ctx: PluginContext): undefined {
       }
     },
     openFile: async (path, line, column) => {
-      const pane = tui?.panes.active;
-      const cwd = pane === undefined ? tui?.startup.cwd : chat.folder(pane.view);
+      const pane = tui?.panes.activePane;
+      const cwd = pane === undefined ? tui?.startup.folder : chat.folder(pane.view);
       if (cwd === undefined) throw new Error("Focus a chat pane to open its file reference.");
       const home = env.get("HOME");
       if (path.startsWith("~/") && home !== undefined) path = home + path.slice(1);
-      if (!(await stat(path, { cwd: cwd, signal: ctx.signal })).isFile) throw new Error("The reference is not a file.");
+      if (!(await stat(path, { folder: cwd, signal: ctx.signal })).isFile)
+        throw new Error("The reference is not a file.");
       if (bridge === undefined) throw new Error("Open this Yuke in Herdr to open files in Code.");
       const absolute = path.startsWith("/") ? path : `${cwd}/${path}`;
       const url = new URL(`file://${absolute.split("/").map(encodeURIComponent).join("/")}`);

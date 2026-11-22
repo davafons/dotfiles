@@ -140,7 +140,7 @@ export function session(s: SessionContext): undefined {
       if (args.cwd !== undefined && (!args.cwd || args.cwd.length > 8192 || /[\x00-\x1f\x7f]/u.test(args.cwd)))
         throw new Error("Invalid working directory.");
       const cwd =
-        args.cwd === undefined ? context.cwd : args.cwd.startsWith("/") ? args.cwd : `${context.cwd}/${args.cwd}`;
+        args.cwd === undefined ? context.folder : args.cwd.startsWith("/") ? args.cwd : `${context.folder}/${args.cwd}`;
       if (!(await stat(cwd, { signal: context.signal })).isDirectory)
         throw new Error("The working directory is not a directory.");
       const approved = await s.ask(

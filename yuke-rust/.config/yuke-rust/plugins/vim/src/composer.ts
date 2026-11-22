@@ -96,6 +96,7 @@ class ComposerState {
 export class ComposerEditor implements ComposerVim {
   readonly listeners = new Set<(editor: TextEditor, mode: Mode) => void>();
   readonly states = new Map<TextEditor, ComposerState>();
+  removeStatus: (() => void) | undefined;
   readonly ctx: PluginContext;
   readonly tui: Tui;
   readonly registers: Registers;
@@ -176,7 +177,7 @@ export class ComposerEditor implements ComposerVim {
     this.refresh(editor, state);
     return () => {
       this.states.delete(editor);
-      extension.dispose();
+      extension.close();
       this.updateStatus();
     };
   }
@@ -208,11 +209,13 @@ export class ComposerEditor implements ComposerVim {
 
   updateStatus(): void {
     if (this.ctx.signal.aborted) return;
-    const focused = this.tui.focused;
+    const focused = this.tui.focusedView;
     const state = focused instanceof TextEditor ? this.states.get(focused) : undefined;
-    if (state === undefined) this.tui.status.delete("mode");
-    else
-      this.tui.status.set("mode", {
+    if (state === undefined) {
+      this.removeStatus?.();
+      this.removeStatus = undefined;
+    } else
+      this.removeStatus = this.tui.status.set("mode", {
         text: state.mode.replace("-", " ").toUpperCase(),
         side: "left",
         order: 0,
@@ -1460,7 +1463,7 @@ export class ComposerEditor implements ComposerVim {
     const count = (state.leading || 1) * (state.count || 1);
     this.reset(state);
     // A draft that changed while the prompt was open takes no search.
-    void this.tui.input({
+    void this.tui.prompt({
       title: "Search draft (literal, case-sensitive)",
       text: state.query,
       signal: state.signal,

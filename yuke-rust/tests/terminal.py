@@ -11,7 +11,6 @@ from pathlib import Path
 import pty
 import re
 import select
-import sqlite3
 import shutil
 import signal
 import struct
@@ -47,7 +46,7 @@ with tempfile.TemporaryDirectory(prefix="yuke-vim-terminal-") as directory:
             pass
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    (config / "providers.json").write_text(json.dumps({"providers": [{"id": "fixture", "base_url": f"http://127.0.0.1:{server.server_port}/v1", "endpoints": [{"protocol": "openai_chat"}], "models": [{"id": "fixture", "reasoning_levels": ["medium"], "limits": {"context_window": 10000, "max_output_tokens": 1000}}]}]}))
+    (config / "providers.json").write_text(json.dumps({"providers": [{"id": "fixture", "baseUrl": f"http://127.0.0.1:{server.server_port}/v1", "endpoints": [{"protocol": "openai_chat"}], "models": [{"id": "fixture", "reasoningLevels": ["medium"], "limits": {"contextWindow": 10000, "maxOutputTokens": 1000}}]}]}))
     fake_sudo = root / "sudo-fixture"
     fake_sudo.write_text("#!/usr/bin/env python3\n" + "import os, subprocess, sys\n" + "assert sys.argv[1:4] == ['-k', '-A', '--']\n" + "secret = subprocess.check_output([os.environ['SUDO_ASKPASS'], 'Password:']).decode().strip()\n" + "print('sudo-fixture-output ' + secret)\n" + "print('sudo-fixture-stderr ' + secret, file=sys.stderr)\n")
     fake_sudo.chmod(0o700)
@@ -270,10 +269,9 @@ export function apply(ctx) {
         os.write(terminal, b"/search nested\r")
         wait_for(contains("nested.txt"))
         os.write(terminal, b"\x1b")
-        with sqlite3.connect((root / "data/yuke/yuke.db").resolve().as_uri() + "?mode=ro", uri=True) as database:
-            saved = "".join(row[0] or "" for row in database.execute("SELECT blocks FROM events"))
-            assert "migration-only-secret" not in saved
-            assert "[REDACTED]" in saved
+        saved = "".join(log.read_text() for log in (root / "data/yuke/sessions").glob("*/events.jsonl"))
+        assert "migration-only-secret" not in saved
+        assert "[REDACTED]" in saved
         # Preserve an old pending question without sending it or answering it.
         wait_for(lambda rows: not contains("Search ·")(rows))
         os.write(terminal, b"/questions\r")
@@ -306,8 +304,12 @@ export function apply(ctx) {
         wait_for(contains("Workspace:"))
         os.write(terminal, b'!pwd\r')
         wait_for(lambda rows: contains("Direct command")(rows) and contains("Exit 0")(rows))
-        with sqlite3.connect(root / 'data/yuke/yuke.db') as database:
-            assert database.execute('SELECT count(*) FROM sessions WHERE cwd=?', (str((root / 'work/cd folder').resolve()),)).fetchone()[0] == 1
+        folders = {}
+        for line in (root / 'data/yuke/sessions.jsonl').read_text().splitlines():
+            row = json.loads(line)
+            if row.get('meta') is not None:
+                folders[row['id']] = row['meta']['folder']
+        assert list(folders.values()).count(str((root / 'work/cd folder').resolve())) == 1
         assert requests == [], f"Unexpected model requests: {requests}"
         assert not notices.exists() or notices.read_text() == "", notices.read_text() if notices.exists() else ""
         print("PASS real terminal: profile, dashboard, Vim, paths, panes, reload, recorded commands, masked sudo, context, usage, tasks, search, retained inbox adoption, workspace switch, slash completions, btw Git plugin; zero model requests")

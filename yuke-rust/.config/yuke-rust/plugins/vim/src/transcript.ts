@@ -313,7 +313,7 @@ export class TranscriptEditor {
       const id =
         this.mount.pane === undefined
           ? this.view.document.id
-          : (this.ctx.get("chat").session(this.mount.pane.view) ?? this.view.document.id);
+          : (this.ctx.get("chat").sessionIdOf(this.mount.pane.view) ?? this.view.document.id);
       let marks = this.marks.get(id);
       if (this.prefix === "m") {
         if (marks === undefined) {

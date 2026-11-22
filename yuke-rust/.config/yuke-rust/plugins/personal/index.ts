@@ -41,7 +41,7 @@ export function apply(ctx: PluginContext): undefined {
         });
       return true;
     }, "beforeKeymap");
-    return () => extension.dispose();
+    return () => extension.close();
   });
 }
 

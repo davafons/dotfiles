@@ -16,14 +16,14 @@ declare module "yuke:plugins" {
 
 /** The focused composer, including the composer of a draft. */
 export function focusedEditor(tui: Tui): TextEditor | undefined {
-  const focused = tui.focused;
+  const focused = tui.focusedView;
   return focused instanceof TextEditor && focused.role === "composer" ? focused : undefined;
 }
 
 /** The session in the active chat pane. A new draft has none. */
 export function currentSession(ctx: Pick<PluginContext, "get">, tui: Tui): SessionId | undefined {
-  const pane = tui.panes.active;
-  return pane === undefined ? undefined : ctx.get("chat").session(pane.view);
+  const pane = tui.panes.activePane;
+  return pane === undefined ? undefined : ctx.get("chat").sessionIdOf(pane.view);
 }
 
 /** Add a slash alias with arguments and a menu command. Both registrations end with the plugin. */

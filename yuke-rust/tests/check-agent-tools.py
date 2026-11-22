@@ -8,7 +8,6 @@ from pathlib import Path
 import queue
 import re
 import shutil
-import sqlite3
 import subprocess
 import tempfile
 import threading
@@ -152,13 +151,13 @@ def main():
         (global_skills / name).symlink_to(project / "agents/.agents/davstack/skills" / name)
 
     provider = Provider()
-    models = [{"id": name, "upstream_id": name, "protocol": "openai_chat", "reasoning_levels": ["low", "medium", "high", "xhigh"], "flags": {"thinking_format": "openai"},
-               "limits": {"context_window": 100000, "max_output_tokens": 4000}}
+    models = [{"id": name, "upstreamId": name, "protocol": "openai_chat", "reasoningLevels": ["low", "medium", "high", "xhigh"], "flags": {"thinkingFormat": "openai"},
+               "limits": {"contextWindow": 100000, "maxOutputTokens": 4000}}
               for name in ("parent", "gpt-6-luna", "gpt-6.1-sol")]
     # openai-codex is a login provider. Its endpoint points at the fixture, and auth.json holds a fixture login.
     (profile / "providers.json").write_text(json.dumps({"providers": [{
-        "id": "openai-codex", "base_url": f"http://127.0.0.1:{provider.server.server_port}/v1",
-        "endpoints": [{"protocol": "openai_chat", "credential_header": "authorization_bearer"}, {"protocol": "openai_responses", "credential_header": "authorization_bearer"}], "models": models}]}))
+        "id": "openai-codex", "baseUrl": f"http://127.0.0.1:{provider.server.server_port}/v1",
+        "endpoints": [{"protocol": "openai_chat", "credentialHeader": "authorization_bearer"}, {"protocol": "openai_responses", "credentialHeader": "authorization_bearer"}], "models": models}]}))
     auth = root / "data" / APP / "auth.json"
     expires = int((time.time() + 86400) * 1000)
     auth.write_text(json.dumps({"openai-codex": {"access_token": "fixture-only", "refresh_token": "fixture-only",
@@ -177,7 +176,7 @@ def main():
         for case in CASES:
             settings = {"reasoning": {"effort": "low"}, "toolChoice": "auto"}
             parent = client.call("session/new", {"model": {"provider": "openai-codex", "model": "parent"},
-                                                 "settings": settings, "cwd": str(root / "work")})["sessionId"]
+                                                 "settings": settings, "folder": str(root / "work")})["sessionId"]
             client.call("session/input", {"sessionId": parent, "content": [{"kind": "userText", "text": "ROOT_AGENT_TOOLS:" + case}]})
             deadline = time.monotonic() + WAIT
             while time.monotonic() < deadline:
@@ -235,14 +234,13 @@ def main():
             (root / "rpc.jsonl").write_text("".join(json.dumps(row) + "\n" for row in client.records))
 
     # The stored settings of each child, read after the native process stopped.
-    database = sqlite3.connect(root / "data" / APP / "yuke.db")
     for case, (_parent, child) in sessions.items():
         _role, model, reasoning, _upstream = CASES[case]
-        settings = json.loads(database.execute("SELECT settings FROM sessions WHERE id=?", (uuid.UUID(child).bytes,)).fetchone()[0])
+        log = root / "data" / APP / "sessions" / uuid.UUID(child).hex / "events.jsonl"
+        settings = [event for event in map(json.loads, log.read_text().splitlines()) if event["kind"] == "settings"][-1]
         stored = (f"{settings['model']['provider']}/{settings['model']['model']}", settings["settings"]["reasoning"].get("effort"))
         assert stored == (model, reasoning), (case, settings)
         results[case]["stored_run_config"] = settings
-    database.close()
     print("PASS stored child settings for", ", ".join(sessions), flush=True)
     (root / "result.json").write_text(json.dumps({"cases": results, "native_process_stopped": True, "real_model_calls": 0,
                                                   "model_judgment": "NOT_RUN", "different_family_review": "NOT_RUN"}, indent=2))

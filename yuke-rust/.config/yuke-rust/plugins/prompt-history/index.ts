@@ -76,7 +76,7 @@ export function apply(ctx: PluginContext): undefined {
     let changing = false;
     const navigate = async (direction: -1 | 1): Promise<void> => {
       const pane = mount.pane;
-      const id = pane === undefined ? undefined : ctx.get("chat").session(pane.view);
+      const id = pane === undefined ? undefined : ctx.get("chat").sessionIdOf(pane.view);
       if (id === undefined || loading) return;
       if (history === undefined || history.id !== id) {
         if (direction > 0) return;
@@ -88,7 +88,7 @@ export function apply(ctx: PluginContext): undefined {
         } finally {
           loading = false;
         }
-        if (mount.signal.aborted || ctx.signal.aborted || editor.state !== draft || tui.focused !== editor) return;
+        if (mount.signal.aborted || ctx.signal.aborted || editor.state !== draft || tui.focusedView !== editor) return;
         history = { id, prompts, draft, index: prompts.length };
       }
       history.index = Math.max(0, Math.min(history.prompts.length, history.index + direction));
@@ -114,28 +114,24 @@ export function apply(ctx: PluginContext): undefined {
       void navigate(direction).catch((error: unknown) => ctx.notify("error", String(error)));
       return true;
     }, "beforeKeymap");
-    return () => extension.dispose();
+    return () => extension.close();
   });
   const working = new Map<string, readonly { text: string; style: string }[]>();
   const noRows: never[] = [];
   ctx.addListener("session.update", (event) => {
     const update = event.update;
-    if (
-      update.sessionUpdate === "inputAccepted" &&
-      update.input.source.kind === "user" &&
-      update.input.kind === "message"
-    ) {
+    if (update.kind === "inputAccepted" && update.input.source.kind === "user" && update.input.kind === "message") {
       working.set(event.sessionId, [
         { text: `working  ${draftOf(update.input.content).text.replace(/\s+/g, " ")}`, style: "chat.meta" },
       ]);
-    } else if (update.sessionUpdate === "state" && update.state === "idle") working.delete(event.sessionId);
+    } else if (update.kind === "state" && update.state === "idle") working.delete(event.sessionId);
     else return;
     tui.requestFrame();
   });
   const stopRows = ctx
     .get("chat")
     .addComposerView("above", (_mount, pane) =>
-      composerRows(() => (pane.session === undefined ? undefined : working.get(pane.session)) ?? noRows),
+      composerRows(() => (pane.sessionId === undefined ? undefined : working.get(pane.sessionId)) ?? noRows),
     );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
 }

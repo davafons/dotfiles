@@ -20,9 +20,9 @@ export function apply(ctx: PluginContext): undefined {
     const key = `${folder}:${directory}`;
     if (held === key) return entries;
     const found: DirEntry[] = [];
-    for await (const entry of readDir(directory, { cwd: folder, signal })) {
+    for await (const entry of readDir(directory, { folder: folder, signal })) {
       if (entry.isSymlink) {
-        const info = await stat(`${directory}${entry.name}`, { cwd: folder, signal });
+        const info = await stat(`${directory}${entry.name}`, { folder: folder, signal });
         entry.isDirectory = info.isDirectory;
         entry.isFile = info.isFile;
       }
@@ -47,7 +47,7 @@ export function apply(ctx: PluginContext): undefined {
         : word.directory;
       let found: DirEntry[];
       try {
-        found = await list(context.cwd, directory, context.signal);
+        found = await list(context.folder, directory, context.signal);
       } catch (error) {
         if (context.signal.aborted) return undefined;
         if (!(error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR")))

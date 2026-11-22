@@ -189,7 +189,7 @@ export function apply(ctx: PluginContext): undefined {
             view.setDocument(
               markdown(
                 "inspection",
-                `# Status\n${tui.startup.version}\n\n${inspection.settings.model.provider}/${inspection.settings.model.model}\n${inspection.settings.cwd}\n\n${transcript.state} · ${transcript.pending.size} queued · ${transcript.interactions.size} interactions\n\nContext: ${used == null ? "unknown" : number(used)} last reported input tokens / ${model?.contextWindow == null ? "unknown" : number(model.contextWindow)} window\nLast response: ${usage?.output == null ? "unknown" : number(usage.output)} output tokens\nRegistered tools: ${inspection.tools.length}\n\n## Prompt preview · size estimates\n| Section | Bytes | Tokens |\n| --- | ---: | ---: |\n${sections}\n\n## Account allowance\n${quota.plan}\n${quota.error}\n${quota.windows.map((window) => `${window.label}: ${window.remainingPercent.toFixed(1)}% remaining${window.resetsAt === null ? "" : ` · resets ${new Date(window.resetsAt * 1000).toLocaleString()}`}`).join("\n\n")}\n${quota.creditBalance === null ? "" : `Credits: ${quota.creditBalance}`}\n${quota.notes.join("\n\n")}`,
+                `# Status\n${tui.startup.version}\n\n${inspection.settings.model.provider}/${inspection.settings.model.model}\n${inspection.settings.folder}\n\n${transcript.state} · ${transcript.pending.size} queued · ${transcript.interactions.size} interactions\n\nContext: ${used == null ? "unknown" : number(used)} last reported input tokens / ${model?.contextWindow == null ? "unknown" : number(model.contextWindow)} window\nLast response: ${usage?.output == null ? "unknown" : number(usage.output)} output tokens\nRegistered tools: ${inspection.tools.length}\n\n## Prompt preview · size estimates\n| Section | Bytes | Tokens |\n| --- | ---: | ---: |\n${sections}\n\n## Account allowance\n${quota.plan}\n${quota.error}\n${quota.windows.map((window) => `${window.label}: ${window.remainingPercent.toFixed(1)}% remaining${window.resetsAt === null ? "" : ` · resets ${new Date(window.resetsAt * 1000).toLocaleString()}`}`).join("\n\n")}\n${quota.creditBalance === null ? "" : `Credits: ${quota.creditBalance}`}\n${quota.notes.join("\n\n")}`,
               ),
             );
             tui.requestFrame();
@@ -241,7 +241,9 @@ export function apply(ctx: PluginContext): undefined {
       busy = false;
     let usage: Usage | undefined;
     const cwd =
-      tui.panes.active === undefined ? tui.startup.cwd : (chat.folder(tui.panes.active.view) ?? tui.startup.cwd);
+      tui.panes.activePane === undefined
+        ? tui.startup.folder
+        : (chat.folder(tui.panes.activePane.view) ?? tui.startup.folder);
     const view = new TextView({ document: markdown("usage", "Reading…") });
     const picker = new Picker<Chat>({
       items: [],
@@ -310,7 +312,7 @@ export function apply(ctx: PluginContext): undefined {
         await writeTextFile(
           path,
           JSON.stringify({
-            database: `${data}/yuke.db`,
+            data,
             workspace: all ? null : cwd,
             providers: (await ctx.get("catalog").list({ all: true })).providers,
           }),

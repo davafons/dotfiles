@@ -35,21 +35,21 @@ export function apply(ctx: PluginContext): (() => void) | undefined {
       return transcript === undefined ? false : tui.focus(transcript);
     }, "beforeKeymap");
     return () => {
-      extension.dispose();
+      extension.close();
       stop();
     };
   });
   const stopFocus = tui.addFocusListener((change) => {
-    if (change.previous instanceof TextEditor) composer.cancel(change.previous);
+    if (change.previousView instanceof TextEditor) composer.cancel(change.previousView);
     if (
       (change.pane !== undefined ||
-        (change.current instanceof TextEditor && change.current.role === "composer") ||
-        (change.current instanceof TextView && change.current.role === "transcript")) &&
-      change.previous instanceof TextView
+        (change.focusedView instanceof TextEditor && change.focusedView.role === "composer") ||
+        (change.focusedView instanceof TextView && change.focusedView.role === "transcript")) &&
+      change.previousView instanceof TextView
     )
-      transcripts.get(change.previous)?.blur();
+      transcripts.get(change.previousView)?.blur();
     composer.updateStatus();
-    if (change.current instanceof TextView) transcripts.get(change.current)?.focus();
+    if (change.focusedView instanceof TextView) transcripts.get(change.focusedView)?.focus();
   });
   let stopped = false;
   const stop = (): void => {

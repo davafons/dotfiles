@@ -104,12 +104,12 @@ export function session(s: SessionContext): undefined {
             JSON.stringify({
               ...value,
               api_version: 2,
-              root: context.cwd,
+              root: context.folder,
               session: context.sessionId,
               site: `${context.sessionId}:${context.callId}`,
             }),
           ],
-          context.cwd,
+          context.folder,
           context.signal,
         );
       const text = await store(args);
@@ -152,6 +152,11 @@ export function session(s: SessionContext): undefined {
       required: ["action"],
     },
     execute: (args, context) =>
-      helper("project-work-github", [JSON.stringify({ ...args, root: context.cwd })], context.cwd, context.signal),
+      helper(
+        "project-work-github",
+        [JSON.stringify({ ...args, root: context.folder })],
+        context.folder,
+        context.signal,
+      ),
   });
 }

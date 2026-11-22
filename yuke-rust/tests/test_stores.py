@@ -60,7 +60,7 @@ class Stores(unittest.TestCase):
             base = Path(directory) / 'yuke-rust'
             lock = base / 'sessions' / ('1' * 32) / 'lock'
             lock.parent.mkdir(parents=True)
-            (base / 'yuke.db').touch()
+            (base / 'sessions.jsonl').touch()
             with lock.open('w') as owner:
                 fcntl.flock(owner.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 with contextlib.ExitStack() as guards:

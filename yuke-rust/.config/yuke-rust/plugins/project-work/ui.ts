@@ -44,9 +44,9 @@ export function install(
   const mutations = new Map<string, { eventNumber: number; blockIndex: number }>();
   const assigned = new Map<string, readonly { text: string }[]>();
   const refreshAssignment = async (): Promise<void> => {
-    const pane = tui.panes.active;
+    const pane = tui.panes.activePane;
     if (pane === undefined) return;
-    const id = chat.session(pane.view),
+    const id = chat.sessionIdOf(pane.view),
       cwd = chat.folder(pane.view);
     if (id === undefined || cwd === undefined) return;
     const result = await request<{ tasks: Task[] }>({ action: "assigned", session: id }, cwd, ctx.signal);
@@ -57,7 +57,7 @@ export function install(
     tui.requestFrame();
   };
   const stopRows = chat.addComposerView("above", (_mount, pane) =>
-    composerRows(() => (pane.session === undefined ? noRows : (assigned.get(pane.session) ?? noRows))),
+    composerRows(() => (pane.sessionId === undefined ? noRows : (assigned.get(pane.sessionId) ?? noRows))),
   );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
   const stopChange = chat.addChangeListener(() => {
@@ -66,9 +66,9 @@ export function install(
   ctx.signal.addEventListener("abort", stopChange, { once: true });
   ctx.addListener("session.update", (event) => {
     const update = event.update;
-    if (update.sessionUpdate === "toolStarted" && update.call.name === "project_work")
+    if (update.kind === "toolStarted" && update.call.name === "project_work")
       mutations.set(event.sessionId, update.position);
-    else if (update.sessionUpdate === "toolFinished") {
+    else if (update.kind === "toolFinished") {
       const position = mutations.get(event.sessionId);
       if (position?.eventNumber !== update.position.eventNumber || position.blockIndex !== update.position.blockIndex)
         return;
@@ -77,8 +77,8 @@ export function install(
     }
   });
   const open = async (): Promise<void> => {
-    const pane = tui.panes.active;
-    const cwd = pane === undefined ? tui.startup.cwd : (chat.folder(pane.view) ?? tui.startup.cwd);
+    const pane = tui.panes.activePane;
+    const cwd = pane === undefined ? tui.startup.folder : (chat.folder(pane.view) ?? tui.startup.folder);
     const session = currentSession(ctx, tui) ?? "";
     let tab: "tasks" | "issues" | "pulls" = "tasks";
     let offset = 0,
@@ -236,7 +236,7 @@ export function install(
             key: "tab",
             label: "next field",
             run: () => {
-              tui.focus(tui.focused === title ? notes : tui.focused === notes ? link : title);
+              tui.focus(tui.focusedView === title ? notes : tui.focusedView === notes ? link : title);
             },
           },
           {
@@ -371,7 +371,7 @@ export function install(
             void load().catch(failed);
           },
         },
-        { key: "alt+n", label: "new task", run: () => form(undefined, picker.selected?.github) },
+        { key: "alt+n", label: "new task", run: () => form(undefined, picker.selectedItem?.github) },
         { key: "alt+e", label: "edit", when: () => current !== undefined, run: () => form(current) },
         { key: "alt+m", label: "message", when: () => current !== undefined, run: message },
         {
@@ -437,7 +437,7 @@ export function install(
           key: "ctrl+f",
           label: "focus list/notes",
           run: () => {
-            tui.focus(tui.focused === preview ? picker : preview);
+            tui.focus(tui.focusedView === preview ? picker : preview);
           },
         },
       ],

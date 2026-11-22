@@ -31,7 +31,7 @@ export function apply(ctx: PluginContext): undefined {
   const modelText = (): string | undefined => tui.status.list().find((item) => item.id === "chat:model")?.text;
   const stop = chat.setEmptyView((_mount, pane) => {
     const home = env.get("HOME");
-    let folder = (chat.folder(pane.view) ?? tui.startup.cwd).replace(/[\x00-\x1f\x7f-\x9f]/gu, " ");
+    let folder = (chat.folder(pane.view) ?? tui.startup.folder).replace(/[\x00-\x1f\x7f-\x9f]/gu, " ");
     if (home !== undefined && folder.startsWith(`${home}/`)) folder = `~${folder.slice(home.length)}`;
     const dashboard = new Dashboard(HOME, folder, (name) => {
       tui.focus(pane.composer);
@@ -82,7 +82,7 @@ export function apply(ctx: PluginContext): undefined {
     try {
       await stdio(
         [env.get("YUKE_EXECUTABLE") ?? "yuke", "login", selected.id],
-        tui.startup.cwd,
+        tui.startup.folder,
         dialog.signal,
         async (connection) => {
           output = "";
@@ -111,7 +111,7 @@ export function apply(ctx: PluginContext): undefined {
       mount.pane !== undefined &&
       editor.state.text === "" &&
       editor.state.spans.length === 0 &&
-      chat.session(mount.pane.view) === undefined;
+      chat.sessionIdOf(mount.pane.view) === undefined;
     if (fresh()) vim?.setMode(editor, "normal");
     const extension = editor.extend(mount.signal);
     extension.addKeyHandler((event) => {
@@ -134,6 +134,6 @@ export function apply(ctx: PluginContext): undefined {
       }
       return false;
     }, "beforeKeymap");
-    return () => extension.dispose();
+    return () => extension.close();
   });
 }

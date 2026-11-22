@@ -29,13 +29,13 @@ export function session(s: SessionContext): undefined {
       context.signal.throwIfAborted();
       const id = await sessions.fork(context.sessionId, {
         ...(args.through_event === undefined ? {} : { through: args.through_event }),
-        ...(args.workspace_path === undefined ? {} : { cwd: args.workspace_path }),
+        ...(args.workspace_path === undefined ? {} : { folder: args.workspace_path }),
       });
       const row = await sessions.get(id);
       return JSON.stringify({
         session_id: id,
         source_session_id: context.sessionId,
-        workspace_path: row.cwd,
+        workspace_path: row.folder,
         resume_command: `yuke --resume ${id}`,
       });
     },

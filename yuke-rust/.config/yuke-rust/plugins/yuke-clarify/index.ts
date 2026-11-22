@@ -99,7 +99,7 @@ export async function apply(ctx: PluginContext): Promise<(() => Promise<void>) |
   const stopRows = ctx
     .get("chat")
     .addComposerView("below", (_mount, pane) =>
-      composerRows(() => (pane.session === undefined ? noRows : (rows.get(pane.session) ?? noRows))),
+      composerRows(() => (pane.sessionId === undefined ? noRows : (rows.get(pane.sessionId) ?? noRows))),
     );
   ctx.signal.addEventListener("abort", stopRows, { once: true });
   const deliver = async (entry: Entry, batch: boolean, allowUnanswered: boolean, dismiss = false): Promise<void> => {

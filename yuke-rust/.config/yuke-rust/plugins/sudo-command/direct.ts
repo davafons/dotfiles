@@ -167,6 +167,6 @@ export function install(ctx: PluginContext, tui: Tui): void {
       void execute().catch((error: unknown) => ctx.notify("error", String(error)));
       return true;
     }, "beforeKeymap");
-    return () => extension.dispose();
+    return () => extension.close();
   });
 }

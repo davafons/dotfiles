@@ -204,8 +204,8 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
   const chat = ctx.get("chat");
   let cancelTick: (() => void) | undefined;
   const publish = (): void => {
-    const view = tui.panes.active?.view;
-    const id = view === undefined ? undefined : chat.session(view);
+    const view = tui.panes.activePane?.view;
+    const id = view === undefined ? undefined : chat.sessionIdOf(view);
     const state = id === undefined ? undefined : metrics.get(id);
     const round = state?.current ?? state?.last;
     if (state?.current !== undefined) state.current.label = phaseLabel(state.current, Date.now());
@@ -232,7 +232,7 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
   };
   const record = (sessionId: string, update: Frozen<SessionUpdate>): void => {
     let state = metrics.get(sessionId);
-    if (update.sessionUpdate === "draftStarted") {
+    if (update.kind === "draftStarted") {
       if (state === undefined) {
         state = { current: undefined, last: undefined, saved: new Map(), thoughts: new Map(), revision: 0 };
         metrics.set(sessionId, state);
@@ -255,7 +255,7 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
     }
     if (state === undefined) return;
     const round = state.current;
-    if (update.sessionUpdate === "model" && round !== undefined && round.id === update.draftId) {
+    if (update.kind === "model" && round !== undefined && round.id === update.draftId) {
       const event = update.event;
       const now = Date.now();
       if (event.kind === "blockStarted") {
@@ -283,7 +283,7 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
         if (phase !== undefined) phase.end = now;
       } else return;
       state.revision += 1;
-    } else if (update.sessionUpdate === "draftCommitted" && round !== undefined && round.id === update.draftId) {
+    } else if (update.kind === "draftCommitted" && round !== undefined && round.id === update.draftId) {
       round.end ??= Date.now();
       round.label = phaseLabel(round, round.end);
       state.last = round;
@@ -300,11 +300,11 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
       }
       state.current = undefined;
       state.revision += 1;
-    } else if (update.sessionUpdate === "toolStarted" || update.sessionUpdate === "toolFinished") {
+    } else if (update.kind === "toolStarted" || update.kind === "toolFinished") {
       const called = state.saved.get(update.position.eventNumber);
       if (called === undefined) return;
       const now = Date.now();
-      if (update.sessionUpdate === "toolStarted") {
+      if (update.kind === "toolStarted") {
         if (called.tools === 0) called.phases.push({ name: "tools", start: now, end: undefined });
         called.tools += 1;
       } else {
@@ -316,7 +316,7 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
       }
       called.label = phaseLabel(called, now);
       state.revision += 1;
-    } else if (update.sessionUpdate === "draftDiscarded" || update.sessionUpdate === "roundFailed") {
+    } else if (update.kind === "draftDiscarded" || update.kind === "roundFailed") {
       state.current = undefined;
       state.revision += 1;
     } else return;
@@ -325,7 +325,7 @@ export function apply(ctx: PluginContext<Infer<typeof optionsSchema>>): (() => v
   ctx.addListener("session.update", (event) => {
     const update = event.update;
     if (
-      update.sessionUpdate === "model" &&
+      update.kind === "model" &&
       (update.event.kind === "textDelta" ||
         update.event.kind === "reasoningDelta" ||
         update.event.kind === "refusalDelta" ||

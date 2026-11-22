@@ -2,7 +2,6 @@
 """Install a verified native yuke-rust package. Activate it as the default `yuke` only with --activate."""
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -44,13 +43,9 @@ def main():
     archive = args.archive.resolve(strict=True)
     home = Path.home()
     local = home / '.local'
-    spec = importlib.util.spec_from_file_location('package', source / 'tools/package.py')
-    package = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(package)
-    source_hash = package.source_state()
-    release = local / 'lib/yuke-rust-releases' / source_hash[:16]
-    release.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='.rust-install-', dir=release.parent) as directory:
+    releases = local / 'lib/yuke-rust-releases'
+    releases.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.rust-install-', dir=releases) as directory:
         import tarfile
         staging = Path(directory)
         with tarfile.open(archive) as contents:
@@ -59,11 +54,15 @@ def main():
         (sdk / 'bin').mkdir()
         shutil.copy2(staging / 'bin/yuke', sdk / 'bin/yuke')
         identity = json.loads((sdk / 'build.json').read_text())
+        # The package names its commit. A dirty tree gets no stable name, so it cannot replace a clean release.
+        source_hash = identity['commit'] + ('-dirty-' + identity['version'] if identity['dirty'] else '')
+        release = releases / source_hash[:16] if not identity['dirty'] else releases / source_hash
         identity['sourceHash'] = source_hash
         identity['source'] = str(source)
         identity['archiveSha256'] = hashlib.sha256(archive.read_bytes()).hexdigest()
         (sdk / 'build.json').write_text(json.dumps(identity, indent=2) + '\n')
-        shutil.copytree(source / 'docs', sdk / 'docs')
+        # The personal skill names the profile paths, so it replaces the skill of the package.
+        shutil.rmtree(sdk / 'skills', ignore_errors=True)
         shutil.copytree(ROOT / 'skills', sdk / 'skills')
         version = subprocess.check_output([str(sdk / 'bin/yuke'), '--version'], text=True).strip()
         if version != 'yuke ' + identity['version']:

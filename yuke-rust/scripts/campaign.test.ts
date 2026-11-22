@@ -7,7 +7,7 @@ test("campaign grants filter offered tools and reject tools outside the grant", 
   assert(workspace !== undefined);
   if (env.get("CAMPAIGN_EXPECT_INVALID") === "1") {
     await using host = await createHost({ plugins: [{ name: "agent-tools", apply, session }] });
-    const root = await host.openSession({ cwd: workspace });
+    const root = await host.openSession({ folder: workspace });
     await assertRejects(() => root.runHook("round.before", { blocks: [] }));
     assertEquals(host.requests.length, 0);
     return;
@@ -32,7 +32,7 @@ test("campaign grants filter offered tools and reject tools outside the grant", 
     ],
     replies: [reply.text("Captured the allowed catalog.")],
   });
-  const root = await host.openSession({ cwd: workspace });
+  const root = await host.openSession({ folder: workspace });
   await root.sendMessage("Check the bounded campaign catalog.");
   const names = host.requests[0]?.tools;
   assert(names !== undefined && names.length > 0);

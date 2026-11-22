@@ -47,8 +47,8 @@ export function apply(ctx: PluginContext): undefined {
     "Search chats and workspace files",
     async (query) => {
       const editor = focusedEditor(tui);
-      const pane = tui.panes.active;
-      const cwd = pane === undefined ? tui.startup.cwd : (ctx.get("chat").folder(pane.view) ?? tui.startup.cwd);
+      const pane = tui.panes.activePane;
+      const cwd = pane === undefined ? tui.startup.folder : (ctx.get("chat").folder(pane.view) ?? tui.startup.folder);
       let scope: string | null = cwd;
       const sources = ["all", "chats", "files"] as const;
       let source = 0;
@@ -62,7 +62,7 @@ export function apply(ctx: PluginContext): undefined {
         if (item.kind === "session" || item.kind === "chat") {
           await navigation.openSession(item.session_id);
           if (item.kind === "chat") {
-            const active = tui.panes.active;
+            const active = tui.panes.activePane;
             const view = tui.widgets
               .list()
               .find(
@@ -137,7 +137,7 @@ export function apply(ctx: PluginContext): undefined {
           manifest.push({
             id: row.sessionId,
             title: row.title ?? "(empty chat)",
-            root: row.cwd,
+            root: row.folder,
             signature: String(last?.seq ?? 0),
             updated: row.updatedAt,
           });
@@ -212,7 +212,7 @@ export function apply(ctx: PluginContext): undefined {
             key: "ctrl+y",
             label: "insert",
             run: () => {
-              const selected = picker.selected;
+              const selected = picker.selectedItem;
               if (selected === undefined || editor === undefined) return;
               const text = selected.kind === "file" || selected.kind === "text" ? selected.path : previewText;
               const caret = editor.caret;

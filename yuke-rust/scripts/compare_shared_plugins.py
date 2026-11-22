@@ -11,8 +11,8 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--upstream', type=Path, default=Path.home() / 'workspace/yuke-rust-plugins-upstream',
-                    help='A tree of lostcoords/yuke-plugins at the pinned commit (39483ed), such as a git archive.')
+parser.add_argument('--upstream', type=Path, default=Path.home() / 'workspace/yuke-plugins',
+                    help='A tree of lostcoords/yuke-plugins at the pinned commit (a6106be), such as a git archive.')
 parser.add_argument('--binary', type=Path, default=Path.home() / '.local/lib/yuke-rust/bin/yuke')
 parser.add_argument('--output', type=Path, default=Path.home() / 'workspace/yuke/target/shared-plugin-comparison')
 args = parser.parse_args()

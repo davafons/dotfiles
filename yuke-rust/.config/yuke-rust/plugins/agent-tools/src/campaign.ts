@@ -106,7 +106,7 @@ export class Campaign {
     }));
     s.addHook("round.before", () => {
       const grant = this.check();
-      if (s.cwd !== grant.workspace) throw new Error("Campaign workspace mismatch.");
+      if (s.folder !== grant.workspace) throw new Error("Campaign workspace mismatch.");
       if (s.parent === undefined) {
         if (this.root !== undefined && this.root !== s.sessionId)
           throw new Error("Only one prepaid root session is allowed.");

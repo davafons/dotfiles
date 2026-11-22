@@ -1,6 +1,6 @@
-The personal Vim and agent-tools plugins are upstream `lostcoords/yuke-plugins` plus a personal delta. The comparison uses upstream main `39483ed`, which follows yuke `a3b9526`. Upstream still lacks that delta, so neither plugin can be replaced by a Git entry without feature loss. The profile's native host is `ca9a66a` on `davafons/rust-plugins`.
+The personal Vim and agent-tools plugins are upstream `lostcoords/yuke-plugins` plus a personal delta. The comparison uses upstream main `a6106be`, which follows yuke 0.1.1. Upstream still lacks that delta, so neither plugin can be replaced by a Git entry without feature loss. The profile's native host is `18299b9` on `davafons/rust-plugins`, on top of yuke main `62af333`.
 
-Upstream `39483ed` follows the API changes of yuke `a3b9526` (`inputSchema`, async `readDir`, flat session rows, `WrappedRow`, `onQuestion`). The personal copies carry the same renames.
+Upstream `a6106be` follows the plugin API of yuke 0.1.1 (`previousView`, `focusedView`, `kind` tags of session updates). The personal copies carry the same renames, plus the later renames of yuke main: `folder` for `cwd`, `sessionIdOf`, `activePane`, `selectedItem`, and `close` for `dispose`.
 
 | Vim capability | Upstream | Personal |
 | --- | --- | --- |
@@ -34,21 +34,21 @@ The local role implementation saves each child's role in `roles/<id>.json` and r
 
 | Plugin | Choice | Reason |
 | --- | --- | --- |
-| btw | Loaded as a Git plugin at `39483ed` | No personal equivalent. `/btw` and `/btw:history` work. Its own `Ctrl+K B` chord is shadowed, because controls takes `Ctrl+K` for focus-up and prompt history uses it too. Controls binds `Ctrl+X B` to `btw:ask` instead. |
+| btw | Loaded as a Git plugin at `a6106be` | No personal equivalent. `/btw` and `/btw:history` work. Its own `Ctrl+K B` chord is shadowed, because controls takes `Ctrl+K` for focus-up and prompt history uses it too. Controls binds `Ctrl+X B` to `btw:ask` instead. |
 | titles | Not loaded | Native sessions already have renameable titles from the first message, which sessions-reworked shows. Titles adds a model request per session and needs its own model setup. |
 | mailbox | Not loaded | Adds model tools that push messages into other live sessions. That overlaps Herdr pane discovery and project-work messages, and widens what the model can do without a request from the user. |
 
 ## Check
 
 ```sh
-mkdir -p /tmp/yuke-plugins-39483ed
-git -C ~/workspace/yuke-rust-plugins-upstream archive 39483ed plugins | tar -x -C /tmp/yuke-plugins-39483ed
-python3 ~/dotfiles/yuke-rust/scripts/compare_shared_plugins.py --upstream /tmp/yuke-plugins-39483ed
+mkdir -p /tmp/yuke-plugins-a6106be
+git -C ~/workspace/yuke-plugins archive a6106be plugins | tar -x -C /tmp/yuke-plugins-a6106be
+python3 ~/dotfiles/yuke-rust/scripts/compare_shared_plugins.py --upstream /tmp/yuke-plugins-a6106be --binary ~/workspace/yuke/target/debug/yuke
 ```
 
 The script uses the real widget and session test hosts with scripted model replies. It makes no external model requests. It writes source hashes, a source diff, generated comparison tests, and logs under `~/workspace/yuke/target/shared-plugin-comparison`. The script reads an archive so it does not depend on the checkout's branch.
 
-| Check | Result with the `ca9a66a` binary |
+| Check | Result with the `18299b9` binary |
 | --- | --- |
 | Upstream Vim suite | 152 pass |
 | Personal Vim suite | 158 pass |

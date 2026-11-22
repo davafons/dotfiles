@@ -11,8 +11,8 @@ export function apply(ctx: PluginContext): undefined {
   const chat = ctx.get("chat");
   const sessions = ctx.get("sessions");
   command(ctx, tui, "pwd", "Show the current workspace", () => {
-    const pane = tui.panes.active;
-    ctx.notify("info", pane === undefined ? tui.startup.cwd : (chat.folder(pane.view) ?? tui.startup.cwd));
+    const pane = tui.panes.activePane;
+    ctx.notify("info", pane === undefined ? tui.startup.folder : (chat.folder(pane.view) ?? tui.startup.folder));
   });
   let changing = false;
   command(
@@ -22,9 +22,9 @@ export function apply(ctx: PluginContext): undefined {
     "Continue this conversation in another workspace",
     async (argument) => {
       if (changing) throw new Error("A workspace change already runs.");
-      const pane = tui.panes.active;
+      const pane = tui.panes.activePane;
       if (pane === undefined || chat.folder(pane.view) === undefined) throw new Error("Focus a chat pane first.");
-      const current = chat.folder(pane.view) ?? tui.startup.cwd;
+      const current = chat.folder(pane.view) ?? tui.startup.folder;
       let path = argument.trim();
       if (path === "") {
         ctx.notify("info", current);
@@ -59,15 +59,15 @@ export function apply(ctx: PluginContext): undefined {
           ).size !== 1
         )
           throw new Error("Keep one pane before changing workspace.");
-        const id = chat.session(pane.view);
-        if (id === undefined) chat.newSession({ cwd: target });
+        const id = chat.sessionIdOf(pane.view);
+        if (id === undefined) chat.newSession({ folder: target });
         else {
           const transcript = new Transcript();
           const handle = await sessions.open(id, { tail: 0, signal, onEvent: (event) => transcript.apply(event) });
           if (transcript.state !== "idle" || transcript.pending.size !== 0 || handle.jobs().length !== 0)
             throw new Error("Wait for the turn, queued input, and background work to end before changing workspace.");
-          const fork = await sessions.fork(id, { cwd: target });
-          if (tui.panes.active !== pane || chat.session(pane.view) !== id)
+          const fork = await sessions.fork(id, { folder: target });
+          if (tui.panes.activePane !== pane || chat.sessionIdOf(pane.view) !== id)
             throw new Error(`The pane changed. The fork is saved as ${fork}.`);
           await chat.show(fork);
         }

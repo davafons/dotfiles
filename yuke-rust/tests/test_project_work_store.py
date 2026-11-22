@@ -337,9 +337,9 @@ class WorkStoreTest(unittest.TestCase):
             task = self.run_store("task", session=owner, title="Unknown presence", status="now", notes="")
             self.assertEqual(self.run_store("presence", roots={owner: owner})["states"][owner], "unknown")
             app = data / "yuke"
-            locks = app / "yuke.db.owners"
+            locks = app / "sessions.jsonl.owners"
             locks.mkdir(parents=True)
-            (app / "yuke.db").touch()
+            (app / "sessions.jsonl").touch()
             self.assertEqual(self.run_store("presence", roots={owner: owner})["states"][owner], "unknown")
             target = self.root / "foreign.lock"
             target.touch()

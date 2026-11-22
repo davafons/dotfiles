@@ -32,7 +32,7 @@ export function apply(ctx: PluginContext): undefined {
           run("close");
           break;
         case "only": {
-          const active = tui.panes.active;
+          const active = tui.panes.activePane;
           const panes = new Set(tui.widgets.list().map((mount) => mount.pane));
           panes.forEach((pane) => {
             if (pane !== undefined && pane !== active) pane.close();
@@ -46,9 +46,11 @@ export function apply(ctx: PluginContext): undefined {
     "<split|vsplit|close|only>",
   );
   let armed: TextEditor | undefined;
+  let removeExitStatus: (() => void) | undefined;
   const disarm = (): void => {
     armed = undefined;
-    tui.status.delete("exit");
+    removeExitStatus?.();
+    removeExitStatus = undefined;
   };
   tui.addFocusListener(disarm);
   ctx.get("chat").addChangeListener(disarm);
@@ -91,13 +93,18 @@ export function apply(ctx: PluginContext): undefined {
       } else {
         tui.commands.run("chat:interrupt");
         armed = editor;
-        tui.status.set("exit", { text: "press Ctrl+C again to exit", side: "left", order: -1, priority: 100 });
+        removeExitStatus = tui.status.set("exit", {
+          text: "press Ctrl+C again to exit",
+          side: "left",
+          order: -1,
+          priority: 100,
+        });
       }
       return true;
     }, "beforeKeymap");
     return () => {
       if (armed === editor) disarm();
-      extension.dispose();
+      extension.close();
     };
   });
 }

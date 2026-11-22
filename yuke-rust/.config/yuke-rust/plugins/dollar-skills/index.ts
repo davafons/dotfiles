@@ -51,7 +51,7 @@ export function session(s: SessionContext): undefined {
       if ("kind" in block && block.kind === "userText" && block.text.includes("$"))
         for (const name of mentions(block.text)) names.add(name);
     if (names.size === 0) return undefined;
-    const selected = (await scan(s.cwd, s.signal)).filter((skill) => names.has(skill.name));
+    const selected = (await scan(s.folder, s.signal)).filter((skill) => names.has(skill.name));
     if (selected.length === 0) return undefined;
     const bodies: Block[] = [];
     for (const skill of selected) {
@@ -91,7 +91,7 @@ export function apply(ctx: PluginContext): undefined {
       if (query === undefined || prefix.replace(/(`+)[\s\S]*?\1/g, "").includes("`")) return undefined;
       let skills: readonly Skill[];
       try {
-        skills = await scan(context.cwd, ctx.signal);
+        skills = await scan(context.folder, ctx.signal);
       } catch (error) {
         if (!ctx.signal.aborted && !context.signal.aborted) ctx.notify("error", String(error));
         return undefined;

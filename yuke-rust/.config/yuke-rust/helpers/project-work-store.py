@@ -102,10 +102,10 @@ def tree_presence(ident, guards):
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", app) or app in (".", ".."):
             return "unknown"
         base = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
-        database = (base / app / "yuke.db").resolve(strict=True)
-        if not database.is_file():
+        index = (base / app / "sessions.jsonl").resolve(strict=True)
+        if not index.is_file():
             return "unknown"
-        path = database.parent / "sessions" / uuid.UUID(ident).hex / "lock"
+        path = index.parent / "sessions" / uuid.UUID(ident).hex / "lock"
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
         guards.callback(os.close, descriptor)
         opened = os.fstat(descriptor)

@@ -11,8 +11,8 @@ export function apply(ctx: PluginContext): undefined {
   if (tui === undefined) return;
   const sessions = ctx.get("sessions");
   const open = async (): Promise<void> => {
-    const pane = tui.panes.active;
-    const cwd = pane === undefined ? tui.startup.cwd : (ctx.get("chat").folder(pane.view) ?? tui.startup.cwd);
+    const pane = tui.panes.activePane;
+    const cwd = pane === undefined ? tui.startup.folder : (ctx.get("chat").folder(pane.view) ?? tui.startup.folder);
     let all = false;
     let cursor: string | undefined;
     let busy = false;
@@ -22,7 +22,7 @@ export function apply(ctx: PluginContext): undefined {
       id: (row) => row.sessionId,
       label: (row) =>
         `${row.state === "running" ? "●" : row.state === "idle" ? "○" : " "} ${row.title?.replace(/\s+/g, " ") ?? "(empty chat)"}`,
-      detail: (row) => `${row.model.provider}/${row.model.model} · ${row.cwd}`,
+      detail: (row) => `${row.model.provider}/${row.model.model} · ${row.folder}`,
       onChoose: (row) => {
         void ctx
           .get("personal-navigation")
@@ -40,7 +40,7 @@ export function apply(ctx: PluginContext): undefined {
       try {
         const page = await sessions.list({
           limit: 100,
-          ...(all ? {} : { cwd }),
+          ...(all ? {} : { folder: cwd }),
           ...(more && cursor !== undefined ? { cursor } : {}),
         });
         if (dialog.signal.aborted) return;
@@ -86,9 +86,9 @@ export function apply(ctx: PluginContext): undefined {
         {
           key: "ctrl+d",
           label: "delete",
-          when: () => !busy && picker.selected !== undefined,
+          when: () => !busy && picker.selectedItem !== undefined,
           run: () => {
-            const selected = picker.selected;
+            const selected = picker.selectedItem;
             if (selected === undefined) return;
             const confirm = tui.dialog({
               title: () => "Delete this session and its children?",

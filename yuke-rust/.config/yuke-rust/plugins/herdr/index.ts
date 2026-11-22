@@ -118,7 +118,7 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
         .catch((error: unknown) => ctx.notify("warn", `Code: ${String(error)}`));
       return true;
     });
-    return () => extension.dispose();
+    return () => extension.close();
   });
   if (!inside || env.get("AI_AGENT") !== undefined || env.get("CLAUDECODE") !== undefined) return;
   const pane = env.get("HERDR_PANE_ID");
@@ -133,8 +133,8 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
   const states = new Map<string, { busy: boolean; failed: boolean; questions: Set<number>; summary: string }>();
   const refresh = (): void => {
     if (!ready || ctx.signal.aborted) return;
-    const view = tui.panes.active?.view;
-    const id = view === undefined ? undefined : ctx.get("chat").session(view);
+    const view = tui.panes.activePane?.view;
+    const id = view === undefined ? undefined : ctx.get("chat").sessionIdOf(view);
     const state = id === undefined ? undefined : states.get(id);
     const pending = id === undefined ? false : ctx.get("yuke-clarify").pending(id);
     const status =
@@ -207,16 +207,12 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
     const state = states.get(event.sessionId);
     if (state === undefined) return;
     const update = event.update;
-    if (update.sessionUpdate === "state") {
+    if (update.kind === "state") {
       state.busy = update.state === "running";
       if (state.busy) state.failed = false;
-    } else if (update.sessionUpdate === "commit") {
+    } else if (update.kind === "commit") {
       if (update.commit.end?.kind === "failed") state.failed = true;
-    } else if (
-      update.sessionUpdate === "inputAccepted" &&
-      update.input.source.kind === "user" &&
-      state.summary === ""
-    ) {
+    } else if (update.kind === "inputAccepted" && update.input.source.kind === "user" && state.summary === "") {
       void ctx
         .get("sessions")
         .get(event.sessionId)
@@ -227,8 +223,8 @@ export function apply(ctx: PluginContext): (() => Promise<void>) | undefined {
           },
           (error: unknown) => console.log("Herdr summary failed", String(error)),
         );
-    } else if (update.sessionUpdate === "interactionRequested") state.questions.add(update.interactionId);
-    else if (update.sessionUpdate === "interactionClosed") state.questions.delete(update.interactionId);
+    } else if (update.kind === "interactionRequested") state.questions.add(update.interactionId);
+    else if (update.kind === "interactionClosed") state.questions.delete(update.interactionId);
     else return;
     refresh();
   });

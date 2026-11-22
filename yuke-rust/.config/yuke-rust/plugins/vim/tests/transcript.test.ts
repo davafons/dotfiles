@@ -40,7 +40,7 @@ function reader(text = "alpha beta gamma\n你好 hello\nlast line") {
   const frame = createFrame({ width: 40, height: 10 }, () => root);
   const surface = frame.surface("vim");
   apply({
-    get: (name: string) => (name === "tui" ? surface.tui : { session: () => "s" }),
+    get: (name: string) => (name === "tui" ? surface.tui : { sessionIdOf: () => "s" }),
     provide() {},
     notify() {},
     signal: surface.signal,
@@ -48,7 +48,7 @@ function reader(text = "alpha beta gamma\n你好 hello\nlast line") {
   frame.draw();
   frame.key("esc");
   frame.key("tab");
-  assert(surface.tui.focused === view);
+  assert(surface.tui.focusedView === view);
   return { frame, view, editor, surface };
 }
 
@@ -59,7 +59,7 @@ test("transcript Vim yanks display words and keeps registers available to the co
   assertEquals(frame.copies.at(-1), "alpha beta ");
   assertEquals(view.selection, undefined);
   frame.key("tab");
-  assert(surface.tui.focused === editor);
+  assert(surface.tui.focusedView === editor);
   frame.key("p");
   assertEquals(editor.state.text, "alpha beta ");
 });
@@ -107,7 +107,7 @@ test("a transcript search dialog keeps the source cursor while it owns the focus
   frame.paste("gamma");
   frame.key("enter");
   assertEquals(view.caret, { item: "a", section: "body", offset: 11 });
-  assert(surface.tui.focused === view);
+  assert(surface.tui.focusedView === view);
 });
 
 test("Tab returns to the same transcript source position after composer editing", () => {
