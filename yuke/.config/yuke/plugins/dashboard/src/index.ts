@@ -70,9 +70,10 @@ export function apply(ctx: PluginContext): undefined {
         // The text lines take the whole pane, so a long nightly version shows whole. The menu keeps a narrow column.
         const textWidth = canvas.width - 2;
         const width = Math.min(MENU_WIDTH, textWidth);
-        const withIcon = icon && canvas.height >= ICON_ROWS + shown.length + 8;
-        const withMenu = canvas.height >= shown.length + 5;
-        const height = (withIcon ? ICON_ROWS + 1 : 0) + 3 + (withMenu ? 1 + shown.length + 2 : 0);
+        const withMenu = canvas.height >= shown.length + 11 && width > 4;
+        const withIcon = icon && canvas.height >= ICON_ROWS + 1 + (withMenu ? shown.length + 11 : 6);
+        // The title and the subtitle, an empty row, and the folder, the model, and the version.
+        const height = (withIcon ? ICON_ROWS + 1 : 0) + 6 + (withMenu ? 1 + shown.length + 2 : 0);
         let row = Math.max(0, Math.floor((canvas.height - height) / 2));
         const center = (text: string, style: Style): void => {
           const line = clip(text, textWidth);
@@ -83,26 +84,27 @@ export function apply(ctx: PluginContext): undefined {
           drawIcon(canvas, Math.floor((canvas.width - ICON_WIDTH) / 2), row);
           row += ICON_ROWS + 1;
         }
-        const title = `yuke ${tui.startup.version}`;
-        const titleColumn = Math.floor((canvas.width - measure(clip(title, textWidth))) / 2);
-        const after = canvas.text(titleColumn, row, "yuke", { bold: true });
-        canvas.text(after, row, clip(` ${tui.startup.version}`, textWidth - 4), DIM);
+        center("yuke", { ...ACCENT, bold: true });
+        center("unleash your harness", DIM);
         row += 1;
         center(folder, DIM);
         center(model, DIM);
+        center(tui.startup.version, DIM);
         menuRow = -1;
-        if (!withMenu || width <= 4) return;
-        row += 1;
-        menuRow = row;
-        menuColumn = Math.floor((canvas.width - width) / 2);
-        for (const item of shown) {
-          canvas.text(menuColumn, row, clip(item.label, width - 2), active ? undefined : DIM);
-          canvas.text(menuColumn + width - measure(item.key), row, item.key, active ? ACCENT : DIM);
+        if (withMenu) {
           row += 1;
+          menuRow = row;
+          menuColumn = Math.floor((canvas.width - width) / 2);
+          for (const item of shown) {
+            canvas.text(menuColumn, row, clip(item.label, width - 2), active ? undefined : DIM);
+            canvas.text(menuColumn + width - measure(item.key), row, item.key, active ? ACCENT : DIM);
+            row += 1;
+          }
+          row += 1;
+          if (active) center("i types a message", DIM);
+          else if (pane.composer.state.text === "" && pane.sessionId === undefined)
+            center("esc for the menu keys", DIM);
         }
-        row += 1;
-        if (active) center("i types a message", DIM);
-        else if (pane.composer.state.text === "" && pane.sessionId === undefined) center("esc for the menu keys", DIM);
       },
       onMouse: (event) => {
         if (event.action !== "press" || event.button !== "left" || menuRow < 0) return false;
