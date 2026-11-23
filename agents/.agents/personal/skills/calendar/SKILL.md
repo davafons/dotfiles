@@ -1,33 +1,54 @@
 ---
 name: calendar
-description: "Manage David's appointments, time blocks, and recurring routines. Coordinate with Tasks for meaningful timed work."
+description: "Manage David's appointments, time blocks, and recurring routines in Google Calendar. Coordinate with Tasks for meaningful timed work."
 ---
 
 # Calendar
 
-The calendar is the source of truth for when David has committed time. Before
-using the HEY CLI, read its internal provider reference. Use
-`$PERSONAL_SKILLS_PROVIDER_DIR/hey/SKILL.md` when that variable is set;
-otherwise use `~/.agents/skills/hey/SKILL.md`. Provider details are
-intentionally hidden from normal skill discovery; do not copy them into this
-facade.
+The calendar is the source of truth for when David has committed time. It is
+Google Calendar on `davafons@gmail.com`, used through `gcalcli` (OAuth in
+`~/Library/Application Support/gcalcli/`). HEY Calendar is retired; do not use
+the `hey` CLI.
 
-- Always use `Asia/Tokyo` and JST wall times for new or edited events.
-- Resolve the intended calendar before a write. Do not rely on HEY's default calendar.
-- Route ordinary personal commitments, appointments, chores, workouts, meals, protected work blocks, and personal time off to `Personal` (HEY calendar 692581). Record time off as an all-day event spanning the unavailable dates. Route trips, meetups, concerts, and other fixed external plans to `Events & Travel` (HEY calendar 745611). Use HEY's `Maybe` calendar only for genuinely tentative plans. External calendars such as `日本の祝日` are read-only context, never write targets.
-- Check the external `日本の祝日` calendar (HEY calendar 894582) when planning around Japanese national holidays or likely days off. It is a subscribed reference calendar, so do not copy its events into `Personal` or `Events & Travel`.
-- Use HEY Calendar as the source of truth for when David is committed. Meetings with friends, appointments, travel, workouts, meals, chores, and simple reminders are calendar-native and do not need Fizzy cards by default.
-- Use HEY habits for recurring routines such as exercising several times per week. The habit is the routine's completion/history record. Create a separate calendar event only when David wants an exact protected time or reminder; an event does not complete the habit, and completing a habit does not imply that every planned event happened.
-- For actionable personal events (task-linked work, errands, chores, or exact-time habit sessions), default to reminders 10 minutes and 1 minute before the start (`--remind 10m --remind 1m`) unless the user specifies a different reminder pattern. Preserve ordinary meeting/invite reminder behavior unless David asks to change it.
-- For `Events & Travel`, use the calendar defaults of 1 day and 1 hour before timed events, and 1 day before at 08:00 for all-day events. Add a closer reminder to a particular departure or check-in only when it is useful.
-- Use calendar events for appointments, travel, and protected time blocks. Do not create a HEY todo as a second copy of a Fizzy task.
-- When substantive work names both work and a time, create or locate the Fizzy task through `tasks`, then create the calendar time block. Put the direct Fizzy card link or number in the event notes/link. Put the provider-returned calendar event permalink in the task description alongside its `Planned:` line when available; otherwise record the HEY event ID, local date/time, and calendar name. The task remains the completion record and the event records the plan.
-- When the activity is calendar-native, create only the event or habit. Do not manufacture a Fizzy card solely to make a reminder or retrospective entry.
-- When rescheduling a task-linked event, keep `Planned:` current and preserve a short `Previously planned:` note only when the change is meaningful; do not accumulate a full scheduling log in the card description.
-- Update the task's concise `Planned:` line when scheduling or rescheduling it. Do not use tags as a substitute for the actual time.
-- Check for an existing matching event before creating one, and verify every
-  write by reading it back. If another agent changed the same event, refresh
-  and reconcile once instead of blindly retrying. Different events may be
-  handled in parallel.
+## Calendars
 
-For ordinary task capture or completion use `tasks`. Direct HEY mail work belongs to `mail`.
+- `Personal`: ordinary commitments, appointments, chores, meals, protected work blocks, personal time off (all-day event spanning the dates).
+- `Social`: trips, meetups, concerts and other fixed external plans.
+- `Training`: the workout plan.
+- `Routines`: daily routines (meals, bedtime).
+- `Maybe`: only genuinely tentative plans.
+- Read-only context, never write targets: Google's Japanese holidays calendar, the work calendar (free/busy only), and the old Google calendars (`Events`, `Sleep`, `TickTick`, `Japanese`, `Routine`, `Birthdays`).
+
+## Commands
+
+Add `--nocolor` when reading output. Always pass `--calendar` and, for writes, `--noprompt`.
+
+| Need | Command |
+|---|---|
+| List calendars | `gcalcli list` (`gcalcli --refresh list` after calendars change) |
+| Agenda | `gcalcli --nocolor agenda` (today + 5 days) or `gcalcli --nocolor agenda 2026-11-25 2026-12-02` |
+| One calendar | `gcalcli --calendar Personal agenda …` |
+| Machine-readable | `gcalcli agenda --tsv --details all …` |
+| Find | `gcalcli search "Gym" 2026-11-01 2026-12-31` |
+| Add timed | `gcalcli add --calendar Personal --title "X" --when "2026-11-27 15:00" --duration 60 --reminder 10m --reminder 1m --noprompt` (`--where`, `--description`) |
+| Add all-day | `gcalcli add --calendar Personal --title "X" --allday --when 2026-11-27 --duration 1 --noprompt` (duration in days) |
+| Delete | `gcalcli --calendar Personal delete "X" 2026-11-27 2026-11-28 --iamaexpert` |
+| Edit | `gcalcli edit` is interactive: delete and re-add instead |
+| Recurring | `gcalcli add` cannot create one; use `gcalcli import file.ics` or ask David to use the web UI |
+
+If gcalcli fails with an auth error, the login was revoked: tell David it needs `gcalcli init` again (the Google Cloud app `gcalcli-515801` is published, so logins no longer expire weekly).
+
+## Rules
+
+- Always use `Asia/Tokyo` and JST wall times.
+- Resolve the intended calendar before a write; never rely on the default calendar.
+- Check the Japanese holidays calendar when planning around likely days off; never copy its events.
+- Meetings with friends, appointments, travel, workouts, meals, chores, and simple reminders are calendar-native and do not need Fizzy cards by default.
+- For actionable personal events (task-linked work, errands, chores, workout sessions), default to reminders 10 minutes and 1 minute before (`--reminder 10m --reminder 1m`) unless David asks otherwise.
+- For `Social`, use 1 day and 1 hour before timed events, and 1 day before for all-day events.
+- There is no habit tracker any more (HEY Habits is gone). Workouts are planned as `Training` events; an event does not prove the session happened. Ask David before inventing a completion record.
+- When substantive work names both work and a time, create or locate the Fizzy task through `tasks`, then create the time block. Put the Fizzy card link in the event description, and the event link (`--details url`) with a concise `Planned:` line in the task description. The task remains the completion record.
+- When rescheduling a task-linked event, keep `Planned:` current; add a short `Previously planned:` note only when the change is meaningful.
+- Check for an existing matching event before creating one, and verify every write by reading it back. If another agent changed the same event, refresh and reconcile once instead of blindly retrying.
+
+For ordinary task capture or completion use `tasks`. Mail belongs to `mail`.

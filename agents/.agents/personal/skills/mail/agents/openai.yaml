@@ -1,4 +1,4 @@
 interface:
   display_name: "Mail"
-  short_description: "Read, organize, and draft email"
+  short_description: "Read, organize, and draft email (Zoho via himalaya)"
   default_prompt: "Use $mail to help me with my email."
