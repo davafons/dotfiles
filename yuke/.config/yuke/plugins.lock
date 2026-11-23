@@ -8,6 +8,12 @@
     },
     {
       "git": "https://github.com/lostcoords/yuke-plugins",
+      "folder": "plugins/dashboard",
+      "ref": "davafons/dashboard",
+      "commit": "a38f3fef03ae1c6ead41fba41b1ad0f2febb0bee"
+    },
+    {
+      "git": "https://github.com/lostcoords/yuke-plugins",
       "folder": "plugins/mailbox",
       "ref": "a6106bea1fccfa4844b63aa3c18d167373ea10c3",
       "commit": "a6106bea1fccfa4844b63aa3c18d167373ea10c3"
@@ -51,8 +57,8 @@
     {
       "git": "https://github.com/lostcoords/yuke-plugins",
       "folder": "plugins/usage",
-      "ref": "davafons/usage",
-      "commit": "d96d24a19fdadfe33ccae77cfed27de6aac3dbe4"
+      "ref": "davafons/usage-dashboard",
+      "commit": "c795a9bbfd229d9e07d39ec131fde51ee001b385"
     },
     {
       "git": "https://github.com/lostcoords/yuke-plugins",

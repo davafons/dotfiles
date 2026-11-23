@@ -35,9 +35,9 @@
     {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/questions","ref":"davafons/questions"},
     {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/web"},
     {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/herdr"},
-    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/usage","ref":"davafons/usage"},
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/usage","ref":"davafons/usage-dashboard"},
     {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/shell","ref":"davafons/shell"},
-    {"path":"./plugins/dashboard"}
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/dashboard","ref":"davafons/dashboard"}
   ],
   "bundled": {
     "chat": {

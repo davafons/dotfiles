@@ -23,6 +23,7 @@ The checkout is `~/workspace/yuke` (jj). The bookmark `davafons/local` is a merg
 | lostcoords/yuke#20 | `davafons/thought-durations` | the thought times of `run-feedback`: a saved thought shows `Thought · 8s` |
 | lostcoords/yuke#21 | `davafons/session-record` | `SessionHandle.record`: `!command` saves its output with no model turn |
 | lostcoords/yuke#22 | `davafons/process-spawn` | `Command.spawn`: piped stdin and streamed output, for `!command` and `sudo -S` |
+| lostcoords/yuke#23 | `davafons/optional-services` | `optionalUses` and `ctx.find`: `usage` adds `u` to the dashboard menu without a need for the dashboard |
 
 Rebuild after a pull request changes, after upstream main moves, or after a merge:
 
@@ -30,8 +31,8 @@ Rebuild after a pull request changes, after upstream main moves, or after a merg
 cd ~/workspace/yuke
 jj git fetch --remote origin
 # Each open pull request branch rebases onto upstream main. Drop a branch from the merge after its pull request merges.
-jj rebase -b davafons/system-prompt -b davafons/model-favorites -b davafons/path-completion -b davafons/ctrl-c-quit -b davafons/thought-durations -b davafons/session-record -b davafons/process-spawn -o main@origin
-jj new main@origin davafons/system-prompt davafons/model-favorites davafons/path-completion davafons/ctrl-c-quit davafons/thought-durations davafons/session-record davafons/process-spawn -m "local: yuke main with my open pull requests"
+jj rebase -b davafons/system-prompt -b davafons/model-favorites -b davafons/path-completion -b davafons/ctrl-c-quit -b davafons/thought-durations -b davafons/session-record -b davafons/process-spawn -b davafons/optional-services -o main@origin
+jj new main@origin davafons/system-prompt davafons/model-favorites davafons/path-completion davafons/ctrl-c-quit davafons/thought-durations davafons/session-record davafons/process-spawn davafons/optional-services -m "local: yuke main with my open pull requests"
 # #20 and #21 meet in one test: the merge passes `&[]` as the new durations argument at `crates/engine/src/turn_state/tests.rs` (the record test).
 jj bookmark set davafons/local -r @ --allow-backwards
 jj new davafons/local          # Git HEAD must be the merge, so the package names its commit and is not dirty
@@ -90,5 +91,5 @@ For each plugin, check upstream yuke and `yuke-plugins` first. Then pick one res
 | ✓ | herdr | upstream (xyaman) | Dropped for `herdr` of xyaman/dotfiles (Git entry): reports idle, working, and blocked over all open sessions, and releases the pane on exit. Checked in a Herdr pane. Lost: blocked after a failed turn, `resume_argv` and the title as pane metadata (PR candidate for xyaman), click a file reference to open it in Herdr Code (`david.code`, personal candidate), jump to the pane of a session (not used) |
 | ✓ | build-status | upstream | Dropped: the empty chat pane of stock shows the version, and `yuke --version` prints it |
 | ✓ | sudo-command | contribute | Generic plugin `shell` ([yuke-plugins#9](https://github.com/lostcoords/yuke-plugins/pull/9)) on two core PRs: lostcoords/yuke#21 (`SessionHandle.record`) and #22 (`Command.spawn`). `!command` saves its output with no model turn. `!sudo` takes literal arguments only. The tool `sudo_command` shows the exact arguments first. The password goes through `sudo -A -k` and a FIFO askpass: no Python helper, no cached credential, and never to stdin of the command |
-| ✓ | dashboard | personal | `.config/yuke/plugins/dashboard`: a centered start screen over the stock empty view (stock icon, version, folder, model) with one-key actions: `r` sessions, `m` model, `u` usage, `t` themes, `l` sign in, `c` commands, `q` quit. Keys work in a fresh empty draft before the first typed key, or in Vim Normal mode; `i` types a message. Dropped: search and project tasks (plugins dropped) |
-| ✓ | insights | contribute | `/usage` as the generic plugin `usage` ([yuke-plugins#8](https://github.com/lostcoords/yuke-plugins/pull/8)). It reads the sessions through the session API, and prices answers with the catalog. Dropped: `/context` and `/status` (native inspection API), and the account allowance (a Python helper) |
+| ✓ | dashboard | contribute | PR lostcoords/yuke-plugins#10 (`plugins/dashboard`), loaded from branch `davafons/dashboard`; after the merge, set its `ref` to `main`. A centered start screen over the stock empty view (icon, "yuke", "unleash your harness", folder, model, version) with one-key actions: `r` sessions, `m` model, `t` themes, `l` sign in, `c` commands, `q` quit. The service `dashboard` lets other plugins add a row with `addItem`; `usage` adds `u`. Keys work in a fresh empty draft before the first typed key, or in Vim Normal mode; `i` types a message. Dropped: search and project tasks (plugins dropped) |
+| ✓ | insights | contribute | `/usage` as the generic plugin `usage` ([yuke-plugins#8](https://github.com/lostcoords/yuke-plugins/pull/8)). It reads the sessions through the session API, and prices answers with the catalog. Loaded from branch `davafons/usage-dashboard`: #8 plus one commit that adds `u` to the dashboard menu through `optionalUses` (needs lostcoords/yuke#23). Open its pull request after #8 and yuke#23 merge; until then stock yuke refuses the `optionalUses` field. Dropped: `/context` and `/status` (native inspection API), and the account allowance (a Python helper) |
