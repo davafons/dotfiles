@@ -36,7 +36,8 @@
     {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/web"},
     {"git":"https://github.com/xyaman/dotfiles","folder":"yuke/.config/yuke/plugins/herdr"},
     {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/usage","ref":"davafons/usage"},
-    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/shell","ref":"davafons/shell"}
+    {"git":"https://github.com/lostcoords/yuke-plugins","folder":"plugins/shell","ref":"davafons/shell"},
+    {"path":"./plugins/dashboard"}
   ],
   "bundled": {
     "chat": {
